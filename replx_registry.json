@@ -118,7 +118,6 @@
             "math.pyi",
             "micropython.pyi",
             "mip.pyi",
-            "modules.json",
             "neopixel.pyi",
             "network.pyi",
             "ntptime.pyi",
