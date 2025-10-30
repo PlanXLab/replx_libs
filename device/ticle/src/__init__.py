@@ -146,26 +146,57 @@ def input(prompt:str="") -> str:
             break
 
         if byte == 0x1B:
-            seq = repl_in.read(2)
-            # left key
-            if seq == b'[D' and pos > 0:
-                w = __char_width(buf[pos-1])
-                repl_out.write(f"\x1b[{w}D".encode())
-                pos -= 1
-            # right key
-            elif seq == b'[C' and pos < len(buf):
-                w = __char_width(buf[pos])
-                repl_out.write(f"\x1b[{w}C".encode())
-                pos += 1
-            # Delete (ESC [ 3 ~)
-            elif seq == b'[3' and repl_in.read(1) == b'~' and pos < len(buf):
-                buf.pop(pos)
-                repl_out.write(b"\x1b[K")
-                tail = ''.join(buf[pos:])
-                if tail:
-                    repl_out.write(tail.encode('utf-8'))
-                    ws = sum(__char_width(c) for c in tail)
-                    repl_out.write(f"\x1b[{ws}D".encode())
+            # Read escape sequence
+            seq = repl_in.read(1)
+            if not seq:
+                continue
+            
+            # Check for CSI sequence (ESC [)
+            if seq[0] == 0x5B:  # '['
+                # Read next byte(s)
+                cmd = repl_in.read(1)
+                if not cmd:
+                    continue
+                
+                cmd_byte = cmd[0]
+                
+                # Arrow keys and basic navigation
+                if cmd_byte == 0x44:  # 'D' - Left arrow
+                    if pos > 0:
+                        w = __char_width(buf[pos-1])
+                        repl_out.write(f"\x1b[{w}D".encode())
+                        pos -= 1
+                elif cmd_byte == 0x43:  # 'C' - Right arrow
+                    if pos < len(buf):
+                        w = __char_width(buf[pos])
+                        repl_out.write(f"\x1b[{w}C".encode())
+                        pos += 1
+                elif cmd_byte == 0x41:  # 'A' - Up arrow (ignore for now)
+                    pass
+                elif cmd_byte == 0x42:  # 'B' - Down arrow (ignore for now)
+                    pass
+                elif cmd_byte == 0x48:  # 'H' - Home
+                    if pos > 0:
+                        total_w = sum(__char_width(c) for c in buf[:pos])
+                        repl_out.write(f"\x1b[{total_w}D".encode())
+                        pos = 0
+                elif cmd_byte == 0x46:  # 'F' - End
+                    if pos < len(buf):
+                        total_w = sum(__char_width(c) for c in buf[pos:])
+                        repl_out.write(f"\x1b[{total_w}C".encode())
+                        pos = len(buf)
+                # Extended keys (Del, Insert, etc.)
+                elif cmd_byte in (0x32, 0x33):  # '2' (Insert) or '3' (Delete)
+                    tilde = repl_in.read(1)
+                    if tilde and tilde[0] == 0x7E:  # '~'
+                        if cmd_byte == 0x33 and pos < len(buf):  # Delete key
+                            removed = buf.pop(pos)
+                            repl_out.write(b"\x1b[K")
+                            tail = ''.join(buf[pos:])
+                            if tail:
+                                repl_out.write(tail.encode('utf-8'))
+                                ws = sum(__char_width(c) for c in tail)
+                                repl_out.write(f"\x1b[{ws}D".encode())
             continue
 
         # Backspace
