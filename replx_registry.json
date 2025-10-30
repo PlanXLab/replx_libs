@@ -238,7 +238,7 @@
         "core": "RP2350",
         "ver": 1.0,
         "src": {
-          "ver": 1.0,
+          "ver": 1.1,
           "files": [
             "__init__.py",
             {
