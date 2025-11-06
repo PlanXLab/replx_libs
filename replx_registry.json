@@ -93,7 +93,6 @@
                 "client.py",
                 "enums.py",
                 "message.py",
-                "mqtt5.py",
                 "packets.py",
                 "properties.py",
                 "__init__.py"
