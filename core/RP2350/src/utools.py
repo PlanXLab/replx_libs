@@ -1,9 +1,9 @@
-__version__ = "1.0.0"
-__author__ = "PlanXLab Development Team"
-
 import uos
 import utime
 import micropython
+
+__version__ = "1.0.0"
+__author__ = "PlanXLab Development Team"
 
 
 @micropython.native

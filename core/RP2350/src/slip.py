@@ -1,7 +1,7 @@
+import micropython
+
 __version__ = "1.0.0"
 __author__ = "PlanXLab Development Team"
-
-import micropython
 
 
 @micropython.native

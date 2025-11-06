@@ -1,9 +1,9 @@
-__version__ = "1.0.0"
-__author__ = "PlanXLab Development Team"
-
 from array import array
 from math import exp, pi, sqrt, tan, fabs
 import micropython
+
+__version__ = "1.0.0"
+__author__ = "PlanXLab Development Team"
 
 
 class FilterError(Exception):

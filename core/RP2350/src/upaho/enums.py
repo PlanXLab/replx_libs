@@ -1,25 +1,19 @@
-"""
-MQTT Protocol Enums and Constants
-
-Defines MQTT 3.1.1 and 5.0 protocol constants, reason codes, and enumerations.
-"""
+__version__ = "1.0.0"
+__author__ = "PlanXLab Development Team"
 
 
 class MQTTProtocolVersion:
-    """MQTT Protocol Version"""
-    MQTTv311 = 4  # MQTT 3.1.1
-    MQTTv5 = 5    # MQTT 5.0
+    MQTTv311 = 4
+    MQTTv5 = 5
 
 
 class QoS:
-    """Quality of Service levels"""
-    AT_MOST_ONCE = 0   # Fire and forget
-    AT_LEAST_ONCE = 1  # Acknowledged delivery
-    EXACTLY_ONCE = 2   # Assured delivery (not implemented in u-paho)
+    AT_MOST_ONCE = 0
+    AT_LEAST_ONCE = 1
+    EXACTLY_ONCE = 2
 
 
 class PacketType:
-    """MQTT Control Packet Types"""
     CONNECT = 0x10
     CONNACK = 0x20
     PUBLISH = 0x30
@@ -34,17 +28,10 @@ class PacketType:
     PINGREQ = 0xC0
     PINGRESP = 0xD0
     DISCONNECT = 0xE0
-    AUTH = 0xF0  # MQTT 5.0 only
+    AUTH = 0xF0
 
 
 class ReasonCode:
-    """
-    MQTT 5.0 Reason Codes
-    
-    Used in CONNACK, PUBACK, PUBREC, PUBREL, PUBCOMP, SUBACK,
-    UNSUBACK, DISCONNECT, and AUTH packets.
-    """
-    # Success codes (0x00-0x7F)
     SUCCESS = 0x00
     NORMAL_DISCONNECTION = 0x00
     GRANTED_QOS_0 = 0x00
@@ -56,7 +43,6 @@ class ReasonCode:
     CONTINUE_AUTHENTICATION = 0x18
     RE_AUTHENTICATE = 0x19
     
-    # Error codes (0x80-0xFF)
     UNSPECIFIED_ERROR = 0x80
     MALFORMED_PACKET = 0x81
     PROTOCOL_ERROR = 0x82
@@ -93,12 +79,10 @@ class ReasonCode:
     SUBSCRIPTION_IDENTIFIERS_NOT_SUPPORTED = 0xA1
     WILDCARD_SUBSCRIPTIONS_NOT_SUPPORTED = 0xA2
     
-    # Additional error codes
-    NETWORK_ERROR = 0xFF  # Custom: network/socket error
+    NETWORK_ERROR = 0xFF
 
 
 class PropertyType:
-    """MQTT 5.0 Property Identifiers"""
     PAYLOAD_FORMAT_INDICATOR = 0x01
     MESSAGE_EXPIRY_INTERVAL = 0x02
     CONTENT_TYPE = 0x03
@@ -129,22 +113,19 @@ class PropertyType:
 
 
 class SubscriptionOption:
-    """MQTT 5.0 Subscription Options bits"""
     QOS_MASK = 0x03
     NO_LOCAL = 0x04
     RETAIN_AS_PUBLISHED = 0x08
     RETAIN_HANDLING_MASK = 0x30
     
-    # Retain Handling
     SEND_RETAINED = 0x00
     SEND_RETAINED_IF_NEW = 0x10
     DO_NOT_SEND_RETAINED = 0x20
 
 
 class ConnectFlag:
-    """MQTT CONNECT packet flags"""
-    CLEAN_SESSION = 0x02    # MQTT 3.1.1
-    CLEAN_START = 0x02      # MQTT 5.0
+    CLEAN_SESSION = 0x02
+    CLEAN_START = 0x02
     WILL_FLAG = 0x04
     WILL_QOS_0 = 0x00
     WILL_QOS_1 = 0x08
@@ -155,7 +136,6 @@ class ConnectFlag:
 
 
 class ConnectReturnCode:
-    """MQTT 3.1.1 CONNACK Return Codes"""
     ACCEPTED = 0x00
     REFUSED_PROTOCOL_VERSION = 0x01
     REFUSED_IDENTIFIER_REJECTED = 0x02
@@ -164,7 +144,6 @@ class ConnectReturnCode:
     REFUSED_NOT_AUTHORIZED = 0x05
 
 
-# MQTT 5.0 Property Data Types
 PROPERTY_DATA_TYPE = {
     PropertyType.PAYLOAD_FORMAT_INDICATOR: 'byte',
     PropertyType.MESSAGE_EXPIRY_INTERVAL: 'uint32',
@@ -197,7 +176,6 @@ PROPERTY_DATA_TYPE = {
 
 
 def reason_code_to_string(code):
-    """Convert reason code to human-readable string"""
     mapping = {
         0x00: "Success",
         0x04: "Disconnect with Will Message",

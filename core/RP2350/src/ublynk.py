@@ -1,6 +1,3 @@
-__version__ = "1.0.0"
-__author__ = "PlanXLab Development Team"
-
 import sys
 import time
 import json
@@ -9,6 +6,9 @@ import ubinascii
 
 import machine
 from umqtt.robust2 import MQTTClient
+
+__version__ = "1.0.0"
+__author__ = "PlanXLab Development Team"
 
 
 print("""

@@ -1,16 +1,11 @@
-"""
-Module: 'upaho.client' on micropython-v1.25.0-rp2-RPI_PICO2_W
-
-MQTT Client Implementation with paho-mqtt compatible API
-"""
-# MCU: {'build': '', 'ver': '1.25.0', 'version': '1.25.0', 'port': 'rp2', 'board': 'RPI_PICO2_W', 'mpy': 'v6.3', 'family': 'micropython', 'cpu': 'RP2350', 'arch': 'armv7emsp'}
-# Stubber: v1.24.0
-
 from __future__ import annotations
 from typing import Optional, Callable, Any, Dict, Tuple, List, Union
 from .enums import MQTTProtocolVersion, ReasonCode
 from .properties import Properties
 from .message import MQTTMessage, MQTTMessageInfo
+
+__version__ = "1.0.0"
+__author__ = "PlanXLab Development Team"
 
 class Client:
     """
@@ -54,15 +49,328 @@ class Client:
         - QoS 0 throughput: 581 msg/s
         - QoS 1 throughput: 68.7 msg/s
         - Memory usage: ~33KB
+    
+    Callback Attributes
+    -------------------
+    
+    These callbacks can be set to handle MQTT events. All callbacks receive
+    the client instance and userdata as first parameters.
     """
     
     on_connect: Optional[Callable[[Client, Any, Dict, int, Optional[Properties]], None]]
+    """
+    Callback when connection is established or connection attempt fails.
+    
+    Called when the broker responds to our connection request. Use this to
+    subscribe to topics or perform any initialization that requires an
+    active connection.
+    
+    Parameters
+    ----------
+    client : Client
+        The client instance for this callback
+    userdata : Any
+        User-defined data passed during client initialization
+    flags : Dict
+        Response flags from broker, contains:
+        - 'session_present': bool - True if broker has previous session state
+    rc : int
+        Connection result code (ReasonCode.SUCCESS = 0 for success)
+    properties : Optional[Properties]
+        MQTT 5.0 properties from CONNACK (None for MQTT 3.1.1)
+    
+    Returns
+    -------
+    None
+    
+    Example
+    -------
+    ```python
+        >>> def on_connect(client, userdata, flags, rc, properties):
+        ...     if rc == 0:
+        ...         print("Connected successfully!")
+        ...         if flags.get('session_present'):
+        ...             print("Resuming previous session")
+        ...         # Subscribe to topics
+        ...         client.subscribe("sensors/#", qos=1)
+        ...     else:
+        ...         print(f"Connection failed with code {rc}")
+        >>> 
+        >>> client = Client()
+        >>> client.on_connect = on_connect
+        >>> client.connect("broker.example.com")
+    ```
+    """
+    
     on_disconnect: Optional[Callable[[Client, Any, int, Optional[Properties]], None]]
+    """
+    Callback when client disconnects from broker.
+    
+    Called when the client disconnects from the broker, either due to calling
+    disconnect() or due to an unexpected network issue. Use this to implement
+    reconnection logic or cleanup.
+    
+    Parameters
+    ----------
+    client : Client
+        The client instance for this callback
+    userdata : Any
+        User-defined data passed during client initialization
+    rc : int
+        Disconnection reason code:
+        - ReasonCode.SUCCESS (0): Normal disconnection
+        - ReasonCode.KEEPALIVE_TIMEOUT: Keepalive timeout
+        - ReasonCode.NETWORK_ERROR: Network issue
+        - ReasonCode.PROTOCOL_ERROR: Protocol error
+    properties : Optional[Properties]
+        MQTT 5.0 properties from DISCONNECT (None for MQTT 3.1.1)
+    
+    Returns
+    -------
+    None
+    
+    Example
+    -------
+    ```python
+        >>> def on_disconnect(client, userdata, rc, properties):
+        ...     if rc != 0:
+        ...         print(f"Unexpected disconnect: {rc}")
+        ...         # Implement reconnection logic
+        ...         time.sleep(5)
+        ...         client.reconnect()
+        ...     else:
+        ...         print("Disconnected normally")
+        >>> 
+        >>> client.on_disconnect = on_disconnect
+    ```
+    """
+    
     on_message: Optional[Callable[[Client, Any, MQTTMessage], None]]
+    """
+    Callback when a message is received from broker.
+    
+    Called when a PUBLISH message is received for a subscribed topic that
+    doesn't have a topic-specific callback. This is the default message handler.
+    
+    Parameters
+    ----------
+    client : Client
+        The client instance for this callback
+    userdata : Any
+        User-defined data passed during client initialization
+    message : MQTTMessage
+        The received message containing:
+        - topic: str - Message topic
+        - payload: bytes - Message payload
+        - qos: int - Quality of Service level (0, 1, or 2)
+        - retain: bool - Whether message was retained
+        - mid: int - Message identifier (for QoS > 0)
+        - properties: Properties - MQTT 5.0 properties
+    
+    Returns
+    -------
+    None
+    
+    Example
+    -------
+    ```python
+        >>> def on_message(client, userdata, msg):
+        ...     print(f"Received on {msg.topic}")
+        ...     print(f"Payload: {msg.payload.decode()}")
+        ...     print(f"QoS: {msg.qos}")
+        ...     
+        ...     # Handle different topics
+        ...     if msg.topic.startswith("sensors/"):
+        ...         sensor_data = json.loads(msg.payload)
+        ...         process_sensor(sensor_data)
+        >>> 
+        >>> client.on_message = on_message
+    ```
+    
+    See Also
+    --------
+    message_callback_add : Add topic-specific message callbacks
+    """
+    
     on_publish: Optional[Callable[[Client, Any, int], None]]
+    """
+    Callback when a message has been successfully sent to broker.
+    
+    Called when a message with QoS 1 or QoS 2 has been successfully delivered
+    and acknowledged. For QoS 0, this is called immediately after sending.
+    For QoS 1, called after PUBACK. For QoS 2, called after PUBCOMP.
+    
+    Parameters
+    ----------
+    client : Client
+        The client instance for this callback
+    userdata : Any
+        User-defined data passed during client initialization
+    mid : int
+        Message identifier of the published message
+    
+    Returns
+    -------
+    None
+    
+    Example
+    -------
+    ```python
+        >>> published_messages = {}
+        >>> 
+        >>> def on_publish(client, userdata, mid):
+        ...     print(f"Message {mid} delivered successfully")
+        ...     if mid in published_messages:
+        ...         msg_info = published_messages.pop(mid)
+        ...         print(f"Confirmed: {msg_info}")
+        >>> 
+        >>> client.on_publish = on_publish
+        >>> 
+        >>> # Publish and track
+        >>> info = client.publish("test/topic", "data", qos=1)
+        >>> published_messages[info.mid] = "Temperature reading"
+    ```
+    
+    See Also
+    --------
+    publish : Publish a message to the broker
+    MQTTMessageInfo : Return value from publish() with status tracking
+    """
+    
     on_subscribe: Optional[Callable[[Client, Any, int, List[int], Optional[Properties]], None]]
+    """
+    Callback when subscription is acknowledged by broker.
+    
+    Called when the broker responds to a SUBSCRIBE request with SUBACK,
+    indicating which subscriptions were granted and at what QoS levels.
+    
+    Parameters
+    ----------
+    client : Client
+        The client instance for this callback
+    userdata : Any
+        User-defined data passed during client initialization
+    mid : int
+        Message identifier of the subscribe request
+    granted_qos : List[int]
+        List of granted QoS levels for each subscription:
+        - 0: QoS 0 granted
+        - 1: QoS 1 granted
+        - 2: QoS 2 granted
+        - 0x80 (128): Subscription failure
+    properties : Optional[Properties]
+        MQTT 5.0 properties from SUBACK (None for MQTT 3.1.1)
+    
+    Returns
+    -------
+    None
+    
+    Example
+    -------
+    ```python
+        >>> def on_subscribe(client, userdata, mid, granted_qos, properties):
+        ...     print(f"Subscription {mid} acknowledged")
+        ...     for i, qos in enumerate(granted_qos):
+        ...         if qos == 0x80:
+        ...             print(f"  Topic {i}: Subscription FAILED")
+        ...         else:
+        ...             print(f"  Topic {i}: Granted QoS {qos}")
+        >>> 
+        >>> client.on_subscribe = on_subscribe
+        >>> 
+        >>> # Subscribe to multiple topics
+        >>> client.subscribe([
+        ...     ("sensors/temp", 0),
+        ...     ("sensors/humidity", 1),
+        ...     ("alerts/#", 2)
+        ... ])
+    ```
+    """
+    
     on_unsubscribe: Optional[Callable[[Client, Any, int, Optional[Properties]], None]]
+    """
+    Callback when unsubscription is acknowledged by broker.
+    
+    Called when the broker responds to an UNSUBSCRIBE request with UNSUBACK,
+    confirming that the subscriptions have been removed.
+    
+    Parameters
+    ----------
+    client : Client
+        The client instance for this callback
+    userdata : Any
+        User-defined data passed during client initialization
+    mid : int
+        Message identifier of the unsubscribe request
+    properties : Optional[Properties]
+        MQTT 5.0 properties from UNSUBACK (None for MQTT 3.1.1)
+    
+    Returns
+    -------
+    None
+    
+    Example
+    -------
+    ```python
+        >>> def on_unsubscribe(client, userdata, mid, properties):
+        ...     print(f"Unsubscription {mid} confirmed")
+        ...     print("Successfully unsubscribed from topics")
+        >>> 
+        >>> client.on_unsubscribe = on_unsubscribe
+        >>> client.unsubscribe(["sensors/temp", "sensors/humidity"])
+    ```
+    """
+    
     on_log: Optional[Callable[[Client, Any, int, str], None]]
+    """
+    Callback for logging and debugging.
+    
+    Called when the client has log information. Use this for debugging,
+    monitoring, or custom logging implementations. Can be verbose.
+    
+    Parameters
+    ----------
+    client : Client
+        The client instance for this callback
+    userdata : Any
+        User-defined data passed during client initialization
+    level : int
+        Log level:
+        - 0: ERROR - Critical errors
+        - 1: INFO - Informational messages
+        - 2: DEBUG - Detailed debug information
+    buf : str
+        Log message text
+    
+    Returns
+    -------
+    None
+    
+    Example
+    -------
+    ```python
+        >>> def on_log(client, userdata, level, buf):
+        ...     level_names = ["ERROR", "INFO", "DEBUG"]
+        ...     level_str = level_names[min(level, 2)]
+        ...     print(f"[{level_str}] {buf}")
+        >>> 
+        >>> client.on_log = on_log
+        >>> 
+        >>> # Or use for file logging
+        >>> import logging
+        >>> logger = logging.getLogger("mqtt")
+        >>> 
+        >>> def on_log_to_file(client, userdata, level, buf):
+        ...     if level == 0:
+        ...         logger.error(buf)
+        ...     elif level == 1:
+        ...         logger.info(buf)
+        ...     else:
+        ...         logger.debug(buf)
+        >>> 
+        >>> client.on_log = on_log_to_file
+    ```
+    """
     
     def __init__(
         self,
@@ -219,25 +527,6 @@ class Client:
         ```
         """
     
-    def reconnect_delay_set(self, min_delay: int = 1, max_delay: int = 120) -> None:
-        """
-        Set reconnection delay parameters for automatic reconnection.
-        
-        Configures the minimum and maximum delays for exponential backoff
-        reconnection attempts. The delay doubles with each failed attempt
-        until reaching max_delay.
-        
-        :param min_delay: Minimum delay in seconds between reconnection attempts
-        :param max_delay: Maximum delay in seconds between reconnection attempts
-        
-        Example
-        -------
-        ```python
-            >>> # Start with 5s, max 60s
-            >>> client.reconnect_delay_set(min_delay=5, max_delay=60)
-        ```
-        """
-    
     def max_inflight_messages_set(self, inflight: int = 20) -> None:
         """
         Set maximum number of inflight messages for QoS 1 and 2.
@@ -254,23 +543,7 @@ class Client:
             >>> client.max_inflight_messages_set(10)
         ```
         """
-    
-    def message_retry_set(self, retry: int = 5) -> None:
-        """
-        Set message retry interval in seconds for QoS 1 and 2.
         
-        Configures how long to wait before retrying unacknowledged messages.
-        Only applies to messages with QoS > 0.
-        
-        :param retry: Retry interval in seconds
-        
-        Example
-        -------
-        ```python
-            >>> client.message_retry_set(10)
-        ```
-        """
-    
     def user_data_set(self, userdata: Any) -> None:
         """
         Set or update user-defined data passed to callbacks.
@@ -291,8 +564,7 @@ class Client:
         self,
         host: str,
         port: int = 1883,
-        keepalive: int = 60,
-        bind_address: str = ""
+        keepalive: int = 60
     ) -> int:
         """
         Connect to an MQTT broker and wait for connection to complete.
@@ -304,7 +576,6 @@ class Client:
         :param host: Hostname or IP address of the MQTT broker
         :param port: Network port of the broker (1883 for TCP, 8883 for TLS)
         :param keepalive: Maximum period in seconds between communications with broker
-        :param bind_address: Local network address to bind to (empty=any)
         
         :return: 0 on success, error code on failure
         
@@ -321,36 +592,6 @@ class Client:
             >>> # Connect to TLS broker
             >>> client.tls_set(ca_certs="/flash/ca.crt")
             >>> client.connect("mqtt.example.com", 8883)
-        ```
-        """
-    
-    def connect_async(
-        self,
-        host: str,
-        port: int = 1883,
-        keepalive: int = 60,
-        bind_address: str = ""
-    ) -> int:
-        """
-        Connect to an MQTT broker without waiting for completion.
-        
-        Initiates a connection to the MQTT broker but returns immediately
-        without waiting for the connection to complete. You must call loop()
-        or loop_forever() to complete the connection. The on_connect callback
-        will be called when connection succeeds.
-        
-        :param host: Hostname or IP address of the MQTT broker
-        :param port: Network port of the broker (1883 for TCP, 8883 for TLS)
-        :param keepalive: Maximum period in seconds between communications with broker
-        :param bind_address: Local network address to bind to (empty=any)
-        
-        :return: 0 on success, error code on failure
-        
-        Example
-        -------
-        ```python
-            >>> client.connect_async("mqtt.example.com", 1883)
-            >>> client.loop_forever()  # Connection completes here
         ```
         """
     
@@ -456,7 +697,6 @@ class Client:
         self,
         topic: Union[str, Tuple[str, int], List[Tuple[str, int]]],
         qos: int = 0,
-        options: Optional[Any] = None,
         properties: Optional[Properties] = None
     ) -> Tuple[int, int]:
         """
@@ -469,7 +709,6 @@ class Client:
         
         :param topic: Single topic string, (topic, qos) tuple, or list of tuples
         :param qos: Default QoS level if topic is a string (0, 1, or 2)
-        :param options: Subscription options (MQTT 5.0)
         :param properties: MQTT 5.0 properties for SUBSCRIBE packet
         
         :return: Tuple of (result_code, message_id)
@@ -582,29 +821,6 @@ class Client:
             >>> client.subscribe("alerts/#")
             >>> client.loop_forever()  # Blocks until disconnect
         ```
-        """
-    
-    def loop_start(self) -> None:
-        """
-        Start a background thread to automatically call loop().
-        
-        Note: Threading is not supported in MicroPython. This method
-        is provided for API compatibility but will raise NotImplementedError.
-        Use loop() or loop_forever() instead.
-        
-        :raises NotImplementedError: Always (threading not supported)
-        """
-    
-    def loop_stop(self, force: bool = False) -> None:
-        """
-        Stop the background thread started by loop_start().
-        
-        Note: Threading is not supported in MicroPython. This method
-        is provided for API compatibility but will raise NotImplementedError.
-        
-        :param force: Force stop even if thread is busy
-        
-        :raises NotImplementedError: Always (threading not supported)
         """
     
     def message_callback_add(self, sub: str, callback: Callable[[Client, Any, MQTTMessage], None]) -> None:

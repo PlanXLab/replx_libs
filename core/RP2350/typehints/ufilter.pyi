@@ -19,18 +19,21 @@ Features:
 
 Supported Filter Types:
 
-- AlphaFilter: Direct coefficient control for exponential smoothing
-- LowPassFilter/HighPassFilter: Frequency-domain filtering with automatic design
-- MovingAverageFilter: Linear phase smoothing with circular buffer
-- MedianFilter: Non-linear outlier rejection and impulse noise removal
-- RMSFilter: Power estimation and signal amplitude monitoring
-- KalmanFilter: Optimal estimation with process and measurement noise modeling
-- AdaptiveFilter: Self-adjusting smoothing based on signal dynamics
-- BiquadFilter: Second-order IIR filters with direct coefficient specification
-- ButterworthFilter: Maximally flat frequency response with automatic design
-- FIRFilter: Finite impulse response with custom tap coefficients
+- Alpha: Direct coefficient control for exponential smoothing
+- LowPass/HighPass: Frequency-domain filtering with automatic design
+- TauLowPass: Time-constant based low-pass filter with variable/fixed sampling
+- SlewRateLimiter: Rate-of-change limiter with independent rise/fall rates
+- MovingAverage: Linear phase smoothing with circular buffer
+- Median: Non-linear outlier rejection and impulse noise removal
+- RMS: Power estimation and signal amplitude monitoring
+- Kalman: Optimal estimation with process and measurement noise modeling
+- Adaptive: Self-adjusting smoothing based on signal dynamics
+- Biquad: Second-order IIR filters with direct coefficient specification
+- Butterworth: Maximally flat frequency response with automatic design
+- FIR: Finite impulse response with custom tap coefficients
+- AngleEMA: Exponential moving average for angular data with wrap-around
+- PID: Full-featured PID controller with anti-windup and tracking
 - FilterChain: Serial connection of multiple filters for complex processing
-- ParallelFilterBank: Simultaneous processing through multiple filter paths
 
 Performance:
 
@@ -50,6 +53,8 @@ Applications:
 - Environmental monitoring and data logging
 - Industrial measurement and control systems
 - Communication signal processing and detection
+- Motor control and robotics with PID controllers
+- IMU and compass heading filtering with angle wrap-around
 
 Mathematical Foundation:
 
@@ -59,6 +64,8 @@ Mathematical Foundation:
 - Frequency-domain and time-domain filter specifications
 - Optimal estimation theory implementation (Kalman filtering)
 - Statistical signal processing methods for robust performance
+- Control theory implementations (PID with anti-windup)
+- Circular statistics for angular data processing
 
 """
 
@@ -66,6 +73,7 @@ import micropython
 
 __version__ = "1.0.0"
 __author__ = "PlanXLab Development Team"
+
 
 class FilterError(Exception):
     """Base exception for filter-related errors"""
@@ -80,7 +88,7 @@ class FilterOperationError(FilterError):
     pass
 
 
-class BaseFilter:
+class Base:
     """
     Base class for all signal processing filters.
     
@@ -89,7 +97,7 @@ class BaseFilter:
     subclasses inherit from this base class to ensure consistent behavior and API
     across different filter types.
     
-    The BaseFilter establishes the fundamental contract that all filters must follow:
+    The Base establishes the fundamental contract that all filters must follow:
 
     - Process samples one at a time through update()
     - Support batch processing for efficiency
@@ -124,7 +132,7 @@ class BaseFilter:
         - Consistent error handling across all filter types
     
     Inheritance Pattern:
-        All concrete filter classes should inherit from BaseFilter and implement
+        All concrete filter classes should inherit from Base and implement
         the update() method. The base class provides common functionality while
         derived classes implement specific filtering algorithms.
     """
@@ -147,7 +155,7 @@ class BaseFilter:
         -------
         ```python
             >>> # Basic subclass implementation pattern
-            >>> class CustomFilter(BaseFilter):
+            >>> class CustomFilter(Base):
             ...     def __init__(self, custom_param):
             ...         super().__init__()  # Call base constructor first
             ...         self.custom_param = custom_param
@@ -190,7 +198,7 @@ class BaseFilter:
         -------
         ```python
             >>> # Real-time processing example
-            >>> filter_obj = LowPassFilter(fc=1.0, fs=10.0)
+            >>> filter_obj = LowPass(fc=1.0, fs=10.0)
             >>> 
             >>> # Read sensor data (simulated here)
             >>> raw_value = 32768  # Simulated ADC reading
@@ -231,7 +239,7 @@ class BaseFilter:
         -------
         ```python
             >>> # Reset behavior demonstration
-            >>> filter_obj = MovingAverageFilter(window_size=5)
+            >>> filter_obj = MovingAverage(window_size=5)
             >>> 
             >>> # Process a few samples
             >>> for i in range(10):
@@ -271,7 +279,7 @@ class BaseFilter:
         Example
         -------
         ```python
-            >>> filter_obj = LowPassFilter(fc=1.0, fs=10.0)
+            >>> filter_obj = LowPass(fc=1.0, fs=10.0)
             >>> 
             >>> # These are equivalent:
             >>> result1 = filter_obj.update(5.0)
@@ -285,8 +293,8 @@ class BaseFilter:
             >>> 
             >>> # Filter composition
             >>> def create_filter_pipeline(data):
-            ...     noise_filter = MedianFilter(window_size=3)
-            ...     smooth_filter = LowPassFilter(fc=2.0, fs=20.0)
+            ...     noise_filter = Median(window_size=3)
+            ...     smooth_filter = LowPass(fc=2.0, fs=20.0)
             ...     
             ...     # Chain filters using __call__
             ...     return [smooth_filter(noise_filter(x)) for x in data]
@@ -318,7 +326,7 @@ class BaseFilter:
         Example
         -------
         ```python
-            >>> filter_obj = MovingAverageFilter(window_size=3)
+            >>> filter_obj = MovingAverage(window_size=3)
             >>> 
             >>> # Process batch of samples
             >>> input_data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
@@ -362,7 +370,7 @@ class BaseFilter:
         Example
         -------
         ```python
-            >>> filter_obj = MedianFilter(window_size=5)
+            >>> filter_obj = Median(window_size=5)
             >>> 
             >>> print(f"Initial count: {filter_obj.sample_count}")  # 0
             >>> 
@@ -410,7 +418,7 @@ class BaseFilter:
         -------
         ```python
             >>> # In a filter subclass implementation
-            >>> class LowPassFilter(BaseFilter):
+            >>> class LowPass(Base):
             ...     def __init__(self, fc, fs):
             ...         super().__init__()
             ...         
@@ -426,12 +434,12 @@ class BaseFilter:
             ...         self.alpha = 1.0 - exp(-2.0 * pi * self.fc / self.fs)
             >>> 
             >>> # Valid parameter usage
-            >>> filter1 = LowPassFilter(fc=10.0, fs=100.0)
+            >>> filter1 = LowPass(fc=10.0, fs=100.0)
             >>> print(f"Valid filter created: fc={filter1.fc}, fs={filter1.fs}")
             >>> 
             >>> # Invalid parameter usage (will raise error)
             >>> try:
-            ...     filter2 = LowPassFilter(fc=60.0, fs=100.0)  # fc >= fs/2 (Nyquist violation)
+            ...     filter2 = LowPass(fc=60.0, fs=100.0)  # fc >= fs/2 (Nyquist violation)
             >>> except FilterConfigurationError as e:
             ...     print(f"Configuration error: {e}")
             >>> # Output: "cutoff frequency must be <= 50.0, got 60.0"
@@ -439,7 +447,7 @@ class BaseFilter:
         """
 
 
-class AlphaFilter(BaseFilter):
+class Alpha(Base):
     """
     Single-pole IIR filter with direct alpha coefficient specification.
     
@@ -559,25 +567,25 @@ class AlphaFilter(BaseFilter):
         ```python
             >>> # Creating filters for different applications
             >>> # Conservative filtering for temperature sensor
-            >>> temp_filter = AlphaFilter(alpha=0.05, initial=25.0)
+            >>> temp_filter = Alpha(alpha=0.05, initial=25.0)
             >>> print(f"Time constant: {-1/log(1-0.05):.1f} samples")  # ~19.5
             >>> 
             >>> # Moderate filtering for general sensor data
-            >>> sensor_filter = AlphaFilter(alpha=0.2, initial=0.0)
+            >>> sensor_filter = Alpha(alpha=0.2, initial=0.0)
             >>> print(f"Time constant: {-1/log(1-0.2):.1f} samples")  # ~4.5
             >>> 
             >>> # Light filtering for responsive control
-            >>> control_filter = AlphaFilter(alpha=0.6, initial=5.0)
+            >>> control_filter = Alpha(alpha=0.6, initial=5.0)
             >>> print(f"Time constant: {-1/log(1-0.6):.1f} samples")  # ~1.1
             >>> 
             >>> # Parameter validation examples
             >>> try:
-            ...     invalid_filter = AlphaFilter(alpha=0.0)  # Too low
+            ...     invalid_filter = Alpha(alpha=0.0)  # Too low
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
             >>> 
             >>> try:
-            ...     invalid_filter = AlphaFilter(alpha=1.5)  # Too high
+            ...     invalid_filter = Alpha(alpha=1.5)  # Too high
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
         ```
@@ -602,7 +610,7 @@ class AlphaFilter(BaseFilter):
         -------
         ```python
             >>> # Inspecting and analyzing filter characteristics
-            >>> filter_obj = AlphaFilter(alpha=0.3)
+            >>> filter_obj = Alpha(alpha=0.3)
             >>> print(f"Current alpha: {filter_obj.alpha}")  # 0.3
             >>> 
             >>> # Check filter characteristics
@@ -645,7 +653,7 @@ class AlphaFilter(BaseFilter):
         -------
         ```python
             >>> # Real-time filter adjustment based on conditions
-            >>> filter_obj = AlphaFilter(alpha=0.2)
+            >>> filter_obj = Alpha(alpha=0.2)
             >>> 
             >>> # Adjust filtering strength in real-time
             >>> for noise_level in [0.1, 0.5, 0.9, 0.3]:
@@ -672,7 +680,7 @@ class AlphaFilter(BaseFilter):
             ...     filter_obj.alpha = 0.02 + (level - 1) * 0.1
             ...     print(f"Smoothing level {level} → α={filter_obj.alpha:.3f}")
             >>> 
-            >>> user_filter = AlphaFilter(alpha=0.2)
+            >>> user_filter = Alpha(alpha=0.2)
             >>> set_smoothing_level(user_filter, 3)  # Smoothing level 3 → α=0.220
             >>> set_smoothing_level(user_filter, 8)  # Smoothing level 8 → α=0.720
         ```
@@ -721,7 +729,7 @@ class AlphaFilter(BaseFilter):
         -------
         ```python
             >>> # Processing samples through the filter
-            >>> filter_obj = AlphaFilter(alpha=0.3, initial=0.0)
+            >>> filter_obj = Alpha(alpha=0.3, initial=0.0)
             >>> 
             >>> # Process a sequence of samples
             >>> test_sequence = [1.0, 2.0, 1.5, 3.0, 2.5, 1.0, 0.5]
@@ -747,7 +755,7 @@ class AlphaFilter(BaseFilter):
             >>> 
             >>> # Real-time filtering for sensor data
             >>> def process_sensor_data():
-            ...     accel_filter = AlphaFilter(alpha=0.1)  # Heavy smoothing
+            ...     accel_filter = Alpha(alpha=0.1)  # Heavy smoothing
             ...     
             ...     # Simulate 10 sensor readings with noise
             ...     true_values = [1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0]
@@ -794,7 +802,7 @@ class AlphaFilter(BaseFilter):
         -------
         ```python
             >>> # Demonstrating filter reset for batch processing
-            >>> filter_obj = AlphaFilter(alpha=0.3, initial=5.0)
+            >>> filter_obj = Alpha(alpha=0.3, initial=5.0)
             >>> 
             >>> # Process first batch of data
             >>> first_batch = [6.0, 7.0, 8.0, 6.5, 7.5]
@@ -827,7 +835,7 @@ class AlphaFilter(BaseFilter):
         """
 
 
-class LowPassFilter(BaseFilter):
+class LowPass(Base):
     """
     First-order low-pass filter with cutoff frequency specification.
     
@@ -912,25 +920,25 @@ class LowPassFilter(BaseFilter):
         -------
         ```python
             >>> # Audio processing filter
-            >>> audio_filter = LowPassFilter(fc=5000.0, fs=44100.0, initial=0.0)
+            >>> audio_filter = LowPass(fc=5000.0, fs=44100.0, initial=0.0)
             >>> print(f"Filter alpha: {audio_filter._alpha:.6f}")
             >>> 
             >>> # Sensor data filter  
-            >>> sensor_filter = LowPassFilter(fc=2.0, fs=100.0)
+            >>> sensor_filter = LowPass(fc=2.0, fs=100.0)
             >>> print(f"Cutoff: {sensor_filter.fc} Hz, Sampling: {sensor_filter.fs} Hz")
             >>> 
             >>> # Control system filter
-            >>> control_filter = LowPassFilter(fc=0.1, fs=10.0, initial=5.0)
+            >>> control_filter = LowPass(fc=0.1, fs=10.0, initial=5.0)
             >>> print(f"Initial output: {control_filter.y}")
             >>> 
             >>> # Invalid configurations (will raise ValueError)
             >>> try:
-            ...     invalid_filter = LowPassFilter(fc=60.0, fs=100.0)  # fc >= fs/2
+            ...     invalid_filter = LowPass(fc=60.0, fs=100.0)  # fc >= fs/2
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
             >>> 
             >>> try:
-            ...     invalid_filter = LowPassFilter(fc=-5.0, fs=100.0)  # Negative fc
+            ...     invalid_filter = LowPass(fc=-5.0, fs=100.0)  # Negative fc
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
             >>> 
@@ -944,7 +952,7 @@ class LowPassFilter(BaseFilter):
             ...     
             ...     for fc in cutoffs:
             ...         if fc < fs / 2:
-            ...             filter_obj = LowPassFilter(fc=fc, fs=fs)
+            ...             filter_obj = LowPass(fc=fc, fs=fs)
             ...             alpha = filter_obj._alpha
             ...             time_constant = (1 - alpha) / (2 * pi * fc * alpha)
             ...             
@@ -988,7 +996,7 @@ class LowPassFilter(BaseFilter):
         -------
         ```python
             >>> # Basic filtering operation
-            >>> filter_obj = LowPassFilter(fc=5.0, fs=50.0)
+            >>> filter_obj = LowPass(fc=5.0, fs=50.0)
             >>> 
             >>> # Process single sample
             >>> output = filter_obj.update(10.0)
@@ -1005,7 +1013,7 @@ class LowPassFilter(BaseFilter):
             >>> 
             >>> # Analyze step response
             >>> def step_response_analysis():
-            ...     step_filter = LowPassFilter(fc=2.0, fs=20.0)
+            ...     step_filter = LowPass(fc=2.0, fs=20.0)
             ...     
             ...     print("Step Response Analysis:")
             ...     print("Sample | Input | Output | Error")
@@ -1028,7 +1036,7 @@ class LowPassFilter(BaseFilter):
             >>> 
             >>> # Frequency response visualization
             >>> def visualize_frequency_response():
-            ...     filter_obj = LowPassFilter(fc=10.0, fs=100.0)
+            ...     filter_obj = LowPass(fc=10.0, fs=100.0)
             ...     
             ...     # Test at various frequencies
             ...     test_freqs = [1, 2, 5, 10, 15, 20, 30, 40]
@@ -1084,7 +1092,7 @@ class LowPassFilter(BaseFilter):
         Example
         -------
         ```python
-            >>> filter_obj = LowPassFilter(fc=5.0, fs=50.0, initial=2.0)
+            >>> filter_obj = LowPass(fc=5.0, fs=50.0, initial=2.0)
             >>> 
             >>> # Process some data
             >>> for i in range(10):
@@ -1105,7 +1113,7 @@ class LowPassFilter(BaseFilter):
             >>> 
             >>> # Batch processing example
             >>> def process_multiple_datasets():
-            ...     data_filter = LowPassFilter(fc=2.0, fs=20.0)
+            ...     data_filter = LowPass(fc=2.0, fs=20.0)
             ...     
             ...     datasets = [
             ...         [1, 2, 3, 4, 5],
@@ -1128,7 +1136,7 @@ class LowPassFilter(BaseFilter):
         """
 
 
-class HighPassFilter(BaseFilter):
+class HighPass(Base):
     """
     First-order high-pass filter with cutoff frequency specification.
     
@@ -1228,20 +1236,20 @@ class HighPassFilter(BaseFilter):
         -------
         ```python
             >>> # DC removal from sensor data
-            >>> dc_filter = HighPassFilter(fc=0.1, fs=100.0, initial=0.0)
+            >>> dc_filter = HighPass(fc=0.1, fs=100.0, initial=0.0)
             >>> print(f"Filter coefficient a: {dc_filter.a:.6f}")
             >>> 
             >>> # Audio DC blocking
-            >>> audio_filter = HighPassFilter(fc=20.0, fs=44100.0)
+            >>> audio_filter = HighPass(fc=20.0, fs=44100.0)
             >>> print(f"Cutoff: {audio_filter.fc} Hz, Sampling: {audio_filter.fs} Hz")
             >>> 
             >>> # Motion detection (remove gravity)
-            >>> motion_filter = HighPassFilter(fc=0.5, fs=100.0, initial=0.0)
+            >>> motion_filter = HighPass(fc=0.5, fs=100.0, initial=0.0)
             >>> print(f"Initial states: y={motion_filter.y}, x_prev={motion_filter.x_prev}")
             >>> 
             >>> # Invalid configurations (will raise ValueError)
             >>> try:
-            ...     invalid_filter = HighPassFilter(fc=60.0, fs=100.0)  # fc >= fs/2
+            ...     invalid_filter = HighPass(fc=60.0, fs=100.0)  # fc >= fs/2
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
             >>> 
@@ -1250,19 +1258,19 @@ class HighPassFilter(BaseFilter):
             ...     '''Design filters for specific applications.'''
             ...     
             ...     # EMG baseline correction (remove drift < 5 Hz)
-            ...     emg_filter = HighPassFilter(fc=5.0, fs=1000.0)
+            ...     emg_filter = HighPass(fc=5.0, fs=1000.0)
             ...     print(f"EMG filter: fc={emg_filter.fc} Hz, a={emg_filter.a:.4f}")
             ...     
             ...     # ECG baseline wander removal (remove < 0.5 Hz)
-            ...     ecg_filter = HighPassFilter(fc=0.5, fs=250.0)
+            ...     ecg_filter = HighPass(fc=0.5, fs=250.0)
             ...     print(f"ECG filter: fc={ecg_filter.fc} Hz, a={ecg_filter.a:.4f}")
             ...     
             ...     # Accelerometer motion detection (remove gravity)
-            ...     motion_filter = HighPassFilter(fc=0.1, fs=100.0)
+            ...     motion_filter = HighPass(fc=0.1, fs=100.0)
             ...     print(f"Motion filter: fc={motion_filter.fc} Hz, a={motion_filter.a:.4f}")
             ...     
             ...     # Audio DC blocking (remove < 20 Hz)
-            ...     audio_filter = HighPassFilter(fc=20.0, fs=44100.0)
+            ...     audio_filter = HighPass(fc=20.0, fs=44100.0)
             ...     print(f"Audio filter: fc={audio_filter.fc} Hz, a={audio_filter.a:.4f}")
         ```
         """
@@ -1315,7 +1323,7 @@ class HighPassFilter(BaseFilter):
         -------
         ```python
             >>> # Basic high-pass filtering
-            >>> filter_obj = HighPassFilter(fc=1.0, fs=10.0)
+            >>> filter_obj = HighPass(fc=1.0, fs=10.0)
             >>> 
             >>> # Test with DC + AC signal
             >>> test_signal = [5.0, 5.1, 5.0, 4.9, 5.0, 5.2, 5.0, 4.8]  # DC=5, AC varies
@@ -1347,7 +1355,7 @@ class HighPassFilter(BaseFilter):
             >>> 
             >>> # DC rejection demonstration
             >>> def demonstrate_dc_rejection():
-            ...     dc_filter = HighPassFilter(fc=0.1, fs=10.0)
+            ...     dc_filter = HighPass(fc=0.1, fs=10.0)
             ...     
             ...     print("DC Rejection Test:")
             ...     print("Sample | Input | Output | Running Avg")
@@ -1369,7 +1377,7 @@ class HighPassFilter(BaseFilter):
             >>> 
             >>> # Edge detection example
             >>> def edge_detection_example():
-            ...     edge_detector = HighPassFilter(fc=2.0, fs=20.0)
+            ...     edge_detector = HighPass(fc=2.0, fs=20.0)
             ...     
             ...     # Create signal with step changes
             ...     signal = [1.0]*10 + [2.0]*10 + [1.5]*10 + [3.0]*10
@@ -1425,7 +1433,7 @@ class HighPassFilter(BaseFilter):
         Example
         -------
         ```python
-            >>> filter_obj = HighPassFilter(fc=1.0, fs=10.0, initial=0.0)
+            >>> filter_obj = HighPass(fc=1.0, fs=10.0, initial=0.0)
             >>> 
             >>> # Process some data with DC offset
             >>> test_data = [5.0, 5.1, 5.0, 4.9, 5.0]
@@ -1454,9 +1462,9 @@ class HighPassFilter(BaseFilter):
             >>> # Multi-channel processing with synchronized reset
             >>> def synchronized_multichannel():
             ...     # Create filters for 3-axis accelerometer
-            ...     accel_x = HighPassFilter(fc=0.5, fs=100.0)
-            ...     accel_y = HighPassFilter(fc=0.5, fs=100.0)
-            ...     accel_z = HighPassFilter(fc=0.5, fs=100.0)
+            ...     accel_x = HighPass(fc=0.5, fs=100.0)
+            ...     accel_y = HighPass(fc=0.5, fs=100.0)
+            ...     accel_z = HighPass(fc=0.5, fs=100.0)
             ...     
             ...     # Process first batch of data
             ...     batch1 = [(1.0, 0.1, 9.8), (0.9, 0.2, 9.7), (1.1, 0.0, 9.9)]
@@ -1487,7 +1495,1860 @@ class HighPassFilter(BaseFilter):
         """
 
 
-class MovingAverageFilter(BaseFilter):
+
+class TauLowPass(Base):
+    """
+    Time-constant based low-pass filter with variable or fixed sampling rate.
+    
+    A first-order exponential smoothing filter characterized by its time constant
+    tau (in seconds) rather than alpha coefficient. This provides more intuitive
+    tuning based on physical time scales and desired settling time, making it ideal
+    for applications where response time specifications are given in seconds rather
+    than abstract smoothing coefficients.
+    
+    The filter implements exponential smoothing with dynamic coefficient calculation:
+        
+        α = dt / (tau + dt)
+        y[n] = α·x[n] + (1-α)·y[n-1]
+    
+    Where:
+        
+        - tau is the time constant in seconds
+        - dt is the time step (sampling interval) in seconds
+        - α is automatically calculated based on tau and dt
+    
+    Key Features:
+        
+        - Intuitive time-based parameter specification
+        - Supports both variable and fixed sampling rates
+        - Automatic coefficient calculation per update
+        - Predictable settling time based on tau
+        - Easy conversion from cutoff frequency
+        - Consistent response regardless of sampling rate
+        - Real-time adjustable time constant
+    
+    Applications:
+        
+        - Sensor smoothing with time-based specifications
+        - Control systems with settling time requirements
+        - Variable-rate data acquisition systems
+        - Audio processing with physical time constants
+        - IMU sensor fusion and filtering
+        - Temperature monitoring with thermal time constants
+        - Real-time signal conditioning
+    
+    Mathematical Properties:
+        
+        - Time constant: τ (user-specified)
+        - Step response: y(t) ≈ (1 - e^(-t/τ))·A for step of amplitude A
+        - 63.2% settling time: τ seconds
+        - 95% settling time: ≈ 3τ seconds
+        - 99% settling time: ≈ 5τ seconds
+        - Cutoff frequency: fc ≈ 1/(2π·τ) Hz
+        - Always stable for τ > 0
+    
+    Time Constant Selection Guidelines:
+        
+        - τ = 0.01s: Very fast response (100 Hz cutoff)
+        - τ = 0.1s: Fast response (1.6 Hz cutoff)
+        - τ = 0.5s: Moderate smoothing (0.3 Hz cutoff)
+        - τ = 1.0s: Heavy smoothing (0.16 Hz cutoff)
+        - τ = 5.0s: Very slow response (0.03 Hz cutoff)
+    """
+    def __init__(self, tau_s: float, initial: float = 0.0, fs: float | None = None) -> None:
+        """
+        Initialize time-constant based low-pass filter.
+        
+        Creates a first-order low-pass filter specified by its time constant in
+        seconds. The filter can operate in either fixed sampling rate mode (when
+        fs is provided) or variable sampling rate mode (when fs is None).
+        
+        :param tau_s: Time constant in seconds (must be > 0)
+                     Determines the filter's response speed. Larger values provide
+                     more smoothing but slower response. Smaller values give faster
+                     response but less noise reduction.
+        :param initial: Initial output value for filter state (default: 0.0)
+                       Use expected signal level to minimize startup transients
+        :param fs: Optional fixed sampling rate in Hz (default: None)
+                  If provided, use update(x) with automatic dt calculation.
+                  If None, must use update_with_dt(x, dt) with explicit dt.
+        
+        :raises FilterConfigurationError: If tau_s <= 0 or fs <= 0
+        :raises TypeError: If parameters cannot be converted to numeric types
+        
+        Time Constant Specification:
+            The time constant tau represents the time for the filter output to
+            reach 63.2% of a step input. This provides intuitive tuning:
+            
+            - Response speed: Smaller tau = faster response
+            - Smoothing amount: Larger tau = more smoothing
+            - Settling time (95%): approximately 3×tau
+            - Settling time (99%): approximately 5×tau
+        
+        Sampling Rate Modes:
+            
+            Fixed Sampling Rate (fs provided):
+                
+                - Use update(x) method
+                - Time step dt = 1/fs is constant
+                - More efficient (no dt parameter needed)
+                - Suitable for periodic sampling systems
+                - Example: 100 Hz control loop
+            
+            Variable Sampling Rate (fs = None):
+                
+                - Use update_with_dt(x, dt) method
+                - Time step dt varies per sample
+                - Handles irregular sampling
+                - Adapts to actual timing
+                - Example: Event-driven measurements
+        
+        Relationship to Cutoff Frequency:
+            If you have a desired cutoff frequency fc:
+            
+            tau = 1 / (2π·fc)
+            
+            Example: fc = 10 Hz → tau ≈ 0.0159s
+        
+        Example
+        -------
+        ```python
+            >>> # Fixed sampling rate configuration
+            >>> temp_filter = TauLowPass(tau_s=0.5, initial=25.0, fs=10.0)
+            >>> print(f"Time constant: {temp_filter.tau}s")
+            >>> print(f"95% settling time: {3 * temp_filter.tau:.2f}s")
+            >>> # Time constant: 0.5s
+            >>> # 95% settling time: 1.50s
+            >>> 
+            >>> # Variable sampling rate configuration
+            >>> accel_filter = TauLowPass(tau_s=0.05, initial=0.0)
+            >>> print(f"Cutoff frequency: {1/(2*pi*accel_filter.tau):.2f} Hz")
+            >>> # Cutoff frequency: 3.18 Hz
+            >>> 
+            >>> # Configure from cutoff frequency
+            >>> desired_fc = 5.0  # Hz
+            >>> tau_for_fc = 1.0 / (2 * pi * desired_fc)
+            >>> signal_filter = TauLowPass(tau_s=tau_for_fc, initial=0.0, fs=100.0)
+            >>> print(f"Configured for {desired_fc} Hz cutoff")
+            >>> 
+            >>> # Application-specific configurations
+            >>> def design_application_filters():
+            ...     '''Design filters for various applications.'''
+            ...     
+            ...     # Temperature sensor (slow thermal response)
+            ...     temp = TauLowPass(tau_s=2.0, initial=22.0, fs=1.0)
+            ...     print(f"Temp: tau={temp.tau}s, settling ~{5*temp.tau}s")
+            ...     
+            ...     # IMU accelerometer (fast response needed)
+            ...     imu = TauLowPass(tau_s=0.02, initial=0.0, fs=200.0)
+            ...     print(f"IMU: tau={imu.tau}s, settling ~{5*imu.tau}s")
+            ...     
+            ...     # Audio envelope follower
+            ...     audio = TauLowPass(tau_s=0.01, initial=0.0, fs=44100.0)
+            ...     print(f"Audio: tau={audio.tau}s, settling ~{5*audio.tau}s")
+            ...     
+            ...     # Battery voltage monitor (very slow)
+            ...     battery = TauLowPass(tau_s=10.0, initial=3.7, fs=0.1)
+            ...     print(f"Battery: tau={battery.tau}s, settling ~{5*battery.tau}s")
+            >>> 
+            >>> # Invalid configurations
+            >>> try:
+            ...     bad_filter = TauLowPass(tau_s=0.0, initial=0.0)  # Zero tau
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     bad_filter = TauLowPass(tau_s=-0.1, initial=0.0)  # Negative tau
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+        ```
+        """
+        ...
+    
+    @property
+    def tau(self) -> float:
+        """
+        Get time constant in seconds.
+        
+        Returns the current time constant value that characterizes the filter's
+        response speed. The time constant represents the time for the filter to
+        reach approximately 63.2% of a step input.
+        
+        :return: Time constant in seconds (always positive)
+        
+        Time Constant Interpretation:
+            
+            - τ = 0.01s: Very fast response (fc ≈ 16 Hz)
+            - τ = 0.1s: Fast response (fc ≈ 1.6 Hz)
+            - τ = 0.5s: Moderate response (fc ≈ 0.3 Hz)
+            - τ = 1.0s: Slow response (fc ≈ 0.16 Hz)
+            - τ = 5.0s: Very slow response (fc ≈ 0.03 Hz)
+        
+        Relationship to Settling Time:
+            
+            - 63.2% settling: τ seconds
+            - 95% settling: ≈ 3τ seconds
+            - 99% settling: ≈ 5τ seconds
+            - 99.9% settling: ≈ 7τ seconds
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import TauLowPass
+            >>> 
+            >>> # Create filter and check tau
+            >>> filt = TauLowPass(tau_s=0.5, fs=100.0)
+            >>> print(f"Time constant: {filt.tau}s")
+            >>> # Time constant: 0.5s
+            >>> 
+            >>> # Calculate settling times
+            >>> print(f"95% settling: {3 * filt.tau:.2f}s")
+            >>> print(f"99% settling: {5 * filt.tau:.2f}s")
+            >>> # 95% settling: 1.50s
+            >>> # 99% settling: 2.50s
+            >>> 
+            >>> # Calculate equivalent cutoff frequency
+            >>> import math
+            >>> fc = 1.0 / (2 * math.pi * filt.tau)
+            >>> print(f"Equivalent cutoff: {fc:.2f} Hz")
+            >>> # Equivalent cutoff: 0.32 Hz
+        ```
+        """
+        ...
+    
+    @tau.setter
+    def tau(self, value: float) -> None:
+        """
+        Set time constant in seconds.
+        
+        Updates the filter's time constant, changing its response speed. The new
+        time constant takes effect immediately and will be used for all subsequent
+        update() calls. For fixed sampling rate mode, the alpha coefficient is
+        automatically recalculated.
+        
+        :param value: New time constant in seconds (must be > 0)
+        
+        :raises FilterConfigurationError: If value <= 0
+        :raises TypeError: If value cannot be converted to float
+        
+        Effects of Changing Tau:
+            
+            Increasing tau (slower response):
+                
+                - More smoothing, less noise
+                - Longer settling time
+                - Lower cutoff frequency
+                - More phase lag
+            
+            Decreasing tau (faster response):
+                
+                - Less smoothing, more noise
+                - Shorter settling time
+                - Higher cutoff frequency
+                - Less phase lag
+        
+        Real-Time Adjustment Use Cases:
+            
+            - Adaptive filtering based on noise level
+            - Speed-dependent smoothing (faster movement = less smoothing)
+            - User-adjustable responsiveness
+            - Automatic tuning based on signal characteristics
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import TauLowPass
+            >>> 
+            >>> # Create filter with initial tau
+            >>> filt = TauLowPass(tau_s=0.5, initial=0.0, fs=100.0)
+            >>> print(f"Initial tau: {filt.tau}s")
+            >>> # Initial tau: 0.5s
+            >>> 
+            >>> # Process some samples
+            >>> for i in range(5):
+            ...     output = filt.update(float(i))
+            ...     print(f"Sample {i}: {output:.3f}")
+            >>> 
+            >>> # Change tau for different response
+            >>> filt.tau = 0.1  # Faster response
+            >>> print(f"\nNew tau: {filt.tau}s")
+            >>> # New tau: 0.1s
+            >>> 
+            >>> # Continue processing with new tau
+            >>> for i in range(5, 10):
+            ...     output = filt.update(float(i))
+            ...     print(f"Sample {i}: {output:.3f}")
+            >>> 
+            >>> # Adaptive filtering example
+            >>> def adaptive_smoothing():
+            ...     sensor_filter = TauLowPass(tau_s=0.2, fs=100.0)
+            ...     
+            ...     for sample in sensor_data:
+            ...         # Measure noise level (example: from variance)
+            ...         noise_level = estimate_noise_level()
+            ...         
+            ...         # Adjust tau based on noise
+            ...         if noise_level > 0.5:
+            ...             sensor_filter.tau = 0.5  # Heavy smoothing
+            ...         elif noise_level > 0.2:
+            ...             sensor_filter.tau = 0.2  # Moderate
+            ...         else:
+            ...             sensor_filter.tau = 0.05  # Light smoothing
+            ...         
+            ...         filtered = sensor_filter.update(sample)
+            >>> 
+            >>> # Speed-dependent filtering
+            >>> def speed_dependent_filter():
+            ...     position_filter = TauLowPass(tau_s=0.1, fs=50.0)
+            ...     
+            ...     for position, velocity in motion_data:
+            ...         # More smoothing at low speeds
+            ...         if abs(velocity) < 1.0:
+            ...             position_filter.tau = 0.3
+            ...         elif abs(velocity) < 5.0:
+            ...             position_filter.tau = 0.1
+            ...         else:
+            ...             position_filter.tau = 0.03  # Fast motion
+            ...         
+            ...         filtered_pos = position_filter.update(position)
+            >>> 
+            >>> # Invalid values
+            >>> try:
+            ...     filt.tau = 0.0  # Zero not allowed
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     filt.tau = -0.1  # Negative not allowed
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+        ```
+        """
+        ...
+    
+    def set_cutoff(self, fc_hz: float) -> None:
+        """
+        Set time constant from cutoff frequency.
+        
+        Converts a desired cutoff frequency (3dB point) to the corresponding time
+        constant and updates the filter. This provides an intuitive way to configure
+        the filter when the frequency domain specification is more natural than
+        time constant.
+        
+        :param fc_hz: Desired cutoff frequency in Hz (must be > 0)
+        
+        :raises FilterConfigurationError: If fc_hz <= 0
+        :raises TypeError: If fc_hz cannot be converted to float
+        
+        Conversion Formula:
+            The relationship between cutoff frequency and time constant:
+            
+            tau = 1 / (2π × fc)
+            
+            Or equivalently:
+            
+            fc = 1 / (2π × tau)
+            
+            This ensures the filter has -3dB attenuation at the specified frequency.
+        
+        Typical Cutoff Frequencies:
+            
+            - fc = 0.1 Hz: Very low frequency (tau ≈ 1.59s)
+            - fc = 1 Hz: Low frequency (tau ≈ 0.159s)
+            - fc = 10 Hz: Moderate frequency (tau ≈ 0.0159s)
+            - fc = 100 Hz: High frequency (tau ≈ 0.00159s)
+        
+        Application Examples:
+            
+            - Audio: 20 Hz - 20 kHz
+            - Vibration: 1 Hz - 1 kHz
+            - Temperature: 0.01 Hz - 1 Hz
+            - Servo control: 1 Hz - 100 Hz
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import TauLowPass
+            >>> import math
+            >>> 
+            >>> # Create filter with initial tau
+            >>> filt = TauLowPass(tau_s=0.1, initial=0.0, fs=1000.0)
+            >>> print(f"Initial tau: {filt.tau:.4f}s")
+            >>> # Initial tau: 0.1000s
+            >>> 
+            >>> # Calculate initial cutoff
+            >>> fc_initial = 1.0 / (2 * math.pi * filt.tau)
+            >>> print(f"Initial cutoff: {fc_initial:.2f} Hz")
+            >>> # Initial cutoff: 1.59 Hz
+            >>> 
+            >>> # Set new cutoff frequency
+            >>> filt.set_cutoff(10.0)  # 10 Hz cutoff
+            >>> print(f"New tau: {filt.tau:.4f}s")
+            >>> # New tau: 0.0159s
+            >>> 
+            >>> # Verify cutoff
+            >>> fc_new = 1.0 / (2 * math.pi * filt.tau)
+            >>> print(f"New cutoff: {fc_new:.2f} Hz")
+            >>> # New cutoff: 10.00 Hz
+            >>> 
+            >>> # Design filters for specific applications
+            >>> def design_by_frequency():
+            ...     # Audio envelope follower (20 Hz cutoff)
+            ...     audio_filt = TauLowPass(tau_s=0.1, fs=44100.0)
+            ...     audio_filt.set_cutoff(20.0)
+            ...     print(f"Audio: fc=20Hz, tau={audio_filt.tau:.4f}s")
+            ...     
+            ...     # Vibration sensor (100 Hz cutoff)
+            ...     vib_filt = TauLowPass(tau_s=0.1, fs=1000.0)
+            ...     vib_filt.set_cutoff(100.0)
+            ...     print(f"Vibration: fc=100Hz, tau={vib_filt.tau:.5f}s")
+            ...     
+            ...     # Temperature sensor (0.1 Hz cutoff)
+            ...     temp_filt = TauLowPass(tau_s=1.0, fs=10.0)
+            ...     temp_filt.set_cutoff(0.1)
+            ...     print(f"Temperature: fc=0.1Hz, tau={temp_filt.tau:.2f}s")
+            >>> 
+            >>> # Interactive tuning
+            >>> def interactive_cutoff_tuning():
+            ...     signal_filt = TauLowPass(tau_s=0.1, fs=100.0)
+            ...     
+            ...     # User adjusts cutoff in Hz (more intuitive than tau)
+            ...     cutoff_settings = [1.0, 2.0, 5.0, 10.0, 20.0]
+            ...     
+            ...     for fc in cutoff_settings:
+            ...         signal_filt.set_cutoff(fc)
+            ...         print(f"Cutoff: {fc:5.1f} Hz → tau: {signal_filt.tau:.4f}s "
+            ...               f"→ 95% settling: {3*signal_filt.tau:.3f}s")
+            >>> 
+            >>> # Frequency sweep testing
+            >>> def frequency_sweep():
+            ...     test_filt = TauLowPass(tau_s=0.1, fs=1000.0)
+            ...     
+            ...     print("Frequency | Tau     | Alpha (fs=1kHz)")
+            ...     print("-" * 40)
+            ...     
+            ...     for fc in [0.1, 1, 5, 10, 50, 100]:
+            ...         test_filt.set_cutoff(fc)
+            ...         alpha = (1.0/1000.0) / (test_filt.tau + 1.0/1000.0)
+            ...         print(f"{fc:9.1f} | {test_filt.tau:7.4f} | {alpha:.6f}")
+            >>> 
+            >>> # Invalid cutoff
+            >>> try:
+            ...     filt.set_cutoff(0.0)  # Zero not allowed
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     filt.set_cutoff(-5.0)  # Negative not allowed
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+        ```
+        """
+        ...
+    
+    def update_with_dt(self, x: float, dt_s: float) -> float:
+        """
+        Update filter with variable time step.
+        
+        Processes a single input sample through the filter using an explicitly
+        provided time step. The filter coefficient alpha is calculated dynamically
+        based on the actual elapsed time, allowing the filter to adapt to irregular
+        or variable sampling rates while maintaining consistent time-based response.
+        
+        :param x: Input sample value (any numeric type, converted to float)
+        :param dt_s: Time elapsed since last update in seconds (must be > 0)
+        :return: Filtered output sample as float
+        
+        :raises FilterOperationError: If dt_s <= 0
+        :raises TypeError: If parameters cannot be converted to float
+        
+        Algorithm Details:
+            The filter implements: y[n] = α·x[n] + (1-α)·y[n-1]
+            
+            Where α is dynamically calculated per sample:
+            
+            α = dt / (tau + dt)
+            
+            This ensures:
+            
+            - Consistent response regardless of sampling irregularity
+            - Proper time-constant behavior with variable dt
+            - Automatic adaptation to actual timing
+            - Predictable settling time in wall-clock seconds
+        
+        Performance Characteristics:
+            
+            - O(1) computational complexity
+            - Three floating-point operations per sample
+            - Minimal memory usage (single output state)
+            - Suitable for real-time variable-rate systems
+            - No accumulation of timing errors
+        
+        Timing Considerations:
+            
+            - Accurate dt is critical for correct filtering
+            - Use high-resolution timers when available
+            - Account for processing delays if timing is tight
+            - Very small dt (<< tau) is safe but inefficient
+            - Very large dt (>> tau) causes step-like behavior
+        
+        Example
+        -------
+        ```python
+            >>> import time
+            >>> from ufilter import TauLowPass
+            >>> 
+            >>> # Variable-rate sensor filtering
+            >>> sensor_filter = TauLowPass(tau_s=0.1, initial=0.0)
+            >>> 
+            >>> # Simulate variable sampling intervals
+            >>> last_time = time.ticks_ms()
+            >>> test_intervals = [0.01, 0.015, 0.008, 0.012, 0.01]  # seconds
+            >>> test_values = [1.0, 1.5, 2.0, 1.8, 2.2]
+            >>> 
+            >>> print("dt (s) | Input | Output | Alpha")
+            >>> print("-" * 40)
+            >>> 
+            >>> for dt, value in zip(test_intervals, test_values):
+            ...     output = sensor_filter.update_with_dt(value, dt)
+            ...     alpha = dt / (sensor_filter.tau + dt)
+            ...     print(f"{dt:6.3f} | {value:5.1f} | {output:6.3f} | {alpha:.4f}")
+            >>> # dt (s) | Input | Output | Alpha
+            >>> # ----------------------------------------
+            >>> # 0.010  |   1.0 |  0.091 | 0.0909
+            >>> # 0.015  |   1.5 |  0.302 | 0.1304
+            >>> # 0.008  |   2.0 |  0.428 | 0.0741
+            >>> # 0.012  |   1.8 |  0.592 | 0.1071
+            >>> # 0.010  |   2.2 |  0.738 | 0.0909
+            >>> 
+            >>> # Real-world application with timing
+            >>> def variable_rate_application():
+            ...     filter_obj = TauLowPass(tau_s=0.2)
+            ...     
+            ...     last_time = time.ticks_ms()
+            ...     sample_count = 0
+            ...     
+            ...     while sample_count < 100:
+            ...         # Variable timing due to sensor/processing delays
+            ...         sensor_value = read_sensor()  # May have variable latency
+            ...         
+            ...         current_time = time.ticks_ms()
+            ...         dt = time.ticks_diff(current_time, last_time) / 1000.0
+            ...         last_time = current_time
+            ...         
+            ...         # Filter adapts to actual timing
+            ...         filtered = filter_obj.update_with_dt(sensor_value, dt)
+            ...         
+            ...         print(f"dt={dt*1000:.1f}ms, filtered={filtered:.3f}")
+            ...         
+            ...         sample_count += 1
+            ...         time.sleep(0.01)  # Nominal 100 Hz, but actual varies
+            >>> 
+            >>> # Handling timing edge cases
+            >>> def demonstrate_timing_effects():
+            ...     filt = TauLowPass(tau_s=0.1)
+            ...     
+            ...     # Normal sampling
+            ...     result1 = filt.update_with_dt(1.0, 0.01)
+            ...     print(f"Normal dt: {result1:.4f}")
+            ...     
+            ...     # Very small dt (inefficient but safe)
+            ...     result2 = filt.update_with_dt(1.0, 0.0001)
+            ...     print(f"Tiny dt: {result2:.4f} (minimal change)")
+            ...     
+            ...     # Large dt (approaches step)
+            ...     result3 = filt.update_with_dt(2.0, 1.0)
+            ...     print(f"Large dt: {result3:.4f} (large step)")
+        ```
+        """
+        ...
+    
+    def update(self, x: float) -> float:
+        """
+        Update filter with fixed time step.
+        
+        Processes a single input sample through the filter using the fixed sampling
+        rate specified in the constructor. The filter coefficient alpha is pre-calculated
+        from the time constant and fixed sampling period, providing efficient operation
+        for periodic sampling systems.
+        
+        :param x: Input sample value (any numeric type, converted to float)
+        :return: Filtered output sample as float
+        
+        :raises FilterOperationError: If fs was not provided in constructor
+        :raises TypeError: If input cannot be converted to float
+        
+        Algorithm Details:
+            The filter implements: y[n] = α·x[n] + (1-α)·y[n-1]
+            
+            Where α is pre-calculated once from fs and tau:
+            
+            α = (1/fs) / (tau + 1/fs)
+            
+            This provides:
+            
+            - Efficient filtering with no per-sample coefficient calculation
+            - Consistent response at fixed sampling rate
+            - Predictable computational load
+            - Optimal for periodic control loops
+        
+        Performance Characteristics:
+            
+            - O(1) computational complexity
+            - Two floating-point operations per sample (multiply-add)
+            - Pre-calculated coefficient for efficiency
+            - Minimal memory usage (single output state)
+            - Ideal for deterministic real-time systems
+        
+        Usage Requirements:
+            
+            - Sampling rate fs must be provided in constructor
+            - Samples must arrive at approximately fs rate
+            - For irregular sampling, use update_with_dt() instead
+            - Calling this without fs raises FilterOperationError
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import TauLowPass
+            >>> 
+            >>> # Temperature sensor at 10 Hz
+            >>> temp_filter = TauLowPass(tau_s=0.5, initial=25.0, fs=10.0)
+            >>> 
+            >>> # Process samples (simple interface, no dt needed)
+            >>> test_temps = [25.2, 25.8, 26.1, 25.9, 26.3, 25.7, 25.5]
+            >>> 
+            >>> print("Sample | Input | Output | Change")
+            >>> print("-" * 35)
+            >>> 
+            >>> for i, temp in enumerate(test_temps):
+            ...     prev_output = temp_filter.y if i > 0 else temp_filter.y
+            ...     output = temp_filter.update(temp)
+            ...     change = output - prev_output
+            ...     print(f"{i:6d} | {temp:5.1f} | {output:6.3f} | {change:+6.3f}")
+            >>> # Sample | Input | Output | Change
+            >>> # -----------------------------------
+            >>> #      0 |  25.2 |  25.039 | +0.039
+            >>> #      1 |  25.8 |  25.188 | +0.149
+            >>> #      2 |  26.1 |  25.366 | +0.178
+            >>> #      3 |  25.9 |  25.470 | +0.104
+            >>> #      4 |  26.3 |  25.631 | +0.161
+            >>> #      5 |  25.7 |  25.644 | +0.013
+            >>> #      6 |  25.5 |  25.616 | -0.028
+            >>> 
+            >>> # High-frequency control loop
+            >>> def control_loop_example():
+            ...     # 100 Hz control loop with tau = 0.02s
+            ...     controller_filter = TauLowPass(tau_s=0.02, initial=0.0, fs=100.0)
+            ...     
+            ...     print("Control Loop Filtering (100 Hz)")
+            ...     print("Sample | Input | Filtered")
+            ...     print("-" * 30)
+            ...     
+            ...     # Simulate noisy sensor with step input
+            ...     for n in range(20):
+            ...         # Step from 0 to 10 at sample 10 with noise
+            ...         true_value = 10.0 if n >= 10 else 0.0
+            ...         noise = (hash(n) % 100 - 50) / 500.0  # ±0.1
+            ...         sensor = true_value + noise
+            ...         
+            ...         filtered = controller_filter.update(sensor)
+            ...         
+            ...         if n % 5 == 0 or n == 10:  # Print periodically and at step
+            ...             print(f"{n:6d} | {sensor:5.2f} | {filtered:8.3f}")
+            >>> 
+            >>> # Error handling - missing fs
+            >>> try:
+            ...     no_fs_filter = TauLowPass(tau_s=0.1)  # No fs provided
+            ...     result = no_fs_filter.update(1.0)  # Will raise error
+            >>> except FilterOperationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> # Batch processing with fixed rate
+            >>> def batch_process_data():
+            ...     data = [0.1, 0.3, 0.2, 0.5, 0.4, 0.6, 0.5, 0.7]
+            ...     
+            ...     # Process at 50 Hz with tau = 0.05s
+            ...     processor = TauLowPass(tau_s=0.05, fs=50.0)
+            ...     
+            ...     filtered_data = []
+            ...     for sample in data:
+            ...         filtered = processor.update(sample)
+            ...         filtered_data.append(filtered)
+            ...     
+            ...     return filtered_data
+        ```
+        """
+        ...
+    
+    def reset(self) -> None:
+        """
+        Reset filter to initial state while preserving configuration.
+        
+        Clears the filter's internal state (output value) and resets the sample
+        counter, but maintains all configuration parameters like time constant,
+        sampling frequency, and initial value setting. This allows the filter
+        to be reused for new data streams without reconfiguration.
+        
+        Reset Operations:
+            
+            - Restores output value to initial setting
+            - Resets sample counter to zero
+            - Preserves time constant (tau)
+            - Preserves sampling frequency (fs)
+            - Preserves initial value setting
+            - Prepares filter for new input sequence
+        
+        Use Cases:
+            
+            - Starting new measurement session
+            - Switching between different signal sources
+            - Clearing filter memory after transient events
+            - Batch processing of multiple datasets
+            - Periodic reset to prevent numerical drift
+            - A/B testing with consistent initial conditions
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import TauLowPass
+            >>> 
+            >>> # Create filter and process some data
+            >>> sensor_filter = TauLowPass(tau_s=0.1, initial=0.0, fs=100.0)
+            >>> 
+            >>> print("First dataset:")
+            >>> for i in range(5):
+            ...     result = sensor_filter.update(float(i))
+            ...     print(f"  Sample {i}: {result:.3f}")
+            >>> # First dataset:
+            >>> #   Sample 0: 0.000
+            >>> #   Sample 1: 0.091
+            >>> #   Sample 2: 0.264
+            >>> #   Sample 3: 0.512
+            >>> #   Sample 4: 0.830
+            >>> 
+            >>> print(f"After processing: output={sensor_filter.y:.3f}, samples={sensor_filter.sample_count}")
+            >>> # After processing: output=0.830, samples=5
+            >>> 
+            >>> # Reset for new dataset
+            >>> sensor_filter.reset()
+            >>> print(f"After reset: output={sensor_filter.y:.3f}, samples={sensor_filter.sample_count}")
+            >>> # After reset: output=0.000, samples=0
+            >>> 
+            >>> # Verify configuration preserved
+            >>> print(f"Configuration: tau={sensor_filter.tau}s, fs={sensor_filter.fs} Hz")
+            >>> # Configuration: tau=0.1s, fs=100.0 Hz
+            >>> 
+            >>> # Process second dataset with same filter
+            >>> print("\nSecond dataset:")
+            >>> for i in range(5):
+            ...     result = sensor_filter.update(float(i) * 2)
+            ...     print(f"  Sample {i}: {result:.3f}")
+            >>> 
+            >>> # Multi-sensor application with synchronized reset
+            >>> def synchronized_multichannel_filtering():
+            ...     # Create filters for 3-axis accelerometer
+            ...     tau = 0.05
+            ...     fs = 200.0
+            ...     
+            ...     accel_x = TauLowPass(tau_s=tau, initial=0.0, fs=fs)
+            ...     accel_y = TauLowPass(tau_s=tau, initial=0.0, fs=fs)
+            ...     accel_z = TauLowPass(tau_s=tau, initial=9.8, fs=fs)
+            ...     
+            ...     filters = [accel_x, accel_y, accel_z]
+            ...     
+            ...     # Process first batch
+            ...     batch1 = [(0.1, 0.2, 9.7), (0.2, 0.1, 9.8), (0.0, 0.3, 9.9)]
+            ...     
+            ...     print("Batch 1:")
+            ...     for i, (x, y, z) in enumerate(batch1):
+            ...         fx = accel_x.update(x)
+            ...         fy = accel_y.update(y)
+            ...         fz = accel_z.update(z)
+            ...         print(f"  Sample {i}: X={fx:.3f}, Y={fy:.3f}, Z={fz:.3f}")
+            ...     
+            ...     # Reset all filters for new batch
+            ...     for filt in filters:
+            ...         filt.reset()
+            ...     
+            ...     print("\nAfter reset - ready for Batch 2")
+            ...     
+            ...     # Process second batch starting from same initial conditions
+            ...     batch2 = [(0.5, -0.1, 9.6), (0.3, 0.0, 9.7)]
+            ...     
+            ...     print("Batch 2:")
+            ...     for i, (x, y, z) in enumerate(batch2):
+            ...         fx = accel_x.update(x)
+            ...         fy = accel_y.update(y)
+            ...         fz = accel_z.update(z)
+            ...         print(f"  Sample {i}: X={fx:.3f}, Y={fy:.3f}, Z={fz:.3f}")
+        ```
+        """
+        ...
+
+
+
+class SlewRateLimiter(Base):
+    """
+    Slew rate limiter with independent rise/fall rates and optional deadband.
+    
+    A signal conditioning filter that constrains the rate of change of a signal to
+    specified maximum rates. Provides independent control of rising and falling edge
+    rates, making it ideal for protecting mechanical systems, smoothing control commands,
+    and preventing abrupt transitions that could cause overshoot or instability.
+    
+    The limiter implements rate-of-change constraints:
+        
+        Δy/Δt ≤ rise_rate (when input > output)
+        Δy/Δt ≥ -fall_rate (when input < output)
+    
+    Where:
+        
+        - rise_rate: Maximum allowed positive rate (units/second)
+        - fall_rate: Maximum allowed negative rate (units/second)
+        - Output tracks input but changes no faster than specified rates
+    
+    Key Features:
+        
+        - Independent rise and fall rate limits (asymmetric control)
+        - Optional deadband for noise immunity
+        - Supports variable and fixed sampling rates
+        - Protects mechanical systems from excessive acceleration
+        - Smooths step changes in control commands
+        - Real-time adjustable rate limits
+        - No phase distortion (non-frequency-dependent)
+    
+    Applications:
+        
+        - Motor speed command smoothing
+        - Servo position control with rate limiting
+        - Setpoint ramping in process control
+        - Mechanical system protection
+        - Audio volume fade in/out
+        - LED brightness transitions
+        - Temperature setpoint ramping
+        - Valve opening/closing rate control
+    
+    Mathematical Properties:
+        
+        - Linear phase response (simple delay)
+        - No frequency-dependent attenuation
+        - Deterministic worst-case delay
+        - Ramp time: Δ / rate for step of size Δ
+        - Asymmetric response for rise vs. fall
+        - Deadband provides hysteresis
+    
+    Rate Selection Guidelines:
+        
+        - Motor acceleration: Typically 50-500 RPM/s
+        - Servo positioning: 10-100 degrees/s
+        - Temperature ramping: 0.5-5 °C/min
+        - Audio volume: 10-50 dB/s
+        - LED brightness: 100-1000 units/s
+    """
+    def __init__(self, rise_per_s: float, fall_per_s: float | None = None, 
+                 initial: float = 0.0, fs: float | None = None, 
+                 deadband: float = 0.0) -> None:
+        """
+        Initialize slew rate limiter with specified rate constraints.
+        
+        Creates a rate-of-change limiter that constrains how quickly the output
+        can track changes in the input. Separate limits for rising and falling
+        edges allow asymmetric control suitable for systems with different
+        acceleration and deceleration characteristics.
+        
+        :param rise_per_s: Maximum rising rate in units/second (must be > 0)
+                          Controls how fast output can increase when tracking
+                          an increasing input signal.
+        :param fall_per_s: Maximum falling rate in units/second (must be > 0)
+                          Controls how fast output can decrease when tracking
+                          a decreasing input signal. If None, uses rise_per_s
+                          value for symmetric rate limiting.
+        :param initial: Initial output value (default: 0.0)
+                       Starting point for the limiter. Use expected initial
+                       signal level to avoid unnecessary ramping at startup.
+        :param fs: Optional fixed sampling rate in Hz (default: None)
+                  If provided, use update(x) with automatic dt calculation.
+                  If None, must use update_with_dt(x, dt) with explicit dt.
+        :param deadband: Deadband threshold in signal units (default: 0.0)
+                        Changes smaller than this are ignored, providing
+                        immunity to noise and small jitter.
+        
+        :raises FilterConfigurationError: If rise_per_s <= 0, fall_per_s <= 0,
+                                         fs <= 0, or deadband < 0
+        :raises TypeError: If parameters cannot be converted to numeric types
+        
+        Rate Specification:
+            Rates are specified in signal units per second. For example:
+            
+            - Motor speed: RPM per second (e.g., 100.0 → 100 RPM/s)
+            - Position: degrees per second (e.g., 45.0 → 45°/s)
+            - Temperature: °C per second (e.g., 0.5 → 0.5°C/s)
+            - Volume: dB per second (e.g., 20.0 → 20dB/s)
+        
+        Asymmetric Rates:
+            
+            When rise_per_s ≠ fall_per_s:
+            
+            - Useful for systems with different dynamics in each direction
+            - Example: Motor can brake faster than it can accelerate
+            - Example: Heater cools slower than it heats
+            - Example: Audio fade-out faster than fade-in
+        
+        Deadband Feature:
+            
+            - Prevents output changes for inputs within ±deadband
+            - Reduces output jitter from noisy inputs
+            - Particularly useful with variable sampling rates
+            - Set to ~1-5% of signal range for typical applications
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> # Motor control with asymmetric rates
+            >>> motor_limiter = SlewRateLimiter(
+            ...     rise_per_s=100.0,    # Accelerate at 100 RPM/s
+            ...     fall_per_s=200.0,     # Decelerate at 200 RPM/s (brake faster)
+            ...     initial=0.0,
+            ...     fs=50.0               # 50 Hz control loop
+            ... )
+            >>> print(f"Rise rate: {motor_limiter.rise_per_s} RPM/s")
+            >>> print(f"Fall rate: {motor_limiter.fall_per_s} RPM/s")
+            >>> # Rise rate: 100.0 RPM/s
+            >>> # Fall rate: 200.0 RPM/s
+            >>> 
+            >>> # Symmetric rate limiting with deadband
+            >>> servo_limiter = SlewRateLimiter(
+            ...     rise_per_s=45.0,      # 45 degrees/second both directions
+            ...     fall_per_s=None,      # Same as rise_per_s
+            ...     initial=90.0,         # Start at 90 degrees
+            ...     fs=100.0,
+            ...     deadband=0.5          # Ignore changes < 0.5 degrees
+            ... )
+            >>> print(f"Rate limit: ±{servo_limiter.rise_per_s} deg/s")
+            >>> print(f"Deadband: ±{servo_limiter.deadband} degrees")
+            >>> 
+            >>> # Variable sampling rate configuration
+            >>> temp_limiter = SlewRateLimiter(
+            ...     rise_per_s=1.0,       # Heat at 1°C/s
+            ...     fall_per_s=0.3,       # Cool at 0.3°C/s (slower)
+            ...     initial=20.0          # Room temperature
+            ... )  # No fs - must use update_with_dt()
+            >>> 
+            >>> # Calculate required time for step change
+            >>> def calculate_ramp_time(limiter, target_change):
+            ...     '''Calculate time required to reach target change.'''
+            ...     if target_change > 0:
+            ...         time_s = target_change / limiter.rise_per_s
+            ...         print(f"Rise time: {time_s:.2f}s for +{target_change} units")
+            ...     else:
+            ...         time_s = abs(target_change) / limiter.fall_per_s
+            ...         print(f"Fall time: {time_s:.2f}s for {target_change} units")
+            ...     return time_s
+            >>> 
+            >>> # Example: Motor accelerating 1000 RPM
+            >>> calculate_ramp_time(motor_limiter, 1000.0)  # 10.0s
+            >>> # Rise time: 10.00s for +1000.0 units
+            >>> 
+            >>> # Example: Motor decelerating 1000 RPM
+            >>> calculate_ramp_time(motor_limiter, -1000.0)  # 5.0s
+            >>> # Fall time: 5.00s for -1000.0 units
+            >>> 
+            >>> # Invalid configurations
+            >>> try:
+            ...     bad_limiter = SlewRateLimiter(rise_per_s=0.0)  # Zero rate
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     bad_limiter = SlewRateLimiter(rise_per_s=10.0, deadband=-1.0)
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")  # Negative deadband
+        ```
+        """
+        ...
+    
+    @property
+    def rise_per_s(self) -> float:
+        """
+        Get maximum rising rate in units/second.
+        
+        Returns the current rate limit for positive (rising) changes. This represents
+        the maximum speed at which the output can increase when tracking an increasing
+        input signal.
+        
+        :return: Maximum rising rate in signal units per second (always positive)
+        
+        Rate Interpretation:
+            
+            - Motor speed: RPM per second (e.g., 100.0 = 100 RPM/s)
+            - Servo position: degrees per second (e.g., 45.0 = 45°/s)
+            - Temperature: °C per second (e.g., 1.0 = 1°C/s)
+            - Audio volume: dB per second (e.g., 20.0 = 20dB/s)
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> limiter = SlewRateLimiter(rise_per_s=100.0, fall_per_s=200.0, fs=50.0)
+            >>> print(f"Rise rate: {limiter.rise_per_s} units/s")
+            >>> # Rise rate: 100.0 units/s
+            >>> 
+            >>> # Calculate time to reach target
+            >>> target_change = 500.0  # units
+            >>> time_to_target = target_change / limiter.rise_per_s
+            >>> print(f"Time to rise {target_change}: {time_to_target:.1f}s")
+            >>> # Time to rise 500.0: 5.0s
+        ```
+        """
+        ...
+    
+    @rise_per_s.setter
+    def rise_per_s(self, value: float) -> None:
+        """
+        Set maximum rising rate in units/second.
+        
+        Updates the rate limit for positive (rising) changes. The new rate takes
+        effect immediately for subsequent update calls. For fixed sampling rate mode,
+        the maximum step size per sample is automatically recalculated.
+        
+        :param value: New maximum rising rate (must be > 0)
+        
+        :raises FilterConfigurationError: If value <= 0
+        :raises TypeError: If value cannot be converted to float
+        
+        Effects of Changing Rise Rate:
+            
+            Increasing rise rate (faster acceleration):
+                
+                - Output tracks increasing inputs more quickly
+                - Shorter rise time to reach target
+                - Less protection against overshoot
+                - More responsive system
+            
+            Decreasing rise rate (slower acceleration):
+                
+                - Output tracks increasing inputs more slowly
+                - Longer rise time to reach target
+                - Better mechanical protection
+                - Smoother acceleration
+        
+        Real-Time Adjustment Use Cases:
+            
+            - Load-dependent acceleration (heavy load = slower rate)
+            - Temperature-dependent ramping (cold = slower rate)
+            - User-selectable speed modes (eco/normal/sport)
+            - Safety-critical situations (emergency = fast rate)
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> # Create limiter
+            >>> motor_limiter = SlewRateLimiter(
+            ...     rise_per_s=100.0,
+            ...     fall_per_s=200.0,
+            ...     fs=50.0
+            ... )
+            >>> 
+            >>> # Run in normal mode
+            >>> print(f"Normal mode: {motor_limiter.rise_per_s} RPM/s")
+            >>> for i in range(5):
+            ...     output = motor_limiter.update(1000.0)
+            ...     print(f"  t={i*20}ms: {output:.0f} RPM")
+            >>> 
+            >>> # Switch to sport mode (faster acceleration)
+            >>> motor_limiter.rise_per_s = 300.0
+            >>> motor_limiter.reset()  # Start fresh
+            >>> print(f"\nSport mode: {motor_limiter.rise_per_s} RPM/s")
+            >>> for i in range(5):
+            ...     output = motor_limiter.update(1000.0)
+            ...     print(f"  t={i*20}ms: {output:.0f} RPM")
+            >>> 
+            >>> # Switch to eco mode (slower acceleration)
+            >>> motor_limiter.rise_per_s = 50.0
+            >>> motor_limiter.reset()
+            >>> print(f"\nEco mode: {motor_limiter.rise_per_s} RPM/s")
+            >>> 
+            >>> # Load-dependent acceleration
+            >>> def load_dependent_control():
+            ...     limiter = SlewRateLimiter(rise_per_s=100.0, fs=50.0)
+            ...     
+            ...     for load_kg in [0, 50, 100, 200]:
+            ...         # Reduce acceleration rate as load increases
+            ...         max_accel = 100.0 * (1.0 - load_kg / 250.0)
+            ...         limiter.rise_per_s = max(max_accel, 20.0)  # Min 20 RPM/s
+            ...         
+            ...         print(f"Load {load_kg}kg: rise rate = {limiter.rise_per_s:.1f} RPM/s")
+        ```
+        """
+        ...
+    
+    @property
+    def fall_per_s(self) -> float:
+        """
+        Get maximum falling rate in units/second.
+        
+        Returns the current rate limit for negative (falling) changes. This represents
+        the maximum speed at which the output can decrease when tracking a decreasing
+        input signal.
+        
+        :return: Maximum falling rate in signal units per second (always positive)
+        
+        Note: The value is stored as positive, representing the magnitude of the
+        maximum negative rate of change.
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> limiter = SlewRateLimiter(rise_per_s=100.0, fall_per_s=200.0, fs=50.0)
+            >>> print(f"Fall rate: {limiter.fall_per_s} units/s")
+            >>> # Fall rate: 200.0 units/s
+            >>> 
+            >>> # Calculate time to decrease
+            >>> target_change = -500.0  # units (negative)
+            >>> time_to_fall = abs(target_change) / limiter.fall_per_s
+            >>> print(f"Time to fall {abs(target_change)}: {time_to_fall:.1f}s")
+            >>> # Time to fall 500.0: 2.5s
+        ```
+        """
+        ...
+    
+    @fall_per_s.setter
+    def fall_per_s(self, value: float) -> None:
+        """
+        Set maximum falling rate in units/second.
+        
+        Updates the rate limit for negative (falling) changes. The new rate takes
+        effect immediately for subsequent update calls. For fixed sampling rate mode,
+        the maximum step size per sample is automatically recalculated.
+        
+        :param value: New maximum falling rate (must be > 0, represents magnitude)
+        
+        :raises FilterConfigurationError: If value <= 0
+        :raises TypeError: If value cannot be converted to float
+        
+        Effects of Changing Fall Rate:
+            
+            Increasing fall rate (faster deceleration):
+                
+                - Output tracks decreasing inputs more quickly
+                - Shorter fall time to reach target
+                - Faster braking/stopping
+                - More responsive system
+            
+            Decreasing fall rate (slower deceleration):
+                
+                - Output tracks decreasing inputs more slowly
+                - Longer fall time to reach target
+                - Gentler braking/stopping
+                - Smoother deceleration
+        
+        Asymmetric Rate Applications:
+            
+            - Motors: Often brake faster than they accelerate
+            - Heating: Heat quickly, cool slowly (thermal inertia)
+            - Audio: Fade out faster than fade in (perceptual)
+            - Safety: Emergency stop faster than normal slowdown
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> # Motor with adjustable braking
+            >>> motor_limiter = SlewRateLimiter(
+            ...     rise_per_s=100.0,
+            ...     fall_per_s=200.0,
+            ...     initial=1000.0,  # Running at 1000 RPM
+            ...     fs=50.0
+            ... )
+            >>> 
+            >>> # Normal braking
+            >>> print(f"Normal braking: {motor_limiter.fall_per_s} RPM/s")
+            >>> for i in range(5):
+            ...     output = motor_limiter.update(0.0)
+            ...     print(f"  t={i*20}ms: {output:.0f} RPM")
+            >>> 
+            >>> # Emergency stop (faster braking)
+            >>> motor_limiter.reset(1000.0)  # Reset to running
+            >>> motor_limiter.fall_per_s = 500.0  # Much faster braking
+            >>> print(f"\nEmergency stop: {motor_limiter.fall_per_s} RPM/s")
+            >>> for i in range(5):
+            ...     output = motor_limiter.update(0.0)
+            ...     print(f"  t={i*20}ms: {output:.0f} RPM")
+            >>> 
+            >>> # Gentle deceleration for comfort
+            >>> motor_limiter.reset(1000.0)
+            >>> motor_limiter.fall_per_s = 50.0  # Gentle
+            >>> print(f"\nGentle stop: {motor_limiter.fall_per_s} RPM/s")
+        ```
+        """
+        ...
+    
+    @property
+    def deadband(self) -> float:
+        """
+        Get deadband threshold in signal units.
+        
+        Returns the current deadband value. Changes in the input smaller than this
+        threshold are ignored, providing noise immunity and reducing output jitter.
+        
+        :return: Deadband threshold in signal units (always non-negative)
+        
+        Deadband Behavior:
+            
+            - If |input - output| ≤ deadband: output unchanged
+            - If |input - output| > deadband: apply rate limiting
+            - Creates hysteresis around current output value
+            - Prevents chatter from noisy inputs
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> limiter = SlewRateLimiter(
+            ...     rise_per_s=100.0,
+            ...     fall_per_s=100.0,
+            ...     initial=50.0,
+            ...     fs=100.0,
+            ...     deadband=2.0
+            ... )
+            >>> 
+            >>> print(f"Deadband: ±{limiter.deadband} units")
+            >>> # Deadband: ±2.0 units
+            >>> 
+            >>> # Test deadband effect
+            >>> print("\nInput | Output | Action")
+            >>> print("-" * 30)
+            >>> 
+            >>> # Small change - ignored
+            >>> out1 = limiter.update(51.5)
+            >>> print(f"51.5  | {out1:.1f}    | Ignored (< 2.0)")
+            >>> 
+            >>> # Large change - tracked
+            >>> out2 = limiter.update(55.0)
+            >>> print(f"55.0  | {out2:.1f}    | Tracking (> 2.0)")
+        ```
+        """
+        ...
+    
+    @deadband.setter
+    def deadband(self, value: float) -> None:
+        """
+        Set deadband threshold in signal units.
+        
+        Updates the deadband value that determines the minimum input change required
+        to produce an output change. This provides adjustable noise immunity.
+        
+        :param value: New deadband threshold (must be >= 0)
+        
+        :raises FilterConfigurationError: If value < 0
+        :raises TypeError: If value cannot be converted to float
+        
+        Effects of Changing Deadband:
+            
+            Increasing deadband:
+                
+                - More noise immunity
+                - Larger changes ignored
+                - Reduces output updates
+                - May miss small legitimate changes
+            
+            Decreasing deadband:
+                
+                - Less noise immunity
+                - Smaller changes tracked
+                - More output updates
+                - Better tracking of small changes
+            
+            Zero deadband:
+                
+                - No noise filtering
+                - All changes tracked (within rate limits)
+                - Maximum responsiveness
+                - Susceptible to noise
+        
+        Deadband Selection Guidelines:
+            
+            - Set to 1-2× expected noise amplitude
+            - Typically 1-5% of signal range
+            - Too large: misses real changes
+            - Too small: unnecessary updates from noise
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> # Start with no deadband
+            >>> limiter = SlewRateLimiter(
+            ...     rise_per_s=50.0,
+            ...     fall_per_s=50.0,
+            ...     initial=100.0,
+            ...     fs=100.0,
+            ...     deadband=0.0
+            ... )
+            >>> 
+            >>> # Noisy input
+            >>> noisy_inputs = [100.0, 100.5, 99.8, 100.3, 99.5, 100.2]
+            >>> 
+            >>> print("No deadband:")
+            >>> for inp in noisy_inputs:
+            ...     out = limiter.update(inp)
+            ...     print(f"  {inp:5.1f} → {out:5.2f}")
+            >>> 
+            >>> # Add deadband to reduce jitter
+            >>> limiter.reset(100.0)
+            >>> limiter.deadband = 1.0
+            >>> 
+            >>> print(f"\nWith deadband = {limiter.deadband}:")
+            >>> for inp in noisy_inputs:
+            ...     out = limiter.update(inp)
+            ...     print(f"  {inp:5.1f} → {out:5.2f}")
+            >>> 
+            >>> # Adaptive deadband based on signal quality
+            >>> def adaptive_deadband():
+            ...     position_limiter = SlewRateLimiter(
+            ...         rise_per_s=100.0,
+            ...         fs=50.0,
+            ...         deadband=1.0
+            ...     )
+            ...     
+            ...     for position, snr in sensor_data:
+            ...         # Adjust deadband based on signal-to-noise ratio
+            ...         if snr > 20:  # Good signal
+            ...             position_limiter.deadband = 0.5
+            ...         elif snr > 10:  # Moderate signal
+            ...             position_limiter.deadband = 2.0
+            ...         else:  # Noisy signal
+            ...             position_limiter.deadband = 5.0
+            ...         
+            ...         filtered = position_limiter.update(position)
+        ```
+        """
+        ...
+    
+    def set_fs(self, fs: float) -> None:
+        """
+        Set fixed sampling rate and recompute step sizes.
+        
+        Updates the limiter to use a fixed sampling rate and recalculates the
+        maximum step sizes per sample based on the new rate and the current
+        rise/fall rate limits. This allows switching from variable to fixed
+        sampling mode or changing the sampling rate.
+        
+        :param fs: Sampling rate in Hz (must be > 0)
+        
+        :raises FilterConfigurationError: If fs <= 0
+        :raises TypeError: If fs cannot be converted to float
+        
+        Effect of Sampling Rate:
+            The maximum change per sample is calculated as:
+            
+            rise_step = rise_per_s / fs
+            fall_step = fall_per_s / fs
+            
+            Higher fs → smaller steps per sample (same rate/second)
+            Lower fs → larger steps per sample (same rate/second)
+        
+        Use Cases:
+            
+            - Converting from variable to fixed rate operation
+            - Changing control loop frequency
+            - Adapting to different timing requirements
+            - Synchronizing with other system components
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> # Create with variable rate
+            >>> limiter = SlewRateLimiter(rise_per_s=100.0, fall_per_s=200.0)
+            >>> print(f"Initial fs: {limiter.fs}")
+            >>> # Initial fs: None
+            >>> 
+            >>> # Switch to fixed rate at 50 Hz
+            >>> limiter.set_fs(50.0)
+            >>> print(f"New fs: {limiter.fs} Hz")
+            >>> # New fs: 50.0 Hz
+            >>> 
+            >>> # Calculate step sizes
+            >>> rise_step = limiter.rise_per_s / 50.0
+            >>> fall_step = limiter.fall_per_s / 50.0
+            >>> print(f"Rise step: {rise_step:.2f} units/sample")
+            >>> print(f"Fall step: {fall_step:.2f} units/sample")
+            >>> # Rise step: 2.00 units/sample
+            >>> # Fall step: 4.00 units/sample
+            >>> 
+            >>> # Now use simple update() instead of update_with_dt()
+            >>> for i in range(10):
+            ...     output = limiter.update(500.0)
+            ...     if i % 2 == 0:
+            ...         print(f"Sample {i}: {output:.1f}")
+            >>> 
+            >>> # Change sampling rate
+            >>> limiter.set_fs(100.0)
+            >>> print(f"\nUpdated fs: {limiter.fs} Hz")
+            >>> rise_step_new = limiter.rise_per_s / 100.0
+            >>> print(f"New rise step: {rise_step_new:.2f} units/sample")
+            >>> # Updated fs: 100.0 Hz
+            >>> # New rise step: 1.00 units/sample
+            >>> 
+            >>> # Adaptive sampling rate example
+            >>> def adaptive_sampling():
+            ...     ctrl = SlewRateLimiter(rise_per_s=100.0, fall_per_s=100.0)
+            ...     
+            ...     # Start with slow sampling
+            ...     ctrl.set_fs(10.0)
+            ...     print(f"Low precision mode: {ctrl.fs} Hz")
+            ...     
+            ...     # Switch to fast sampling for critical operation
+            ...     ctrl.set_fs(100.0)
+            ...     print(f"High precision mode: {ctrl.fs} Hz")
+            ...     
+            ...     # Return to slow sampling
+            ...     ctrl.set_fs(10.0)
+            ...     print(f"Power save mode: {ctrl.fs} Hz")
+            >>> 
+            >>> # Invalid sampling rate
+            >>> try:
+            ...     limiter.set_fs(0.0)
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     limiter.set_fs(-10.0)
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+        ```
+        """
+        ...
+    
+    def update_with_dt(self, x: float, dt_s: float) -> float:
+        """
+        Update limiter with variable time step.
+        
+        Processes a single input value and constrains the rate of change based on
+        the actual elapsed time since the last update. The maximum allowed change
+        is calculated from the rate limits and actual dt, making it suitable for
+        systems with irregular or variable sampling intervals.
+        
+        :param x: Input value (any numeric type, converted to float)
+        :param dt_s: Time elapsed since last update in seconds (must be > 0)
+        :return: Rate-limited output value as float
+        
+        :raises FilterOperationError: If dt_s <= 0
+        :raises TypeError: If parameters cannot be converted to float
+        
+        Algorithm Details:
+            The limiter implements rate-of-change constraints:
+            
+            error = input - output
+            
+            If |error| <= deadband:
+                output unchanged (noise immunity)
+            Else if error > 0:
+                max_step = rise_per_s × dt_s
+                output = output + min(error, max_step)
+            Else if error < 0:
+                max_step = fall_per_s × dt_s
+                output = output + max(error, -max_step)
+        
+        Performance Characteristics:
+            
+            - O(1) computational complexity
+            - Four floating-point comparisons per sample
+            - Two floating-point operations (multiply, add)
+            - Suitable for real-time variable-rate systems
+            - Adapts to actual timing automatically
+        
+        Deadband Behavior:
+            
+            - Changes smaller than deadband are ignored
+            - Prevents output jitter from noisy inputs
+            - Provides hysteresis around current output
+            - Particularly useful with variable dt
+            - Set to 1-5% of signal range typically
+        
+        Example
+        -------
+        ```python
+            >>> import time
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> # Variable-rate motor control
+            >>> motor_limiter = SlewRateLimiter(
+            ...     rise_per_s=100.0,    # 100 RPM/s acceleration
+            ...     fall_per_s=200.0,     # 200 RPM/s deceleration
+            ...     initial=0.0,
+            ...     deadband=5.0          # Ignore < 5 RPM changes
+            ... )
+            >>> 
+            >>> # Simulate variable timing
+            >>> last_time = time.ticks_ms()
+            >>> target_speed = 500.0
+            >>> 
+            >>> print("Time(ms) | dt(ms) | Target | Output | Limited?")
+            >>> print("-" * 50)
+            >>> 
+            >>> for i in range(10):
+            ...     # Variable delays (8-12ms)
+            ...     time.sleep(0.008 + (i % 5) * 0.001)
+            ...     
+            ...     current_time = time.ticks_ms()
+            ...     dt = time.ticks_diff(current_time, last_time) / 1000.0
+            ...     last_time = current_time
+            ...     
+            ...     output = motor_limiter.update_with_dt(target_speed, dt)
+            ...     
+            ...     # Calculate if limited
+            ...     max_change = motor_limiter.rise_per_s * dt
+            ...     is_limited = (target_speed - output) > 0.1
+            ...     
+            ...     print(f"{current_time:8d} | {dt*1000:6.1f} | {target_speed:6.1f} | "
+            ...           f"{output:6.1f} | {'YES' if is_limited else 'NO'}")
+            >>> 
+            >>> # Demonstrating deadband with noise
+            >>> def demonstrate_deadband():
+            ...     limiter = SlewRateLimiter(
+            ...         rise_per_s=50.0,
+            ...         fall_per_s=50.0,
+            ...         initial=100.0,
+            ...         deadband=3.0  # Ignore < 3 unit changes
+            ...     )
+            ...     
+            ...     # Noisy input around 100
+            ...     noisy_inputs = [100.0, 101.5, 99.8, 100.2, 98.5, 100.1, 104.5]
+            ...     dt = 0.01  # 10ms updates
+            ...     
+            ...     print("Input  | Output | Changed | Reason")
+            ...     print("-" * 45)
+            ...     
+            ...     for inp in noisy_inputs:
+            ...         prev_output = limiter.y
+            ...         output = limiter.update_with_dt(inp, dt)
+            ...         changed = abs(output - prev_output) > 0.001
+            ...         
+            ...         error = abs(inp - prev_output)
+            ...         if error <= limiter.deadband:
+            ...             reason = f"Deadband (Δ={error:.1f})"
+            ...         elif changed:
+            ...             reason = f"Tracking (Δ={error:.1f})"
+            ...         else:
+            ...             reason = "Reached target"
+            ...         
+            ...         print(f"{inp:6.1f} | {output:6.2f} | {'Yes' if changed else 'No ':3s} | {reason}")
+            >>> 
+            >>> # Asymmetric rate limiting
+            >>> def demonstrate_asymmetric_rates():
+            ...     limiter = SlewRateLimiter(
+            ...         rise_per_s=100.0,  # Slow rise
+            ...         fall_per_s=500.0,  # Fast fall
+            ...         initial=0.0
+            ...     )
+            ...     
+            ...     dt = 0.01  # 10ms
+            ...     
+            ...     print("Rising phase (target = 100):")
+            ...     target = 100.0
+            ...     for i in range(15):
+            ...         output = limiter.update_with_dt(target, dt)
+            ...         if i % 5 == 0:
+            ...             print(f"  t={i*10:3d}ms: {output:5.1f}")
+            ...     
+            ...     print(f"\nFalling phase (target = 0):")
+            ...     target = 0.0
+            ...     for i in range(15):
+            ...         output = limiter.update_with_dt(target, dt)
+            ...         if i % 5 == 0:
+            ...             print(f"  t={i*10:3d}ms: {output:5.1f}")
+        ```
+        """
+        ...
+    
+    def update(self, x: float) -> float:
+        """
+        Update limiter with fixed time step.
+        
+        Processes a single input value with the fixed sampling rate specified in the
+        constructor. The maximum allowed change per sample is pre-calculated from
+        the rate limits and sampling period, providing efficient operation for
+        periodic control systems.
+        
+        :param x: Input value (any numeric type, converted to float)
+        :return: Rate-limited output value as float
+        
+        :raises FilterOperationError: If fs was not provided in constructor
+        :raises TypeError: If input cannot be converted to float
+        
+        Algorithm Details:
+            The limiter uses pre-calculated maximum step sizes:
+            
+            rise_step = rise_per_s / fs
+            fall_step = fall_per_s / fs
+            
+            Then applies constraints:
+            
+            error = input - output
+            
+            If |error| <= deadband:
+                output unchanged
+            Else if error > 0:
+                output = output + min(error, rise_step)
+            Else:
+                output = output + max(error, -fall_step)
+        
+        Performance Characteristics:
+            
+            - O(1) computational complexity
+            - Three floating-point comparisons per sample
+            - One floating-point addition per sample
+            - Pre-calculated step sizes for efficiency
+            - Deterministic execution time
+            - Ideal for periodic control loops
+        
+        Ramp Time Calculation:
+            For a step input of size Δ:
+            
+            Rise time: Δ / rise_per_s seconds
+            Fall time: |Δ| / fall_per_s seconds
+            Samples required: time × fs
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> # Motor speed control at 50 Hz
+            >>> motor_limiter = SlewRateLimiter(
+            ...     rise_per_s=100.0,    # 100 RPM/s
+            ...     fall_per_s=200.0,     # 200 RPM/s
+            ...     initial=0.0,
+            ...     fs=50.0              # 50 Hz control
+            ... )
+            >>> 
+            >>> # Calculate step sizes
+            >>> rise_step = motor_limiter.rise_per_s / 50.0
+            >>> fall_step = motor_limiter.fall_per_s / 50.0
+            >>> print(f"Rise step: {rise_step:.2f} RPM/sample")
+            >>> print(f"Fall step: {fall_step:.2f} RPM/sample")
+            >>> # Rise step: 2.00 RPM/sample
+            >>> # Fall step: 4.00 RPM/sample
+            >>> 
+            >>> # Step response demonstration
+            >>> target = 500.0  # Step to 500 RPM
+            >>> 
+            >>> print("\nRise phase:")
+            >>> print("Sample | Output | Change | Progress")
+            >>> print("-" * 40)
+            >>> 
+            >>> for i in range(0, 300, 50):  # Every 50th sample (1 second intervals)
+            ...     output = motor_limiter.update(target)
+            ...     change_per_sec = rise_step * 50.0
+            ...     progress = (output / target) * 100
+            ...     print(f"{i:6d} | {output:6.1f} | {change_per_sec:+6.1f} | {progress:5.1f}%")
+            >>> 
+            >>> # Verify at target
+            >>> print(f"\nFinal output: {motor_limiter.y:.1f} RPM")
+            >>> 
+            >>> # Fall phase
+            >>> target = 0.0
+            >>> print("\nFall phase:")
+            >>> print("Sample | Output | Change/s")
+            >>> print("-" * 30)
+            >>> 
+            >>> for i in range(0, 150, 25):  # Faster deceleration
+            ...     output = motor_limiter.update(target)
+            ...     if i % 25 == 0:
+            ...         print(f"{i:6d} | {output:6.1f} | {-fall_step*50.0:+7.1f}")
+            >>> 
+            >>> # Production control loop example
+            >>> def motor_control_loop():
+            ...     limiter = SlewRateLimiter(
+            ...         rise_per_s=150.0,
+            ...         fall_per_s=300.0,
+            ...         initial=0.0,
+            ...         fs=100.0  # 100 Hz
+            ...     )
+            ...     
+            ...     user_setpoint = 0.0
+            ...     
+            ...     while True:
+            ...         # Get user command (could be from GUI, joystick, etc.)
+            ...         user_setpoint = get_user_setpoint()  # May change abruptly
+            ...         
+            ...         # Limit rate of change
+            ...         safe_setpoint = limiter.update(user_setpoint)
+            ...         
+            ...         # Apply to motor
+            ...         set_motor_speed(safe_setpoint)
+            ...         
+            ...         # 100 Hz timing
+            ...         time.sleep(0.01)
+            >>> 
+            >>> # Error handling
+            >>> try:
+            ...     # No fs provided in constructor
+            ...     bad_limiter = SlewRateLimiter(rise_per_s=100.0)
+            ...     result = bad_limiter.update(10.0)  # Will raise error
+            >>> except FilterOperationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> # Multi-axis control
+            >>> def three_axis_position_control():
+            ...     # Create limiters for X, Y, Z axes
+            ...     limiters = [
+            ...         SlewRateLimiter(rise_per_s=100.0, fall_per_s=100.0, fs=50.0),
+            ...         SlewRateLimiter(rise_per_s=100.0, fall_per_s=100.0, fs=50.0),
+            ...         SlewRateLimiter(rise_per_s=80.0, fall_per_s=80.0, fs=50.0)
+            ...     ]
+            ...     
+            ...     target_pos = [100.0, 50.0, 30.0]  # Target X, Y, Z
+            ...     
+            ...     # Control loop
+            ...     for step in range(100):
+            ...         smooth_pos = [lim.update(tgt) for lim, tgt in zip(limiters, target_pos)]
+            ...         
+            ...         if step % 10 == 0:
+            ...             print(f"Step {step}: X={smooth_pos[0]:.1f}, Y={smooth_pos[1]:.1f}, Z={smooth_pos[2]:.1f}")
+            ...         
+            ...         # Apply to motors
+            ...         set_xyz_position(smooth_pos)
+            ...         time.sleep(0.02)  # 50 Hz
+        ```
+        """
+        ...
+    
+    def reset(self) -> None:
+        """
+        Reset limiter to initial state while preserving configuration.
+        
+        Clears the limiter's internal state (current output value) and resets the
+        sample counter, but maintains all configuration parameters like rate limits,
+        sampling frequency, deadband, and initial value setting. This allows the
+        limiter to be reused for new command sequences without reconfiguration.
+        
+        Reset Operations:
+            
+            - Restores output value to initial setting
+            - Resets sample counter to zero
+            - Preserves rise and fall rate limits
+            - Preserves sampling frequency (fs)
+            - Preserves deadband threshold
+            - Preserves initial value setting
+            - Prepares limiter for new input sequence
+        
+        Use Cases:
+            
+            - Starting new motion sequence
+            - Emergency stop and restart
+            - Switching between different control modes
+            - Batch processing of command sequences
+            - Coordinated multi-axis reset
+            - System initialization after power-up
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import SlewRateLimiter
+            >>> 
+            >>> # Create limiter and ramp up
+            >>> limiter = SlewRateLimiter(
+            ...     rise_per_s=100.0,
+            ...     fall_per_s=200.0,
+            ...     initial=0.0,
+            ...     fs=50.0
+            ... )
+            >>> 
+            >>> print("First sequence - ramp to 500:")
+            >>> for i in range(0, 250, 50):
+            ...     output = limiter.update(500.0)
+            ...     print(f"  Sample {i}: {output:.1f}")
+            >>> 
+            >>> print(f"\nAfter sequence: output={limiter.y:.1f}, samples={limiter.sample_count}")
+            >>> 
+            >>> # Reset for new sequence
+            >>> limiter.reset()
+            >>> print(f"After reset: output={limiter.y:.1f}, samples={limiter.sample_count}")
+            >>> 
+            >>> # Verify configuration preserved
+            >>> print(f"Config: rise={limiter.rise_per_s}, fall={limiter.fall_per_s}, fs={limiter.fs}")
+            >>> 
+            >>> print("\nSecond sequence - ramp to 300:")
+            >>> for i in range(0, 150, 50):
+            ...     output = limiter.update(300.0)
+            ...     print(f"  Sample {i}: {output:.1f}")
+            >>> 
+            >>> # Emergency stop scenario
+            >>> def emergency_stop_example():
+            ...     motor_limiter = SlewRateLimiter(
+            ...         rise_per_s=100.0,
+            ...         fall_per_s=500.0,  # Fast emergency stop
+            ...         initial=0.0,
+            ...         fs=100.0
+            ...     )
+            ...     
+            ...     # Normal operation - ramp to speed
+            ...     print("Normal operation:")
+            ...     for i in range(100):
+            ...         speed = motor_limiter.update(1000.0)
+            ...         if i % 25 == 0:
+            ...             print(f"  t={i*10}ms: {speed:.0f} RPM")
+            ...     
+            ...     print(f"\nRunning at: {motor_limiter.y:.0f} RPM")
+            ...     
+            ...     # Emergency stop detected
+            ...     print("\nEMERGENCY STOP!")
+            ...     limiter.reset()  # Immediate reset to 0
+            ...     print(f"Output reset to: {motor_limiter.y:.0f} RPM")
+            ...     
+            ...     # System can now restart safely
+            ...     print("\nRestarting:")
+            ...     for i in range(50):
+            ...         speed = motor_limiter.update(500.0)
+            ...         if i % 10 == 0:
+            ...             print(f"  t={i*10}ms: {speed:.0f} RPM")
+            >>> 
+            >>> # Multi-axis synchronized reset
+            >>> def synchronized_multiaxis_reset():
+            ...     # Create limiters for robot arm joints
+            ...     joint_limiters = [
+            ...         SlewRateLimiter(rise_per_s=90.0, fall_per_s=90.0, fs=50.0),   # Joint 1
+            ...         SlewRateLimiter(rise_per_s=120.0, fall_per_s=120.0, fs=50.0), # Joint 2
+            ...         SlewRateLimiter(rise_per_s=180.0, fall_per_s=180.0, fs=50.0)  # Joint 3
+            ...     ]
+            ...     
+            ...     # Execute motion sequence
+            ...     targets = [45.0, 90.0, -30.0]
+            ...     print("Executing motion:")
+            ...     for i in range(100):
+            ...         positions = [lim.update(tgt) for lim, tgt in zip(joint_limiters, targets)]
+            ...         if i % 20 == 0:
+            ...             print(f"  Step {i}: J1={positions[0]:.1f}° J2={positions[1]:.1f}° J3={positions[2]:.1f}°")
+            ...     
+            ...     print("\nMotion complete")
+            ...     
+            ...     # Reset all joints simultaneously for new motion
+            ...     for limiter in joint_limiters:
+            ...         limiter.reset()
+            ...     
+            ...     print("All joints reset to home position")
+            ...     print("Ready for new motion sequence")
+        ```
+        """
+        ...
+
+
+class MovingAverage(Base):
     """
     Moving average filter with efficient circular buffer implementation.
     
@@ -1586,18 +3447,18 @@ class MovingAverageFilter(BaseFilter):
         -------
         ```python
             >>> # Temperature sensor with moderate smoothing
-            >>> temp_filter = MovingAverageFilter(window_size=10, initial=22.0)
+            >>> temp_filter = MovingAverage(window_size=10, initial=22.0)
             >>> print(f"Memory usage: ~{10*4 + 32} bytes")
             >>> 
             >>> # Pressure sensor with heavy smoothing
-            >>> pressure_filter = MovingAverageFilter(window_size=100, initial=1013.25)
+            >>> pressure_filter = MovingAverage(window_size=100, initial=1013.25)
             >>> 
             >>> # Very responsive filter for control applications
-            >>> control_filter = MovingAverageFilter(window_size=3, initial=0.0)
+            >>> control_filter = MovingAverage(window_size=3, initial=0.0)
             >>> 
             >>> # Invalid configurations
             >>> try:
-            ...     bad_filter = MovingAverageFilter(window_size=0)
+            ...     bad_filter = MovingAverage(window_size=0)
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
             >>> 
@@ -1660,7 +3521,7 @@ class MovingAverageFilter(BaseFilter):
         -------
         ```python
             >>> # Demonstrate circular buffer behavior
-            >>> filter_obj = MovingAverageFilter(window_size=4, initial=0.0)
+            >>> filter_obj = MovingAverage(window_size=4, initial=0.0)
             >>> 
             >>> test_sequence = [1, 2, 3, 4, 5, 6, 7, 8]
             >>> 
@@ -1700,7 +3561,7 @@ class MovingAverageFilter(BaseFilter):
             ...     print("-" * 50)
             ...     
             ...     for window_size in window_sizes:
-            ...         filter_obj = MovingAverageFilter(window_size=window_size, initial=true_signal)
+            ...         filter_obj = MovingAverage(window_size=window_size, initial=true_signal)
             ...         
             ...         # Process 1000 noisy samples
             ...         outputs = []
@@ -1750,7 +3611,7 @@ class MovingAverageFilter(BaseFilter):
         Example
         -------
         ```python
-            >>> filter_obj = MovingAverageFilter(window_size=5, initial=10.0)
+            >>> filter_obj = MovingAverage(window_size=5, initial=10.0)
             >>> 
             >>> # Process some data
             >>> test_data = [12, 14, 11, 13, 15, 16, 12, 14]
@@ -1772,7 +3633,7 @@ class MovingAverageFilter(BaseFilter):
             >>> 
             >>> # Error recovery with reset
             >>> def robust_data_processing():
-            ...     signal_filter = MovingAverageFilter(window_size=10, initial=5.0)
+            ...     signal_filter = MovingAverage(window_size=10, initial=5.0)
             ...     error_count = 0
             ...     max_errors = 5
             ...     
@@ -1804,7 +3665,7 @@ class MovingAverageFilter(BaseFilter):
         """
 
 
-class MedianFilter(BaseFilter):
+class Median(Base):
     """
     Median filter for impulse noise removal and outlier rejection.
     
@@ -1900,28 +3761,28 @@ class MedianFilter(BaseFilter):
             - CPU usage: O(N log N) per sample due to sorting
             - Memory usage: N × 4 bytes for buffer storage
             - Real-time suitability decreases with window size
-            - Consider MovingAverageFilter for lower CPU usage
+            - Consider MovingAverage for lower CPU usage
         
         Example
         -------
         ```python
             >>> # Light filtering for control applications
-            >>> control_filter = MedianFilter(window_size=3, initial=0.0)
+            >>> control_filter = Median(window_size=3, initial=0.0)
             >>> 
             >>> # Moderate filtering for sensor data
-            >>> sensor_filter = MedianFilter(window_size=7, initial=25.0)
+            >>> sensor_filter = Median(window_size=7, initial=25.0)
             >>> 
             >>> # Heavy filtering for noisy environments
-            >>> noise_filter = MedianFilter(window_size=15, initial=0.0)
+            >>> noise_filter = Median(window_size=15, initial=0.0)
             >>> 
             >>> # Invalid configurations
             >>> try:
-            ...     bad_filter = MedianFilter(window_size=0)
+            ...     bad_filter = Median(window_size=0)
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
             >>> 
             >>> try:
-            ...     bad_filter = MedianFilter(window_size=-3)
+            ...     bad_filter = Median(window_size=-3)
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
             >>> 
@@ -1937,7 +3798,7 @@ class MedianFilter(BaseFilter):
             ...     print("-" * 50)
             ...     
             ...     for size in window_sizes:
-            ...         filter_obj = MedianFilter(window_size=size)
+            ...         filter_obj = Median(window_size=size)
             ...         
             ...         start_time = utime.ticks_ms()
             ...         for i in range(test_samples):
@@ -1990,7 +3851,7 @@ class MedianFilter(BaseFilter):
         -------
         ```python
             >>> # Basic median filtering
-            >>> filter_obj = MedianFilter(window_size=5, initial=0.0)
+            >>> filter_obj = Median(window_size=5, initial=0.0)
             >>> 
             >>> # Process sequence with outliers
             >>> test_sequence = [1.0, 1.1, 10.0, 1.2, 0.9, 1.0, 15.0, 1.1]
@@ -2064,7 +3925,7 @@ class MedianFilter(BaseFilter):
         Example
         -------
         ```python
-            >>> filter_obj = MedianFilter(window_size=5, initial=10.0)
+            >>> filter_obj = Median(window_size=5, initial=10.0)
             >>> 
             >>> # Process some data with outliers
             >>> test_data = [12, 11, 50, 13, 10, 100, 12, 11]
@@ -2093,7 +3954,7 @@ class MedianFilter(BaseFilter):
             ...         [10.0, 9.8, 10.2, 10.1, 9.9]  # Third segment
             ...     ]
             ...     
-            ...     outlier_filter = MedianFilter(window_size=3, initial=0.0)
+            ...     outlier_filter = Median(window_size=3, initial=0.0)
             ...     
             ...     for i, segment in enumerate(segments):
             ...         print(f"Processing segment {i+1}:")
@@ -2119,7 +3980,7 @@ class MedianFilter(BaseFilter):
         """
 
 
-class RMSFilter(BaseFilter):
+class RMS(Base):
     """
     Root Mean Square (RMS) filter for signal power estimation and analysis.
     
@@ -2217,20 +4078,20 @@ class RMSFilter(BaseFilter):
         -------
         ```python
             >>> # Audio level meter (fast response)
-            >>> audio_meter = RMSFilter(window_size=256)  # ~6ms at 44.1kHz
+            >>> audio_meter = RMS(window_size=256)  # ~6ms at 44.1kHz
             >>> print(f"Audio meter window: {audio_meter.window_size} samples")
             >>> 
             >>> # Vibration monitor (medium response)
-            >>> vibration_monitor = RMSFilter(window_size=500)  # 5s at 100Hz
+            >>> vibration_monitor = RMS(window_size=500)  # 5s at 100Hz
             >>> print(f"Vibration monitor delay: {500/100:.1f}s at 100Hz")
             >>> 
             >>> # Power trend analysis (slow response)
-            >>> power_trend = RMSFilter(window_size=5000)  # 50s at 100Hz
+            >>> power_trend = RMS(window_size=5000)  # 50s at 100Hz
             >>> print(f"Power trend memory usage: ~{5000*4} bytes")
             >>> 
             >>> # Invalid configurations
             >>> try:
-            ...     bad_filter = RMSFilter(window_size=0)
+            ...     bad_filter = RMS(window_size=0)
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
             >>> 
@@ -2294,7 +4155,7 @@ class RMSFilter(BaseFilter):
         -------
         ```python
             >>> # Basic RMS calculation demonstration
-            >>> rms_filter = RMSFilter(window_size=4)
+            >>> rms_filter = RMS(window_size=4)
             >>> 
             >>> # Test with sine wave samples
             >>> import math
@@ -2314,7 +4175,7 @@ class RMSFilter(BaseFilter):
             >>> def analyze_audio_levels():
             ...     '''Demonstrate RMS for audio level analysis.'''
             ...     # Create sine wave at different amplitudes
-            ...     level_filter = RMSFilter(window_size=100)
+            ...     level_filter = RMS(window_size=100)
             ...     
             ...     amplitudes = [0.1, 0.5, 1.0, 0.2]
             ...     sample_count = 200
@@ -2369,7 +4230,7 @@ class RMSFilter(BaseFilter):
         -------
         ```python
             >>> # Demonstrate reset functionality
-            >>> rms_filter = RMSFilter(window_size=100)
+            >>> rms_filter = RMS(window_size=100)
             >>> 
             >>> # Process some test data
             >>> test_data = [1.0, -2.0, 1.5, -1.8, 2.2, -1.2, 0.8]
@@ -2396,7 +4257,7 @@ class RMSFilter(BaseFilter):
             >>> def calibration_sequence():
             ...     '''Demonstrate reset in a calibration workflow.'''
             ...     # Create vibration monitor
-            ...     vibration_filter = RMSFilter(window_size=200)
+            ...     vibration_filter = RMS(window_size=200)
             ...     
             ...     # Step 1: Measure baseline noise floor
             ...     print("\nStep 1: Measuring system noise floor (motor off)")
@@ -2446,7 +4307,7 @@ class RMSFilter(BaseFilter):
         """
 
 
-class KalmanFilter(BaseFilter):
+class Kalman(Base):
     """
     One-dimensional Kalman filter for optimal state estimation.
     
@@ -2564,7 +4425,7 @@ class KalmanFilter(BaseFilter):
         -------
         ```python
             >>> # Position tracking with moderate noise
-            >>> position_filter = KalmanFilter(
+            >>> position_filter = Kalman(
             ...     process_noise=0.01,      # Position can change moderately
             ...     measurement_noise=0.5,   # Moderate sensor noise
             ...     initial_estimate=0.0,    # Start at origin
@@ -2572,7 +4433,7 @@ class KalmanFilter(BaseFilter):
             ... )
             >>> 
             >>> # Temperature monitoring with high stability
-            >>> temp_filter = KalmanFilter(
+            >>> temp_filter = Kalman(
             ...     process_noise=0.0001,    # Temperature changes very slowly
             ...     measurement_noise=0.2,   # Moderate sensor noise
             ...     initial_estimate=22.0,   # Start at room temperature
@@ -2581,7 +4442,7 @@ class KalmanFilter(BaseFilter):
             >>> 
             >>> # Parameter validation
             >>> try:
-            ...     invalid_filter = KalmanFilter(process_noise=-0.5)  # Negative value
+            ...     invalid_filter = Kalman(process_noise=-0.5)  # Negative value
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
         ```
@@ -2630,7 +4491,7 @@ class KalmanFilter(BaseFilter):
         -------
         ```python
             >>> # Basic filtering demonstration
-            >>> filter_obj = KalmanFilter(process_noise=0.01, measurement_noise=1.0)
+            >>> filter_obj = Kalman(process_noise=0.01, measurement_noise=1.0)
             >>> 
             >>> # Process a series of noisy measurements
             >>> true_value = 10.0
@@ -2648,7 +4509,7 @@ class KalmanFilter(BaseFilter):
             >>> # Outlier rejection demonstration
             >>> def demonstrate_outlier_rejection():
             ...     '''Show how the filter handles outliers.'''
-            ...     robust_filter = KalmanFilter(process_noise=0.01, measurement_noise=0.1)
+            ...     robust_filter = Kalman(process_noise=0.01, measurement_noise=0.1)
             ...     
             ...     # Normal measurements with outliers
             ...     data = [5.1, 5.0, 5.2, 15.0, 5.1, 4.9, 5.0, -5.0, 5.2, 5.0]
@@ -2713,7 +4574,7 @@ class KalmanFilter(BaseFilter):
         -------
         ```python
             >>> # Demonstrate filter reset for multiple data sessions
-            >>> filter_obj = KalmanFilter(
+            >>> filter_obj = Kalman(
             ...     process_noise=0.01, 
             ...     measurement_noise=0.5,
             ...     initial_estimate=0.0,
@@ -2743,7 +4604,7 @@ class KalmanFilter(BaseFilter):
             >>> # Multiple sensor fusion with reset
             >>> def sensor_fusion_example():
             ...     '''Demonstrate switching between sensors with reset.'''
-            ...     kalman = KalmanFilter(process_noise=0.01, measurement_noise=0.5)
+            ...     kalman = Kalman(process_noise=0.01, measurement_noise=0.5)
             ...     
             ...     # Simulate primary sensor data (accurate but occasional dropouts)
             ...     primary_data = [10.1, 10.2, None, 10.0, 9.9, None, None, 10.1]
@@ -2775,7 +4636,7 @@ class KalmanFilter(BaseFilter):
         """
 
 
-class AdaptiveFilter(BaseFilter):
+class Adaptive(Base):
     """
     Adaptive alpha filter that automatically adjusts response based on signal dynamics.
     
@@ -2883,7 +4744,7 @@ class AdaptiveFilter(BaseFilter):
         -------
         ```python
             >>> # Create adaptive filter for sensor fusion
-            >>> sensor_filter = AdaptiveFilter(
+            >>> sensor_filter = Adaptive(
             ...     alpha_min=0.02,   # Strong smoothing for steady signals
             ...     alpha_max=0.8,    # Fast response to changes
             ...     threshold=0.5,    # Transition threshold
@@ -2893,13 +4754,13 @@ class AdaptiveFilter(BaseFilter):
             >>> # Parameter validation examples
             >>> try:
             ...     # Invalid: alpha_min must be > 0
-            ...     invalid_filter = AdaptiveFilter(alpha_min=0, alpha_max=0.9)
+            ...     invalid_filter = Adaptive(alpha_min=0, alpha_max=0.9)
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
             >>> 
             >>> try:
             ...     # Invalid: alpha_min must be < alpha_max
-            ...     invalid_filter = AdaptiveFilter(alpha_min=0.5, alpha_max=0.3)
+            ...     invalid_filter = Adaptive(alpha_min=0.5, alpha_max=0.3)
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
         ```
@@ -2939,7 +4800,7 @@ class AdaptiveFilter(BaseFilter):
         -------
         ```python
             >>> # Basic adaptive filtering demonstration
-            >>> filter_obj = AdaptiveFilter(alpha_min=0.1, alpha_max=0.9, threshold=0.5)
+            >>> filter_obj = Adaptive(alpha_min=0.1, alpha_max=0.9, threshold=0.5)
             >>> 
             >>> # Test with steady signal followed by step change
             >>> test_sequence = [5.0, 5.1, 5.0, 5.2, 5.0, 8.0, 8.1, 8.0, 7.9]
@@ -2995,7 +4856,7 @@ class AdaptiveFilter(BaseFilter):
         -------
         ```python
             >>> # Demonstrate filter reset
-            >>> filter_obj = AdaptiveFilter(alpha_min=0.1, alpha_max=0.9, threshold=0.5, initial=1.0)
+            >>> filter_obj = Adaptive(alpha_min=0.1, alpha_max=0.9, threshold=0.5, initial=1.0)
             >>> 
             >>> # Process some data
             >>> for sample in [1.2, 1.5, 3.0, 3.2, 3.1]:
@@ -3014,7 +4875,7 @@ class AdaptiveFilter(BaseFilter):
         """
 
 
-class BiquadFilter(BaseFilter):
+class Biquad(Base):
     """
     Generic biquad (second-order IIR) filter with configurable coefficients.
     
@@ -3099,7 +4960,7 @@ class BiquadFilter(BaseFilter):
             - Unity DC gain (lowpass): b0 + b1 + b2 = 1 + a1 + a2
             - Unity Nyquist gain (highpass): b0 - b1 + b2 = 1 - a1 + a2
             - For coefficient design, consider using derived classes like 
-              ButterworthFilter or NotchFilter instead of manual calculation
+              Butterworth or NotchFilter instead of manual calculation
         
         Transfer Function:
         
@@ -3110,14 +4971,14 @@ class BiquadFilter(BaseFilter):
         ```python
             >>> # Create a simple lowpass biquad filter (manually calculated coefficients)
             >>> # Cutoff: 100Hz, Sampling: 1000Hz, Q: 0.7071
-            >>> lowpass = BiquadFilter(
+            >>> lowpass = Biquad(
             ...     b0=0.0718, b1=0.1436, b2=0.0718, 
             ...     a1=-1.1430, a2=0.4304
             ... )
             >>> 
             >>> # Create a notch filter (manually calculated coefficients)
             >>> # Notch at 60Hz, Sampling: 1000Hz, Q: 10
-            >>> notch = BiquadFilter(
+            >>> notch = Biquad(
             ...     b0=0.9889, b1=-1.9558, b2=0.9889,
             ...     a1=-1.9558, a2=0.9778
             ... )
@@ -3163,7 +5024,7 @@ class BiquadFilter(BaseFilter):
         -------
         ```python
             >>> # Create a filter and then modify it
-            >>> filter_obj = BiquadFilter(1.0, 0.0, 0.0, 0.0, 0.0)  # Initially a pass-through
+            >>> filter_obj = Biquad(1.0, 0.0, 0.0, 0.0, 0.0)  # Initially a pass-through
             >>> 
             >>> # Convert to lowpass filter (manually calculated coefficients)
             >>> filter_obj.set_coefficients(
@@ -3233,7 +5094,7 @@ class BiquadFilter(BaseFilter):
         ```python
             >>> # Basic biquad filtering operation
             >>> # Create a simple lowpass filter (fc=0.1*fs)
-            >>> filter_obj = BiquadFilter(
+            >>> filter_obj = Biquad(
             ...     b0=0.0201, b1=0.0402, b2=0.0201,
             ...     a1=-1.5610, a2=0.6414
             ... )
@@ -3283,7 +5144,7 @@ class BiquadFilter(BaseFilter):
         -------
         ```python
             >>> # Demonstrate filter reset for batch processing
-            >>> filter_obj = BiquadFilter(
+            >>> filter_obj = Biquad(
             ...     b0=0.0201, b1=0.0402, b2=0.0201,
             ...     a1=-1.5610, a2=0.6414
             ... )
@@ -3313,7 +5174,7 @@ class BiquadFilter(BaseFilter):
         """
 
 
-class ButterworthFilter(BiquadFilter):
+class Butterworth(Biquad):
     """
     Second-order Butterworth filter with maximally flat frequency response.
     
@@ -3334,7 +5195,7 @@ class ButterworthFilter(BiquadFilter):
         - Automatic coefficient calculation from frequency specifications
         - Both lowpass and highpass configurations
         - Excellent general-purpose filter characteristics
-        - Inherited efficiency from BiquadFilter implementation
+        - Inherited efficiency from Biquad implementation
         - Optimal phase response for given magnitude constraint
     
     Performance Characteristics:
@@ -3400,17 +5261,17 @@ class ButterworthFilter(BiquadFilter):
         -------
         ```python
             >>> # Create lowpass Butterworth filter at 100Hz (sampled at 1kHz)
-            >>> lowpass = ButterworthFilter(fc=100.0, fs=1000.0, filter_type='lowpass')
+            >>> lowpass = Butterworth(fc=100.0, fs=1000.0, filter_type='lowpass')
             >>> print(f"Lowpass cutoff: {lowpass.fc} Hz")
             >>> 
             >>> # Create highpass Butterworth filter (DC blocker)
-            >>> highpass = ButterworthFilter(fc=20.0, fs=1000.0, filter_type='highpass')
+            >>> highpass = Butterworth(fc=20.0, fs=1000.0, filter_type='highpass')
             >>> print(f"Highpass cutoff: {highpass.fc} Hz")
             >>> 
             >>> # Invalid configuration
             >>> try:
             ...     # Cutoff too high (violates Nyquist)
-            ...     invalid = ButterworthFilter(fc=600.0, fs=1000.0)
+            ...     invalid = Butterworth(fc=600.0, fs=1000.0)
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
         ```
@@ -3422,7 +5283,7 @@ class ButterworthFilter(BiquadFilter):
         Update filter with new sample and return filtered output.
         
         Processes a single input sample through the second-order Butterworth filter.
-        This method inherits the efficient implementation from the BiquadFilter parent class.
+        This method inherits the efficient implementation from the Biquad parent class.
         
         :param x: Input sample value (any numeric type, converted to float)
         :return: Filtered output sample as float
@@ -3433,7 +5294,7 @@ class ButterworthFilter(BiquadFilter):
         -------
         ```python
             >>> # Process a simple step response
-            >>> filter_obj = ButterworthFilter(fc=10.0, fs=100.0, filter_type='lowpass')
+            >>> filter_obj = Butterworth(fc=10.0, fs=100.0, filter_type='lowpass')
             >>> 
             >>> # Create and process a step input
             >>> outputs = []
@@ -3457,13 +5318,13 @@ class ButterworthFilter(BiquadFilter):
         
         Clears the filter's internal state (delay line) and resets the sample counter,
         but maintains all configuration parameters and coefficients. This method
-        inherits its implementation from the BiquadFilter parent class.
+        inherits its implementation from the Biquad parent class.
         
         Example
         -------
         ```python
             >>> # Create filter and process some data
-            >>> filter_obj = ButterworthFilter(fc=30.0, fs=1000.0, filter_type='lowpass')
+            >>> filter_obj = Butterworth(fc=30.0, fs=1000.0, filter_type='lowpass')
             >>> 
             >>> # Process first dataset
             >>> for x in [1.0, 0.5, 0.2, 0.7, 0.9]:
@@ -3482,175 +5343,8 @@ class ButterworthFilter(BiquadFilter):
         """
 
 
-class ButterworthFilter(BiquadFilter):
-    """
-    Second-order Butterworth filter with maximally flat frequency response.
-    
-    A specialized biquad filter implementation that provides a Butterworth response
-    characteristic, known for its maximally flat magnitude response in the passband.
-    This filter offers an optimal balance between time and frequency domain performance,
-    with no ripple in the passband and a -40dB/decade (12dB/octave) roll-off in the
-    stopband, making it a popular choice for general filtering applications.
-    
-    The filter supports both lowpass and highpass configurations with automatic
-    coefficient calculation from basic frequency specifications, eliminating the need
-    for manual coefficient design.
-    
-    Key Features:
-        
-        - Maximally flat magnitude response in passband (no ripple)
-        - Smooth rolloff transition (-40dB/decade)
-        - Automatic coefficient calculation from frequency specifications
-        - Both lowpass and highpass configurations
-        - Excellent general-purpose filter characteristics
-        - Inherited efficiency from BiquadFilter implementation
-        - Optimal phase response for given magnitude constraint
-    
-    Performance Characteristics:
-        
-        - Standard second-order response (-40dB/decade)
-        - Slightly less steep rolloff than Chebyshev filters
-        - Slightly better stopband attenuation than Bessel filters
-        - Moderate group delay variation near cutoff
-        - No passband ripple (unlike Chebyshev filters)
-        - Phase response optimized for given constraints
-    
-    Applications:
-        
-        - General-purpose noise filtering
-        - Anti-aliasing before sampling
-        - Audio processing and crossovers
-        - Biomedical signal preprocessing
-        - Sensor data conditioning
-        - Baseline removal (highpass mode)
-        - Communication systems
-        - Smooth signal reconstruction
-    
-    Mathematical Properties:
-        
-        - Magnitude squared response: |H(ω)|² = 1/(1 + (ω/ωc)²ⁿ)
-          where n is the filter order (2 for this implementation)
-        - Maximally flat at ω = 0 (all derivatives zero)
-        - No ripple in passband or stopband
-        - -3dB attenuation exactly at the cutoff frequency
-        - Monotonically decreasing magnitude response
-        - Optimal phase response for given magnitude constraint
-    """
-    
-    def __init__(self, fc: float, fs: float, filter_type: str = 'lowpass') -> None:
-        """
-        Initialize second-order Butterworth filter with frequency specifications.
-        
-        Creates a Butterworth filter with automatic coefficient calculation from
-        cutoff frequency, sampling frequency, and filter type. The coefficients are
-        calculated to provide the characteristic maximally flat response.
-        
-        :param fc: Cutoff frequency in Hz (3dB point, must be > 0 and < fs/2)
-        :param fs: Sampling frequency in Hz (must be > 0 and > 2*fc)
-        :param filter_type: Filter mode - 'lowpass' or 'highpass' (default: 'lowpass')
-                          'lowpass': Passes frequencies below fc, attenuates above
-                          'highpass': Passes frequencies above fc, attenuates below
-        
-        :raises ValueError: If frequencies are invalid, violate Nyquist criterion,
-                          or if filter_type is not recognized
-        :raises TypeError: If parameters cannot be converted to appropriate types
-        
-        Filter Design:
-        
-            The filter implements a second-order Butterworth response with:
-        
-            - Maximally flat passband (binomial coefficients)
-            - -40dB/decade rolloff rate
-            - -3dB attenuation exactly at fc
-            - Optimal phase response for given magnitude constraints
-        
-        Example
-        -------
-        ```python
-            >>> # Create lowpass Butterworth filter at 100Hz (sampled at 1kHz)
-            >>> lowpass = ButterworthFilter(fc=100.0, fs=1000.0, filter_type='lowpass')
-            >>> print(f"Lowpass cutoff: {lowpass.fc} Hz")
-            >>> 
-            >>> # Create highpass Butterworth filter (DC blocker)
-            >>> highpass = ButterworthFilter(fc=20.0, fs=1000.0, filter_type='highpass')
-            >>> print(f"Highpass cutoff: {highpass.fc} Hz")
-            >>> 
-            >>> # Invalid configuration
-            >>> try:
-            ...     # Cutoff too high (violates Nyquist)
-            ...     invalid = ButterworthFilter(fc=600.0, fs=1000.0)
-            >>> except ValueError as e:
-            ...     print(f"Error: {e}")
-        ```
-        """
-    
-    @micropython.native
-    def update(self, x: float) -> float:
-        """
-        Update filter with new sample and return filtered output.
-        
-        Processes a single input sample through the second-order Butterworth filter.
-        This method inherits the efficient implementation from the BiquadFilter parent class.
-        
-        :param x: Input sample value (any numeric type, converted to float)
-        :return: Filtered output sample as float
-        
-        :raises TypeError: If input cannot be converted to float
-        
-        Example
-        -------
-        ```python
-            >>> # Process a simple step response
-            >>> filter_obj = ButterworthFilter(fc=10.0, fs=100.0, filter_type='lowpass')
-            >>> 
-            >>> # Create and process a step input
-            >>> outputs = []
-            >>> for i in range(20):
-            ...     # Step occurs at i=10
-            ...     input_value = 0.0 if i < 10 else 1.0
-            ...     output = filter_obj.update(input_value)
-            ...     outputs.append(output)
-            >>> 
-            >>> # Print key points in the response
-            >>> print(f"Step applied at sample 10")
-            >>> print(f"Initial output (0): {outputs[0]:.6f}")
-            >>> print(f"At step (10): {outputs[10]:.6f}")
-            >>> print(f"Final value (19): {outputs[19]:.6f}")
-        ```
-        """
-    
-    def reset(self) -> None:
-        """
-        Reset filter to initial state while preserving configuration.
-        
-        Clears the filter's internal state (delay line) and resets the sample counter,
-        but maintains all configuration parameters and coefficients. This method
-        inherits its implementation from the BiquadFilter parent class.
-        
-        Example
-        -------
-        ```python
-            >>> # Create filter and process some data
-            >>> filter_obj = ButterworthFilter(fc=30.0, fs=1000.0, filter_type='lowpass')
-            >>> 
-            >>> # Process first dataset
-            >>> for x in [1.0, 0.5, 0.2, 0.7, 0.9]:
-            ...     y = filter_obj.update(x)
-            >>> 
-            >>> print(f"Before reset: {filter_obj.sample_count} samples processed")
-            >>> 
-            >>> # Reset filter for new dataset
-            >>> filter_obj.reset()
-            >>> print(f"After reset: {filter_obj.sample_count} samples processed")
-            >>> 
-            >>> # Filter is now ready for new dataset with same configuration
-            >>> new_output = filter_obj.update(1.0)
-            >>> print(f"First output after reset: {new_output:.6f}")
-        ```
-        """
 
-
-class FIRFilter(BaseFilter):
+class FIR(Base):
     """
     Finite Impulse Response (FIR) filter with configurable tap coefficients.
     
@@ -3743,16 +5437,16 @@ class FIRFilter(BaseFilter):
         -------
         ```python
             >>> # Simple 5-tap moving average filter (symmetric)
-            >>> moving_avg = FIRFilter(taps=[0.2, 0.2, 0.2, 0.2, 0.2])
+            >>> moving_avg = FIR(taps=[0.2, 0.2, 0.2, 0.2, 0.2])
             >>> print(f"Filter order: {len(moving_avg.taps)-1}")
             >>> print(f"Group delay: {(len(moving_avg.taps)-1)/2} samples")
             >>> 
             >>> # Highpass filter (symmetric with alternating signs)
-            >>> highpass = FIRFilter(taps=[-0.1, 0.2, -0.5, 0.2, -0.1])
+            >>> highpass = FIR(taps=[-0.1, 0.2, -0.5, 0.2, -0.1])
             >>> 
             >>> # Parameter validation
             >>> try:
-            ...     invalid_filter = FIRFilter(taps=[])  # Empty taps list
+            ...     invalid_filter = FIR(taps=[])  # Empty taps list
             >>> except ValueError as e:
             ...     print(f"Error: {e}")
         ```
@@ -3773,7 +5467,7 @@ class FIRFilter(BaseFilter):
         -------
         ```python
             >>> # Inspect filter taps
-            >>> filter_obj = FIRFilter(taps=[0.1, 0.2, 0.4, 0.2, 0.1])
+            >>> filter_obj = FIR(taps=[0.1, 0.2, 0.4, 0.2, 0.1])
             >>> 
             >>> # Get current taps
             >>> current_taps = filter_obj.taps
@@ -3816,7 +5510,7 @@ class FIRFilter(BaseFilter):
         -------
         ```python
             >>> # Create filter with initial coefficients
-            >>> filter_obj = FIRFilter(taps=[1.0, 0.0, 0.0, 0.0, 0.0])  # Unit impulse
+            >>> filter_obj = FIR(taps=[1.0, 0.0, 0.0, 0.0, 0.0])  # Unit impulse
             >>> 
             >>> # Later update to moving average coefficients
             >>> filter_obj.taps = [0.2, 0.2, 0.2, 0.2, 0.2]
@@ -3869,7 +5563,7 @@ class FIRFilter(BaseFilter):
         ```python
             >>> # Basic FIR filtering operation
             >>> # 5-tap moving average filter
-            >>> filter_obj = FIRFilter(taps=[0.2, 0.2, 0.2, 0.2, 0.2])
+            >>> filter_obj = FIR(taps=[0.2, 0.2, 0.2, 0.2, 0.2])
             >>> 
             >>> # Process a simple impulse input
             >>> inputs = [0, 0, 1, 0, 0, 0, 0, 0]
@@ -3914,7 +5608,7 @@ class FIRFilter(BaseFilter):
         -------
         ```python
             >>> # Demonstrate filter reset
-            >>> filter_obj = FIRFilter(taps=[0.1, 0.2, 0.4, 0.2, 0.1])
+            >>> filter_obj = FIR(taps=[0.1, 0.2, 0.4, 0.2, 0.1])
             >>> 
             >>> # Process some data
             >>> for sample in [1.0, 2.0, 3.0, 4.0, 5.0]:
@@ -3933,7 +5627,3343 @@ class FIRFilter(BaseFilter):
         """
 
 
-class FilterChain(BaseFilter):
+
+class AngleEMA(Base):
+    """
+    Exponential Moving Average filter for angular data with wrap-around handling.
+    
+    A specialized exponential smoothing filter designed for circular/angular quantities
+    such as compass headings, phase angles, or rotation measurements. Unlike standard
+    filters that average linearly, this filter properly handles the discontinuity at
+    ±π radians (±180°) using circular statistics, preventing averaging errors when
+    angles wrap around the circle boundary.
+    
+    The filter implements exponential smoothing in angular difference space:
+        
+        θ_out[n] = θ_out[n-1] + α · angle_diff(θ_in[n], θ_out[n-1])
+    
+    Where:
+        
+        - θ_in[n]: Current input angle in radians
+        - θ_out[n]: Current output angle in radians
+        - α: Smoothing factor (0 < α ≤ 1)
+        - angle_diff: Circular difference function (wraps at ±π)
+    
+    Key Features:
+        
+        - Circular statistics for proper angular averaging
+        - Automatic wrap-around handling at ±π boundary
+        - Configurable smoothing strength via alpha parameter
+        - Optional lazy initialization on first update
+        - Memory-efficient single-value state
+        - Real-time adjustable smoothing factor
+        - Output always normalized to [-π, π]
+    
+    Applications:
+        
+        - IMU compass heading smoothing
+        - GPS course over ground filtering
+        - Motor encoder angle smoothing
+        - Phase tracking in signal processing
+        - Robot orientation estimation
+        - Wind direction averaging
+        - Satellite antenna pointing
+        - Gimbal stabilization
+    
+    Mathematical Properties:
+        
+        - Uses circular (modulo 2π) distance metric
+        - Prevents 0°/360° boundary artifacts
+        - Correctly handles angle sequences like: 350°, 355°, 0°, 5°, 10°
+        - Standard EMA behavior in angular difference space
+        - Step response: approaches target via shortest circular path
+        - Impulse response: exponential decay in angular space
+    
+    Alpha Selection Guidelines:
+        
+        - α = 0.1: Heavy smoothing, slow response (IMU drift correction)
+        - α = 0.2: Moderate smoothing (compass heading)
+        - α = 0.3-0.5: Balanced (general orientation tracking)
+        - α = 0.6-0.8: Light smoothing (responsive control)
+        - α = 1.0: No filtering (pass-through)
+    
+    Circular Averaging Example:
+        
+        Consider angles 170° and -170° (190° in 0-360 notation):
+        
+        - Linear average: (170° + -170°) / 2 = 0° ❌ WRONG
+        - Circular average: ±180° ✓ CORRECT
+        
+        This filter correctly computes ±180° by recognizing the angles
+        are only 20° apart on the circle, not 340° apart.
+    """
+    def __init__(self, alpha: float = 0.25, initial: float | None = None) -> None:
+        """
+        Initialize angle EMA filter with smoothing factor.
+        
+        Creates an exponential moving average filter specifically designed for
+        angular data that properly handles wrap-around at the ±π boundary.
+        The filter can be initialized with a starting angle or left uninitialized
+        to automatically set its initial state from the first measurement.
+        
+        :param alpha: Smoothing factor in range (0, 1] (default: 0.25)
+                     Higher values = less smoothing, faster response
+                     Lower values = more smoothing, slower response
+                     - α = 1.0: No filtering (output = input)
+                     - α = 0.1: Heavy smoothing (tau ≈ 9 samples)
+                     - α = 0.5: Moderate smoothing (tau ≈ 1 sample)
+        :param initial: Optional initial angle in radians (default: None)
+                       If provided, must be in [-π, π] range.
+                       If None, filter initializes on first update() call.
+        
+        :raises FilterConfigurationError: If alpha not in range (0, 1]
+        :raises TypeError: If parameters cannot be converted to numeric types
+        
+        Alpha Parameter Guidelines:
+            The smoothing factor α controls the trade-off between noise
+            reduction and responsiveness:
+            
+            Heavy Smoothing (α = 0.05 to 0.15):
+                
+                - Strong noise suppression
+                - Slow tracking of true angle changes
+                - Good for: Drifting IMUs, very noisy compass
+                - Time constant: ~10-20 samples
+            
+            Moderate Smoothing (α = 0.15 to 0.4):
+                
+                - Balanced noise reduction and tracking
+                - Suitable for most applications
+                - Good for: General compass/heading filtering
+                - Time constant: ~2-6 samples
+            
+            Light Smoothing (α = 0.4 to 0.8):
+                
+                - Minimal delay, fast response
+                - Light noise reduction only
+                - Good for: Control feedback, responsive steering
+                - Time constant: ~0.5-2 samples
+        
+        Initialization Strategies:
+            
+            With Initial Value (initial provided):
+                
+                - Filter starts at specified angle
+                - Useful when approximate starting angle is known
+                - Reduces initial transient
+                - Example: GPS last known heading, saved state
+            
+            Lazy Initialization (initial = None):
+                
+                - Filter starts on first update()
+                - First measurement becomes initial state
+                - Useful when starting angle is unknown
+                - No artificial bias from wrong initial guess
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import AngleEMA
+            >>> import math
+            >>> 
+            >>> # Compass heading filter with known initial direction
+            >>> compass_filter = AngleEMA(alpha=0.3, initial=0.0)  # North
+            >>> print(f"Alpha: {compass_filter.alpha}")
+            >>> print(f"Initial: {math.degrees(compass_filter.value):.1f}°")
+            >>> # Alpha: 0.3
+            >>> # Initial: 0.0°
+            >>> 
+            >>> # IMU orientation filter with lazy initialization
+            >>> orientation_filter = AngleEMA(alpha=0.2, initial=None)
+            >>> print(f"Initialized: {orientation_filter.value is not None}")
+            >>> # Initialized: False
+            >>> 
+            >>> # Motor encoder angle filter
+            >>> encoder_filter = AngleEMA(alpha=0.5, initial=math.radians(90))
+            >>> print(f"Starting angle: {math.degrees(encoder_filter.value):.1f}°")
+            >>> # Starting angle: 90.0°
+            >>> 
+            >>> # Application-specific alpha values
+            >>> def design_angle_filters():
+            ...     '''Design filters for various applications.'''
+            ...     
+            ...     # GPS course over ground (slow changes expected)
+            ...     gps_course = AngleEMA(alpha=0.1)
+            ...     print(f"GPS: alpha={gps_course.alpha}, tau≈{(1/gps_course.alpha):.0f} samples")
+            ...     
+            ...     # Compass heading (moderate noise)
+            ...     compass = AngleEMA(alpha=0.25)
+            ...     print(f"Compass: alpha={compass.alpha}, tau≈{(1/compass.alpha):.0f} samples")
+            ...     
+            ...     # Robot heading control (fast response needed)
+            ...     robot = AngleEMA(alpha=0.6, initial=0.0)
+            ...     print(f"Robot: alpha={robot.alpha}, tau≈{(1/robot.alpha):.1f} samples")
+            ...     
+            ...     # Wind vane (very noisy, needs heavy smoothing)
+            ...     wind = AngleEMA(alpha=0.05)
+            ...     print(f"Wind: alpha={wind.alpha}, tau≈{(1/wind.alpha):.0f} samples")
+            >>> 
+            >>> # Invalid configurations
+            >>> try:
+            ...     bad_filter = AngleEMA(alpha=0.0)  # Zero alpha
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     bad_filter = AngleEMA(alpha=1.5)  # Alpha > 1
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> # Angle normalization demonstration
+            >>> def demonstrate_angle_normalization():
+            ...     # Initial values outside [-π, π] are normalized
+            ...     import math
+            ...     
+            ...     # 270° = -90° in [-π, π] range
+            ...     filt1 = AngleEMA(alpha=0.5, initial=math.radians(270))
+            ...     print(f"Input 270° → Stored: {math.degrees(filt1.value):.1f}°")
+            ...     
+            ...     # 450° = 90° in [-π, π] range
+            ...     filt2 = AngleEMA(alpha=0.5, initial=math.radians(450))
+            ...     print(f"Input 450° → Stored: {math.degrees(filt2.value):.1f}°")
+        ```
+        """
+        ...
+    
+    @property
+    def alpha(self) -> float:
+        """
+        Get smoothing factor.
+        
+        Returns the current alpha (smoothing factor) value that controls the
+        trade-off between noise reduction and responsiveness. Higher alpha values
+        provide faster response with less smoothing, while lower values provide
+        more smoothing with slower response.
+        
+        :return: Smoothing factor in range (0, 1]
+        
+        Alpha Interpretation:
+            
+            - α = 1.0: No filtering (output = input)
+            - α = 0.5: Moderate smoothing (tau ≈ 1 sample)
+            - α = 0.2: Heavy smoothing (tau ≈ 4 samples)
+            - α = 0.1: Very heavy smoothing (tau ≈ 9 samples)
+        
+        Relationship to Time Constant:
+            
+            For approximate time constant in samples:
+            
+            tau ≈ (1 - α) / α
+            
+            Example: α = 0.2 → tau ≈ 4 samples
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import AngleEMA
+            >>> import math
+            >>> 
+            >>> # Check current alpha
+            >>> heading_filter = AngleEMA(alpha=0.3, initial=0.0)
+            >>> print(f"Alpha: {heading_filter.alpha}")
+            >>> # Alpha: 0.3
+            >>> 
+            >>> # Calculate time constant
+            >>> tau_samples = (1 - heading_filter.alpha) / heading_filter.alpha
+            >>> print(f"Approximate tau: {tau_samples:.1f} samples")
+            >>> # Approximate tau: 2.3 samples
+            >>> 
+            >>> # Calculate 95% settling time
+            >>> settling_95 = 3 * tau_samples
+            >>> print(f"95% settling: {settling_95:.1f} samples")
+            >>> # 95% settling: 7.0 samples
+        ```
+        """
+        ...
+    
+    @alpha.setter
+    def alpha(self, value: float) -> None:
+        """
+        Set smoothing factor.
+        
+        Updates the filter's alpha (smoothing factor), changing the balance between
+        noise reduction and responsiveness. The new alpha takes effect immediately
+        for all subsequent update() calls.
+        
+        :param value: New smoothing factor in range (0, 1]
+        
+        :raises FilterConfigurationError: If value not in range (0, 1]
+        :raises TypeError: If value cannot be converted to float
+        
+        Effects of Changing Alpha:
+            
+            Increasing alpha (toward 1.0):
+                
+                - Faster response to angle changes
+                - Less smoothing, more noise
+                - Shorter settling time
+                - Better tracking of rapid rotation
+            
+            Decreasing alpha (toward 0.0):
+                
+                - Slower response to angle changes
+                - More smoothing, less noise
+                - Longer settling time
+                - Better for drifting or noisy sensors
+        
+        Real-Time Adjustment Use Cases:
+            
+            - Motion-adaptive smoothing (stationary = heavy, moving = light)
+            - SNR-based smoothing (noisy = heavy, clean = light)
+            - User-adjustable responsiveness
+            - Mode-dependent filtering (calibration vs operation)
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import AngleEMA
+            >>> import math
+            >>> 
+            >>> # Create filter
+            >>> compass = AngleEMA(alpha=0.2, initial=0.0)
+            >>> print(f"Initial alpha: {compass.alpha}")
+            >>> # Initial alpha: 0.2
+            >>> 
+            >>> # Test with one setting
+            >>> for angle in [10, 20, 30]:
+            ...     result = compass.update(math.radians(angle))
+            ...     print(f"  {angle}° → {math.degrees(result):.1f}°")
+            >>> 
+            >>> # Adjust for faster response
+            >>> compass.alpha = 0.5
+            >>> compass.reset(math.radians(30))  # Reset to last angle
+            >>> print(f"\nFaster response (alpha={compass.alpha}):")
+            >>> for angle in [40, 50, 60]:
+            ...     result = compass.update(math.radians(angle))
+            ...     print(f"  {angle}° → {math.degrees(result):.1f}°")
+            >>> 
+            >>> # Motion-adaptive filtering
+            >>> def motion_adaptive_compass():
+            ...     heading_filter = AngleEMA(alpha=0.2)
+            ...     
+            ...     for heading, angular_velocity in imu_data:
+            ...         # Adjust smoothing based on rotation rate
+            ...         if abs(angular_velocity) < 5:  # deg/s, nearly stationary
+            ...             heading_filter.alpha = 0.1  # Heavy smoothing
+            ...         elif abs(angular_velocity) < 30:  # deg/s, moderate motion
+            ...             heading_filter.alpha = 0.3  # Moderate smoothing
+            ...         else:  # Fast rotation
+            ...             heading_filter.alpha = 0.7  # Light smoothing
+            ...         
+            ...         filtered = heading_filter.update(heading)
+            >>> 
+            >>> # SNR-based adaptive filtering
+            >>> def snr_adaptive_filtering():
+            ...     orientation_filter = AngleEMA(alpha=0.25)
+            ...     
+            ...     for angle, signal_quality in sensor_stream:
+            ...         # Adjust based on signal quality
+            ...         if signal_quality > 0.8:  # High quality
+            ...             orientation_filter.alpha = 0.5
+            ...         elif signal_quality > 0.5:  # Medium quality
+            ...             orientation_filter.alpha = 0.25
+            ...         else:  # Low quality
+            ...             orientation_filter.alpha = 0.1
+            ...         
+            ...         filtered = orientation_filter.update(angle)
+            >>> 
+            >>> # User-adjustable smoothing
+            >>> def user_adjustable_smoothing(smoothing_level):
+            ...     '''Set smoothing from 1 (heavy) to 10 (light).'''
+            ...     gyro_filter = AngleEMA(alpha=0.25)
+            ...     
+            ...     # Map 1-10 to alpha 0.05-0.95
+            ...     alpha_value = 0.05 + (smoothing_level - 1) * 0.1
+            ...     gyro_filter.alpha = alpha_value
+            ...     
+            ...     print(f"Smoothing level {smoothing_level} → alpha={alpha_value:.2f}")
+            ...     return gyro_filter
+            >>> 
+            >>> # Invalid values
+            >>> try:
+            ...     compass.alpha = 0.0  # Zero not allowed
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     compass.alpha = 1.5  # Greater than 1 not allowed
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+        ```
+        """
+        ...
+    
+    @property
+    def value(self) -> float:
+        """
+        Get current filtered angle in radians.
+        
+        Returns the most recent filtered angle output. The angle is always
+        normalized to the range [-π, π] radians (±180°).
+        
+        :return: Current filtered angle in radians, range [-π, π]
+                Returns None if filter is uninitialized
+        
+        Angle Range:
+            
+            - Minimum: -π radians (-180°)
+            - Maximum: +π radians (+180°)
+            - Wraps around at boundaries
+            - Example: π + 0.1 → -π + 0.1
+        
+        Use Cases:
+            
+            - Getting current heading estimate
+            - Checking filter state before reset
+            - Logging filtered orientation
+            - Feeding to control algorithms
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import AngleEMA
+            >>> import math
+            >>> 
+            >>> # Create and check initial value
+            >>> compass = AngleEMA(alpha=0.3, initial=math.radians(45))
+            >>> print(f"Initial value: {math.degrees(compass.value):.1f}°")
+            >>> # Initial value: 45.0°
+            >>> 
+            >>> # Update and check new value
+            >>> compass.update(math.radians(50))
+            >>> print(f"After update: {math.degrees(compass.value):.1f}°")
+            >>> # After update: 46.5°
+            >>> 
+            >>> # Uninitialized filter
+            >>> new_filter = AngleEMA(alpha=0.3, initial=None)
+            >>> print(f"Uninitialized: {new_filter.value}")
+            >>> # Uninitialized: None
+            >>> 
+            >>> # After first update, becomes initialized
+            >>> new_filter.update(math.radians(30))
+            >>> print(f"Now initialized: {math.degrees(new_filter.value):.1f}°")
+            >>> # Now initialized: 30.0°
+            >>> 
+            >>> # Using value in control loop
+            >>> def heading_control():
+            ...     heading_filter = AngleEMA(alpha=0.25, initial=0.0)
+            ...     target_heading = math.radians(90)  # 90° target
+            ...     
+            ...     for raw_heading in sensor_readings:
+            ...         # Filter heading
+            ...         filtered_heading = heading_filter.update(raw_heading)
+            ...         
+            ...         # Calculate error (circular difference)
+            ...         current = heading_filter.value
+            ...         error = math.atan2(
+            ...             math.sin(target_heading - current),
+            ...             math.cos(target_heading - current)
+            ...         )
+            ...         
+            ...         # Apply control
+            ...         control_output = kp * error
+            >>> 
+            >>> # Checking angle normalization
+            >>> def demonstrate_normalization():
+            ...     filt = AngleEMA(alpha=0.5, initial=math.radians(170))
+            ...     
+            ...     print("Testing angle normalization:")
+            ...     test_angles = [170, 175, -175, -170, 180, -180]
+            ...     
+            ...     for angle in test_angles:
+            ...         filt.update(math.radians(angle))
+            ...         result_deg = math.degrees(filt.value)
+            ...         print(f"  Input: {angle:4d}° → Stored: {result_deg:6.1f}°")
+        ```
+        """
+        ...
+    
+    def reset(self, rad: float | None = None) -> None:
+        """
+        Reset filter state while preserving configuration.
+        
+        Clears the filter's internal state (filtered angle value) and resets the
+        sample counter, but maintains the alpha smoothing factor. The filter can
+        be reset to a specific angle or left uninitialized to automatically set
+        its state from the next measurement.
+        
+        :param rad: Optional angle in radians to reset to (default: None)
+                   If provided, filter state set to this angle (normalized to [-π, π])
+                   If None, filter becomes uninitialized until next update() call
+        
+        :raises TypeError: If rad cannot be converted to float
+        
+        Reset Operations:
+            
+            - Clears current filtered angle value
+            - Resets sample counter to zero
+            - Preserves alpha smoothing factor
+            - Option 1 (rad provided): Set to specific angle
+            - Option 2 (rad=None): Lazy initialization on next update
+        
+        Use Cases:
+            
+            - Starting new measurement session
+            - Known position change (e.g., robot repositioned)
+            - Recovering from sensor glitch
+            - Switching between different angle sources
+            - Batch processing of multiple datasets
+            - Calibration or re-initialization sequences
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import AngleEMA
+            >>> import math
+            >>> 
+            >>> # Create and use filter
+            >>> heading_filter = AngleEMA(alpha=0.3, initial=0.0)
+            >>> 
+            >>> print("First session:")
+            >>> angles = [0, 5, 10, 15, 20]
+            >>> for angle_deg in angles:
+            ...     angle_rad = math.radians(angle_deg)
+            ...     filtered_rad = heading_filter.update(angle_rad)
+            ...     print(f"  Input: {angle_deg:3.0f}° → Filtered: {math.degrees(filtered_rad):5.1f}°")
+            >>> # First session:
+            >>> #   Input:   0° → Filtered:   0.0°
+            >>> #   Input:   5° → Filtered:   1.5°
+            >>> #   Input:  10° → Filtered:   4.1°
+            >>> #   Input:  15° → Filtered:   7.3°
+            >>> #   Input:  20° → Filtered:  11.1°
+            >>> 
+            >>> print(f"After session: angle={math.degrees(heading_filter.value):.1f}°, "
+            ...       f"samples={heading_filter.sample_count}")
+            >>> # After session: angle=11.1°, samples=5
+            >>> 
+            >>> # Reset to known angle (e.g., robot repositioned)
+            >>> heading_filter.reset(math.radians(90))
+            >>> print(f"After reset: angle={math.degrees(heading_filter.value):.1f}°, "
+            ...       f"samples={heading_filter.sample_count}")
+            >>> # After reset: angle=90.0°, samples=0
+            >>> 
+            >>> # Verify alpha preserved
+            >>> print(f"Alpha preserved: {heading_filter.alpha}")
+            >>> # Alpha preserved: 0.3
+            >>> 
+            >>> print("\nSecond session (from 90°):")
+            >>> angles2 = [95, 100, 105, 110]
+            >>> for angle_deg in angles2:
+            ...     angle_rad = math.radians(angle_deg)
+            ...     filtered_rad = heading_filter.update(angle_rad)
+            ...     print(f"  Input: {angle_deg:3.0f}° → Filtered: {math.degrees(filtered_rad):5.1f}°")
+            >>> 
+            >>> # Reset to uninitialized state
+            >>> heading_filter.reset()  # rad=None
+            >>> print(f"\nAfter reset (None): initialized={heading_filter.value is not None}")
+            >>> # After reset (None): initialized=False
+            >>> 
+            >>> # First update initializes
+            >>> first_angle = heading_filter.update(math.radians(45))
+            >>> print(f"After first update: angle={math.degrees(first_angle):.1f}°")
+            >>> # After first update: angle=45.0°
+            >>> 
+            >>> # Multi-sensor application with synchronized reset
+            >>> def multiaxis_orientation_tracking():
+            ...     # IMU with roll, pitch, yaw filtering
+            ...     roll_filter = AngleEMA(alpha=0.25, initial=0.0)
+            ...     pitch_filter = AngleEMA(alpha=0.25, initial=0.0)
+            ...     yaw_filter = AngleEMA(alpha=0.25, initial=0.0)
+            ...     
+            ...     filters = [roll_filter, pitch_filter, yaw_filter]
+            ...     names = ['Roll', 'Pitch', 'Yaw']
+            ...     
+            ...     # Process first set of measurements
+            ...     measurements1 = [
+            ...         (5, 10, 45),    # roll, pitch, yaw in degrees
+            ...         (8, 12, 50),
+            ...         (6, 9, 48)
+            ...     ]
+            ...     
+            ...     print("Session 1:")
+            ...     for roll, pitch, yaw in measurements1:
+            ...         angles_rad = [math.radians(a) for a in [roll, pitch, yaw]]
+            ...         filtered = [f.update(r) for f, r in zip(filters, angles_rad)]
+            ...         filtered_deg = [math.degrees(f) for f in filtered]
+            ...         print(f"  R:{filtered_deg[0]:5.1f}° P:{filtered_deg[1]:5.1f}° Y:{filtered_deg[2]:5.1f}°")
+            ...     
+            ...     # Reset all axes to known calibration position
+            ...     print("\nCalibration reset to (0°, 0°, 0°)")
+            ...     for filt in filters:
+            ...         filt.reset(0.0)
+            ...     
+            ...     # Process second set from calibrated position
+            ...     measurements2 = [(-2, 1, 5), (-1, 2, 8)]
+            ...     
+            ...     print("\nSession 2 (after calibration):")
+            ...     for roll, pitch, yaw in measurements2:
+            ...         angles_rad = [math.radians(a) for a in [roll, pitch, yaw]]
+            ...         filtered = [f.update(r) for f, r in zip(filters, angles_rad)]
+            ...         filtered_deg = [math.degrees(f) for f in filtered]
+            ...         print(f"  R:{filtered_deg[0]:5.1f}° P:{filtered_deg[1]:5.1f}° Y:{filtered_deg[2]:5.1f}°")
+            >>> 
+            >>> # Sensor glitch recovery
+            >>> def glitch_recovery_example():
+            ...     compass = AngleEMA(alpha=0.2, initial=math.radians(45))
+            ...     
+            ...     # Normal readings
+            ...     readings = [45, 47, 46, 48, 999, 47, 49]  # 999 is glitch
+            ...     
+            ...     print("Glitch Recovery:")
+            ...     print("Reading | Valid? | Filtered")
+            ...     print("-" * 35)
+            ...     
+            ...     for reading in readings:
+            ...         # Detect glitch (unreasonable value)
+            ...         if reading > 360 or reading < -180:
+            ...             print(f"{reading:7d} | NO     | <skipped, reset>")
+            ...             # Reset to last known good value
+            ...             compass.reset(compass.value)
+            ...         else:
+            ...             filtered = compass.update(math.radians(reading))
+            ...             filtered_deg = math.degrees(filtered)
+            ...             print(f"{reading:7d} | YES    | {filtered_deg:7.1f}°")
+        ```
+        """
+        ...
+    
+    @micropython.native
+    def update(self, rad: float) -> float:
+        """
+        Update filter with new angle measurement.
+        
+        Processes a single angular input through the exponential moving average filter
+        using circular statistics. The filter automatically handles wrap-around at the
+        ±π boundary, ensuring correct averaging even when angles cross 0°/360°.
+        
+        :param rad: Input angle in radians (any value, will be normalized to [-π, π])
+        :return: Filtered angle in radians, guaranteed to be in [-π, π] range
+        
+        :raises TypeError: If input cannot be converted to float
+        
+        Algorithm Details:
+            The filter implements circular exponential smoothing:
+            
+            1. Normalize input: θ_in = atan2(sin(rad), cos(rad))  → [-π, π]
+            2. If uninitialized: θ_out = θ_in (first sample)
+            3. Calculate circular difference: Δθ = atan2(sin(θ_in - θ_out), cos(θ_in - θ_out))
+            4. Update: θ_out = θ_out + α · Δθ
+            5. Normalize output: θ_out = atan2(sin(θ_out), cos(θ_out))  → [-π, π]
+            
+            Where:
+            
+            - Circular difference finds shortest path around circle
+            - atan2 ensures proper quadrant and wrapping
+            - Output is always in [-π, π] range
+        
+        Performance Characteristics:
+            
+            - O(1) computational complexity
+            - Involves trigonometric functions (sin, cos, atan2)
+            - More expensive than linear EMA due to circular math
+            - Optimized with @micropython.native decorator
+            - Suitable for typical IMU/compass rates (10-100 Hz)
+        
+        Wrap-Around Handling:
+            
+            The filter correctly handles discontinuity at ±π:
+            
+            Example 1: Crossing from positive to negative
+                - Current: +170° (2.967 rad)
+                - Input: -170° (-2.967 rad)
+                - Linear difference: -340° ❌ WRONG
+                - Circular difference: +20° ✓ CORRECT
+                - Filter smoothly tracks via short path
+            
+            Example 2: Crossing from negative to positive
+                - Current: -175° (-3.054 rad)
+                - Input: +175° (+3.054 rad)
+                - Linear difference: +350° ❌ WRONG
+                - Circular difference: -10° ✓ CORRECT
+                - Filter smoothly tracks via short path
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import AngleEMA
+            >>> import math
+            >>> 
+            >>> # Demonstrating wrap-around behavior
+            >>> heading_filter = AngleEMA(alpha=0.4, initial=math.radians(170))
+            >>> 
+            >>> print("Wrap-around test:")
+            >>> print("Input (°) | Output (°) | Description")
+            >>> print("-" * 45)
+            >>> 
+            >>> # Sequence that crosses ±180° boundary
+            >>> test_angles_deg = [170, 175, -175, -170, -165, -175, 180, 175]
+            >>> 
+            >>> for angle_deg in test_angles_deg:
+            ...     angle_rad = math.radians(angle_deg)
+            ...     filtered_rad = heading_filter.update(angle_rad)
+            ...     filtered_deg = math.degrees(filtered_rad)
+            ...     
+            ...     # Describe what's happening
+            ...     if abs(angle_deg) > 160:
+            ...         desc = "Near ±180°"
+            ...     elif angle_deg > 0:
+            ...         desc = "Positive side"
+            ...     else:
+            ...         desc = "Negative side"
+            ...     
+            ...     print(f"{angle_deg:9.0f} | {filtered_deg:10.1f} | {desc}")
+            >>> # Input (°) | Output (°) | Description
+            >>> # ---------------------------------------------
+            >>> #       170 |      170.0 | Near ±180°
+            >>> #       175 |      172.0 | Near ±180°
+            >>> #      -175 |      176.2 | Near ±180° (wrapped)
+            >>> #      -170 |      173.7 | Near ±180°
+            >>> #      -165 |      170.2 | Near ±180°
+            >>> 
+            >>> # Compass heading smoothing
+            >>> def compass_heading_example():
+            ...     compass = AngleEMA(alpha=0.25)
+            ...     
+            ...     # Simulate noisy compass readings around North (0°)
+            ...     noisy_readings = [
+            ...         (0, 0.3), (5, 0.2), (358, -0.4), (2, 0.1),
+            ...         (355, -0.3), (1, 0.2), (359, -0.1), (3, 0.3)
+            ...     ]
+            ...     
+            ...     print("\nNoisy Compass Filtering:")
+            ...     print("Raw (°) | Noise | Filtered (°) | Error (°)")
+            ...     print("-" * 50)
+            ...     
+            ...     for true_heading, noise_deg in noisy_readings:
+            ...         noisy_rad = math.radians(true_heading + noise_deg)
+            ...         filtered_rad = compass.update(noisy_rad)
+            ...         filtered_deg = math.degrees(filtered_rad)
+            ...         
+            ...         # Calculate circular error
+            ...         error = ((filtered_deg - true_heading + 180) % 360) - 180
+            ...         
+            ...         print(f"{true_heading:7.0f} | {noise_deg:+5.1f} | {filtered_deg:12.1f} | {error:+8.2f}")
+            >>> 
+            >>> # Motor position tracking with wrap-around
+            >>> def motor_position_tracking():
+            ...     position_filter = AngleEMA(alpha=0.5, initial=0.0)
+            ...     
+            ...     # Simulate continuous rotation through multiple revolutions
+            ...     print("\nContinuous Rotation Tracking:")
+            ...     print("Time | Raw Position | Filtered | Revolutions")
+            ...     print("-" * 50)
+            ...     
+            ...     for t in range(0, 360, 30):
+            ...         # Motor position wraps at ±180°
+            ...         raw_position_deg = (t * 3) % 360
+            ...         if raw_position_deg > 180:
+            ...             raw_position_deg -= 360
+            ...         
+            ...         raw_rad = math.radians(raw_position_deg)
+            ...         filtered_rad = position_filter.update(raw_rad)
+            ...         filtered_deg = math.degrees(filtered_rad)
+            ...         
+            ...         revolutions = t * 3 / 360
+            ...         
+            ...         print(f"{t:4d} | {raw_position_deg:12.0f}° | {filtered_deg:8.1f}° | {revolutions:5.1f}")
+            >>> 
+            >>> # Phase tracking in signal processing
+            >>> def phase_tracking_example():
+            ...     import cmath
+            ...     
+            ...     phase_filter = AngleEMA(alpha=0.3)
+            ...     
+            ...     print("\nPhase Tracking:")
+            ...     print("Sample | Raw Phase | Filtered Phase | Phase Noise")
+            ...     print("-" * 55)
+            ...     
+            ...     base_freq = 10  # Hz
+            ...     sample_rate = 1000  # Hz
+            ...     
+            ...     for n in range(0, 100, 10):
+            ...         # Generate signal with phase noise
+            ...         t = n / sample_rate
+            ...         phase = 2 * math.pi * base_freq * t
+            ...         phase_noise = 0.2 * math.sin(2 * math.pi * 50 * t)  # Noise
+            ...         
+            ...         noisy_phase = phase + phase_noise
+            ...         
+            ...         # Normalize and filter
+            ...         normalized = math.atan2(math.sin(noisy_phase), math.cos(noisy_phase))
+            ...         filtered = phase_filter.update(normalized)
+            ...         
+            ...         print(f"{n:6d} | {math.degrees(normalized):9.1f}° | "
+            ...               f"{math.degrees(filtered):14.1f}° | {math.degrees(phase_noise):11.2f}°")
+        ```
+        """
+        ...
+
+
+
+class PID(Base):
+    """
+    Full-featured PID controller with anti-windup, derivative filtering, and tracking.
+    
+    Implements a discrete-time PID controller with numerous advanced features
+    including proportional-on-measurement to reduce overshoot, derivative-on-
+    measurement to avoid derivative kick, configurable derivative filtering,
+    multiple anti-windup strategies, integrator tracking for bumpless transfer,
+    and support for both fixed and variable sampling rates.
+    
+    Control Law:
+        
+        u(t) = Kp×e_p(t) + Ki×∫e_i(t)dt + Kd×de/dt
+        
+        Where:
+            
+            - e_p = beta×setpoint - measurement (proportional error with weighting)
+            - e_i = setpoint - measurement (integral error, full setpoint)
+            - de/dt = -(measurement - measurement_prev)/dt (derivative on measurement)
+    
+    Key Features:
+        
+        - Proportional-on-Measurement (adjustable via beta parameter)
+        - Derivative-on-Measurement (no derivative kick on setpoint changes)
+        - Configurable derivative low-pass filtering
+        - Three anti-windup strategies: None, Clamping, Back-calculation
+        - Integrator tracking mode for bumpless manual-to-auto transfer
+        - Independent integrator and output limits
+        - Fixed or variable sampling rate support
+    
+    Anti-Windup Modes:
+        
+        - AW_NONE (0): No anti-windup (integrator can grow unbounded)
+        - AW_CLAMP (1): Conditional integration (stop when saturated) [default]
+        - AW_BACKCALC (2): Back-calculation with configurable gain k_aw
+    
+    Applications:
+        
+        - Temperature control (ovens, heaters, chillers)
+        - Motor speed and position control
+        - Process control (level, flow, pressure)
+        - HVAC systems
+        - Battery management
+        - Any closed-loop control application
+    
+    Performance Characteristics:
+        
+        - Execution time: ~50-100 µs per update (platform dependent)
+        - Memory: ~100 bytes per instance
+        - Deterministic execution (suitable for real-time control)
+        - Optimized with @micropython.native decorator
+    
+    Attributes:
+        
+        kp, ki, kd: PID gains (read/write)
+        setpoint: Current setpoint (read/write via set_setpoint())
+        u: Most recent controller output
+        fs: Fixed sampling rate (None if variable)
+        out_min, out_max: Output limits
+        i_min, i_max: Integrator limits
+        beta: Setpoint weighting [0, 1]
+        tau_d: Derivative filter time constant
+        aw_mode: Anti-windup mode (AW_NONE, AW_CLAMP, AW_BACKCALC)
+        k_aw: Back-calculation gain
+    
+    Constants:
+        
+        AW_NONE = 0: No anti-windup
+        AW_CLAMP = 1: Conditional integration (stop when saturated)
+        AW_BACKCALC = 2: Back-calculation method
+    
+    Methods:
+        
+        update(meas, dt_s): Compute control output
+        set_setpoint(sp, keep_output): Change setpoint with optional bumpless transfer
+        set_gains(kp, ki, kd): Update PID gains
+        set_output_limits(out_min, out_max, clamp_i): Change output limits
+        set_beta(beta): Set setpoint weighting [0, 1]
+        set_tau_d(tau): Set derivative filter time constant
+        set_aw(mode, k_aw): Configure anti-windup
+        preload_integrator(i0): Manually set integrator state
+        start_tracking(u_manual): Enable tracking mode (follow external output)
+        stop_tracking(): Disable tracking mode
+        reset(): Reset controller state
+    
+    Notes:
+        
+        - Derivative acts on measurement (not error) to avoid derivative kick
+        - Proportional term uses beta×setpoint to reduce overshoot
+        - Integral term always uses full setpoint for zero steady-state error
+        - Integrator limits should generally be ≤ output limits
+        - tau_d_filter recommended when derivative noise is an issue
+        - Back-calculation anti-windup generally preferred over clamping
+        - Tracking mode enables bumpless manual-to-auto transfer
+    """
+    
+    AW_NONE: int = 0
+    AW_CLAMP: int = 1
+    AW_BACKCALC: int = 2
+    
+    def __init__(self, kp: float, ki: float, kd: float, *,
+                 fs: float | None = None,
+                 out_min: float = -1.0, out_max: float = 1.0,
+                 i_min: float | None = None, i_max: float | None = None,
+                 beta: float = 1.0,
+                 tau_d_filter: float = 0.0,
+                 aw_mode: int = 1, k_aw: float = 1.0) -> None:
+        """
+        Initialize PID controller with gains and configuration parameters.
+        
+        Creates a new PID controller instance with the specified gains and
+        configuration. The controller starts in an uninitialized state (no
+        previous measurement) and must be given a setpoint before use.
+        
+        :param kp: Proportional gain (must be >= 0)
+        :param ki: Integral gain (must be >= 0)
+        :param kd: Derivative gain (must be >= 0)
+        :param fs: Fixed sampling rate in Hz. If provided, dt is calculated as 1/fs
+                   and update() is called without dt parameter. If None, dt_s must
+                   be provided to each update() call. (default: None)
+        :param out_min: Minimum output limit (default: -1.0)
+        :param out_max: Maximum output limit (must be > out_min, default: 1.0)
+        :param i_min: Minimum integrator limit. If None, uses out_min (default: None)
+        :param i_max: Maximum integrator limit. If None, uses out_max (default: None)
+        :param beta: Setpoint weighting for proportional term, range [0, 1]
+                     - 1.0: Full proportional action (may overshoot, default)
+                     - 0.0: Proportional-on-measurement only (no overshoot)
+                     (default: 1.0)
+        :param tau_d_filter: Derivative filter time constant in seconds
+                             - 0.0: No filtering (default)
+                             - 0.01-0.5: Typical filtering range
+                             (default: 0.0)
+        :param aw_mode: Anti-windup mode
+                        - PID.AW_NONE (0): No anti-windup
+                        - PID.AW_CLAMP (1): Conditional integration (default)
+                        - PID.AW_BACKCALC (2): Back-calculation
+                        (default: 1)
+        :param k_aw: Back-calculation gain for AW_BACKCALC mode (>= 0)
+                     Typical range: 0.5 to 2.0 (default: 1.0)
+        
+        :raises FilterConfigurationError: If kp, ki, or kd < 0, or if out_max <= out_min,
+                                         or if beta not in [0, 1], or if tau_d_filter < 0,
+                                         or if k_aw < 0
+        :raises TypeError: If parameters cannot be converted to appropriate types
+        
+        Gain Selection Guidelines:
+            
+            Proportional Gain (kp):
+                
+                - Primary factor for speed of response
+                - Too high: Overshoot, oscillation, instability
+                - Too low: Slow response, large steady-state error
+                - Typical starting point: 1.0 to 5.0
+            
+            Integral Gain (ki):
+                
+                - Eliminates steady-state error
+                - Too high: Overshoot, oscillation, slow settling
+                - Too low: Slow elimination of steady-state error
+                - Typical starting point: 0.1 to 2.0
+            
+            Derivative Gain (kd):
+                
+                - Improves stability, reduces overshoot
+                - Too high: Noise amplification, high-frequency oscillation
+                - Too low: Excessive overshoot, longer settling time
+                - Typical starting point: 0.0 to 0.5
+        
+        Sampling Rate Configuration:
+            
+            Fixed sampling rate (fs provided):
+                
+                - Controller assumes constant update rate
+                - dt calculated as 1/fs
+                - Call update(measurement) without dt parameter
+                - Recommended for periodic control loops
+                - Example: fs=10.0 → dt=0.1s → 10 Hz control
+            
+            Variable sampling rate (fs=None):
+                
+                - Controller adapts to actual timing
+                - Must provide dt_s to each update() call
+                - Useful for event-driven or irregular sampling
+                - Example: update(measurement, dt_s=measured_dt)
+        
+        Output Limit Configuration:
+            
+            Output limits (out_min, out_max):
+                
+                - Define actuator saturation bounds
+                - All control outputs clamped to [out_min, out_max]
+                - Must satisfy: out_max > out_min
+                - Example: Heater 0-100% → out_min=0.0, out_max=100.0
+            
+            Integrator limits (i_min, i_max):
+                
+                - Define integrator saturation bounds
+                - If None, default to output limits
+                - Should generally be ≤ output limits
+                - Helps prevent integrator windup
+                - Example: Limit integrator to ±50 → i_min=-50.0, i_max=50.0
+        
+        Beta Parameter (Setpoint Weighting):
+            
+            - Controls proportional response to setpoint changes
+            - beta = 1.0: Standard PID (fast response, may overshoot)
+            - beta = 0.5: Moderate weighting (balanced)
+            - beta = 0.0: P-on-M only (no overshoot on setpoint step)
+            - Recommended: 0.0 for temperature, 1.0 for position
+        
+        Derivative Filtering:
+            
+            - Reduces noise amplification in derivative term
+            - tau_d = 0: No filter (maximum noise sensitivity)
+            - tau_d = 0.05-0.2s: Typical filtering
+            - Cutoff frequency: fc ≈ 1/(2π×tau_d)
+            - Example: tau_d=0.1s → fc≈1.6Hz
+        
+        Anti-Windup Configuration:
+            
+            AW_NONE: No protection (use only if saturation never occurs)
+            
+            AW_CLAMP: Stops integration when saturated (simple, effective)
+            
+            AW_BACKCALC: Actively reduces integrator when saturated
+                         - Requires k_aw tuning
+                         - k_aw=1.0: Standard rate
+                         - k_aw>1.0: Faster reduction
+                         - k_aw<1.0: Slower reduction
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> 
+            >>> # Basic temperature controller
+            >>> temp_pid = PID(
+            ...     kp=2.0, ki=0.5, kd=0.1,
+            ...     fs=10.0,  # 10 Hz sampling
+            ...     out_min=0.0, out_max=100.0  # 0-100% heater power
+            ... )
+            >>> 
+            >>> # Motor controller with reduced overshoot
+            >>> motor_pid = PID(
+            ...     kp=5.0, ki=2.0, kd=0.5,
+            ...     fs=50.0,  # 50 Hz sampling
+            ...     out_min=-100.0, out_max=100.0,  # ±100% PWM
+            ...     beta=0.3,  # Reduce overshoot
+            ...     tau_d_filter=0.05  # Light derivative filtering
+            ... )
+            >>> 
+            >>> # Pressure controller with back-calculation anti-windup
+            >>> pressure_pid = PID(
+            ...     kp=1.5, ki=0.3, kd=0.2,
+            ...     fs=20.0,  # 20 Hz sampling
+            ...     out_min=0.0, out_max=100.0,  # 0-100% valve position
+            ...     aw_mode=PID.AW_BACKCALC,  # Back-calculation
+            ...     k_aw=1.5  # Aggressive anti-windup
+            ... )
+            >>> 
+            >>> # Variable sampling rate controller
+            >>> variable_pid = PID(
+            ...     kp=2.0, ki=0.5, kd=0.1,
+            ...     fs=None,  # Variable rate
+            ...     out_min=0.0, out_max=100.0
+            ... )
+            >>> # Must provide dt_s to update()
+            >>> output = variable_pid.update(measurement, dt_s=0.105)
+            >>> 
+            >>> # P-only controller (no integral or derivative)
+            >>> p_only = PID(
+            ...     kp=3.0, ki=0.0, kd=0.0,  # P-only
+            ...     fs=10.0,
+            ...     out_min=0.0, out_max=100.0
+            ... )
+            >>> 
+            >>> # PI controller (no derivative)
+            >>> pi_controller = PID(
+            ...     kp=2.0, ki=0.5, kd=0.0,  # No derivative
+            ...     fs=10.0,
+            ...     out_min=0.0, out_max=100.0
+            ... )
+            >>> 
+            >>> # Proportional-on-measurement for overshoot-free control
+            >>> pom_pid = PID(
+            ...     kp=3.0, ki=1.0, kd=0.2,
+            ...     fs=10.0,
+            ...     out_min=0.0, out_max=100.0,
+            ...     beta=0.0  # P-on-M: no overshoot
+            ... )
+            >>> 
+            >>> # Heavy derivative filtering for noisy sensor
+            >>> filtered_pid = PID(
+            ...     kp=2.0, ki=0.5, kd=0.5,
+            ...     fs=10.0,
+            ...     out_min=0.0, out_max=100.0,
+            ...     tau_d_filter=0.2  # Heavy filtering
+            ... )
+            >>> 
+            >>> # Asymmetric integrator limits
+            >>> asymmetric_pid = PID(
+            ...     kp=2.0, ki=0.5, kd=0.1,
+            ...     fs=10.0,
+            ...     out_min=-100.0, out_max=100.0,
+            ...     i_min=-50.0, i_max=80.0  # Asymmetric integrator
+            ... )
+            >>> 
+            >>> # Ziegler-Nichols tuned controller
+            >>> def create_zn_tuned_pid(ku, tu):
+            ...     '''Create PID with Ziegler-Nichols tuning.
+            ...     
+            ...     ku: Ultimate gain from relay test
+            ...     tu: Ultimate period from relay test
+            ...     '''
+            ...     kp = 0.6 * ku
+            ...     ki = 1.2 * ku / tu
+            ...     kd = 0.075 * ku * tu
+            ...     
+            ...     return PID(kp=kp, ki=ki, kd=kd, fs=10.0,
+            ...                out_min=0.0, out_max=100.0)
+            >>> 
+            >>> # Invalid configurations
+            >>> try:
+            ...     bad_pid = PID(kp=-1.0, ki=0.5, kd=0.1, fs=10.0)  # Negative gain
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     bad_pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                   out_min=100.0, out_max=0.0)  # Invalid limits
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     bad_pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                   beta=1.5)  # Beta out of range
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+        ```
+        
+        Notes:
+            
+            - Controller initialized in reset state (no history)
+            - Must call set_setpoint() before use
+            - First update() will have zero derivative
+            - Gains and parameters can be changed after construction
+            - Use set_gains(), set_beta(), etc. for runtime adjustments
+        """
+        ...
+    
+    def set_output_limits(self, out_min: float, out_max: float, clamp_i: bool = True) -> None:
+        """
+        Change output and integrator limits.
+        
+        Updates the controller's output saturation limits and optionally clamps
+        the integrator state to the new limits. This is useful when the controlled
+        system's actuator limits change (e.g., reduced motor power available,
+        changed valve position range) or when switching between operating modes
+        with different constraints.
+        
+        :param out_min: New minimum output limit
+        :param out_max: New maximum output limit (must be > out_min)
+        :param clamp_i: If True, also clamp current integrator value to new limits
+        
+        :raises FilterConfigurationError: If out_max <= out_min
+        :raises TypeError: If limits cannot be converted to float
+        
+        Effects of Limit Changes:
+            
+            With clamp_i=True (default):
+                
+                - Output clamped to [out_min, out_max] on next update()
+                - Integrator immediately clamped to [i_min, i_max]
+                - Prevents output jumps when limits expand
+                - Recommended for most applications
+            
+            With clamp_i=False:
+                
+                - Output clamped to [out_min, out_max] on next update()
+                - Integrator not modified immediately
+                - May cause output jump when limits expand
+                - Use only when integrator state must be preserved
+        
+        Integrator Limits:
+            
+            The integrator limits (i_min, i_max) track the output limits unless
+            explicitly set differently. When output limits change:
+                
+                - If i_min/i_max were not explicitly set, they follow out_min/out_max
+                - If i_min/i_max were explicitly set, they remain unchanged
+                - Integrator limits should generally be ≤ output limits
+        
+        Use Cases:
+            
+            - Actuator constraint changes (motor derating, valve repositioning)
+            - Operating mode switching (eco mode, sport mode)
+            - Safety limit adjustments (temperature limits, speed limits)
+            - Battery-aware control (limit output based on charge level)
+            - Load-dependent limiting (heavy load = reduced acceleration)
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> 
+            >>> # Temperature controller
+            >>> pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...           out_min=0.0, out_max=100.0)  # 0-100% heater power
+            >>> pid.set_setpoint(25.0)
+            >>> 
+            >>> # Normal operation
+            >>> temp = 20.0
+            >>> power = pid.update(temp)
+            >>> print(f"Power: {power:.1f}%")
+            >>> # Power: 85.0%
+            >>> 
+            >>> # Reduce limits due to low battery
+            >>> battery_level = 0.5  # 50% charge
+            >>> max_power = 100.0 * battery_level
+            >>> pid.set_output_limits(0.0, max_power, clamp_i=True)
+            >>> print(f"New max power: {max_power:.1f}%")
+            >>> # New max power: 50.0%
+            >>> 
+            >>> # Next update respects new limits
+            >>> power = pid.update(20.0)
+            >>> print(f"Limited power: {power:.1f}%")
+            >>> # Limited power: 50.0% (clamped)
+            >>> 
+            >>> # Operating mode switching
+            >>> def mode_based_limiting():
+            ...     motor_pid = PID(kp=1.5, ki=0.8, kd=0.05, fs=50.0,
+            ...                     out_min=-100.0, out_max=100.0)
+            ...     
+            ...     mode = "eco"  # eco, normal, sport
+            ...     
+            ...     if mode == "eco":
+            ...         motor_pid.set_output_limits(-50.0, 50.0, clamp_i=True)
+            ...     elif mode == "normal":
+            ...         motor_pid.set_output_limits(-80.0, 80.0, clamp_i=True)
+            ...     else:  # sport
+            ...         motor_pid.set_output_limits(-100.0, 100.0, clamp_i=True)
+            ...     
+            ...     return motor_pid
+            >>> 
+            >>> # Battery-aware control
+            >>> def battery_aware_control():
+            ...     pid = PID(kp=2.0, ki=1.0, kd=0.0, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     while True:
+            ...         battery_voltage = read_battery()
+            ...         
+            ...         # Scale max output based on battery
+            ...         if battery_voltage > 11.0:  # Full power
+            ...             pid.set_output_limits(0.0, 100.0, clamp_i=True)
+            ...         elif battery_voltage > 10.0:  # Reduced power
+            ...             pid.set_output_limits(0.0, 70.0, clamp_i=True)
+            ...         else:  # Low battery
+            ...             pid.set_output_limits(0.0, 40.0, clamp_i=True)
+            ...         
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            >>> 
+            >>> # Load-dependent limiting
+            >>> def load_adaptive_limits():
+            ...     pid = PID(kp=1.5, ki=0.8, kd=0.05, fs=50.0,
+            ...               out_min=-100.0, out_max=100.0)
+            ...     
+            ...     current_load = measure_load()
+            ...     
+            ...     # Reduce acceleration limit with heavy loads
+            ...     if current_load > 80:  # Heavy load (kg)
+            ...         pid.set_output_limits(-60.0, 60.0, clamp_i=True)
+            ...     elif current_load > 50:  # Medium load
+            ...         pid.set_output_limits(-80.0, 80.0, clamp_i=True)
+            ...     else:  # Light load
+            ...         pid.set_output_limits(-100.0, 100.0, clamp_i=True)
+            >>> 
+            >>> # Emergency limit reduction
+            >>> def emergency_derate():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     temperature = read_controller_temp()
+            ...     
+            ...     if temperature > 85:  # Overheating
+            ...         # Reduce to 30% immediately
+            ...         pid.set_output_limits(0.0, 30.0, clamp_i=True)
+            ...         print("Emergency derate activated")
+            ...     elif temperature > 75:  # Hot
+            ...         # Reduce to 60%
+            ...         pid.set_output_limits(0.0, 60.0, clamp_i=True)
+            >>> 
+            >>> # Invalid configuration
+            >>> try:
+            ...     pid.set_output_limits(100.0, 0.0)  # max < min
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     pid.set_output_limits(50.0, 50.0)  # max == min
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+        ```
+        """
+        ...
+    
+    def set_gains(self, kp: float | None = None, ki: float | None = None, 
+                  kd: float | None = None) -> None:
+        """
+        Update PID gains. Only provided gains are changed.
+        
+        Allows runtime adjustment of PID gains for adaptive control, gain
+        scheduling, or online tuning. Unchanged gains retain their current values.
+        The controller state (integrator, derivative filter) is preserved, enabling
+        smooth gain transitions without output discontinuities.
+        
+        :param kp: New proportional gain (must be >= 0), or None to leave unchanged
+        :param ki: New integral gain (must be >= 0), or None to leave unchanged
+        :param kd: New derivative gain (must be >= 0), or None to leave unchanged
+        
+        :raises FilterConfigurationError: If any provided gain < 0
+        :raises TypeError: If gain values cannot be converted to float
+        
+        Gain Effects:
+            
+            Proportional Gain (kp):
+                
+                - Increasing: Faster response, reduced steady-state error,
+                             potential overshoot, reduced stability margin
+                - Decreasing: Slower response, increased steady-state error,
+                             reduced overshoot, improved stability
+                - Zero: No immediate response to error (P action disabled)
+            
+            Integral Gain (ki):
+                
+                - Increasing: Faster elimination of steady-state error,
+                             increased overshoot, potential oscillation
+                - Decreasing: Slower elimination of steady-state error,
+                             reduced overshoot, improved stability
+                - Zero: Steady-state error not eliminated (I action disabled)
+            
+            Derivative Gain (kd):
+                
+                - Increasing: Faster damping of oscillations, improved stability,
+                             increased noise amplification
+                - Decreasing: Slower damping, reduced stability margin,
+                             reduced noise sensitivity
+                - Zero: No anticipatory action (D action disabled)
+        
+        Use Cases:
+            
+            - Gain scheduling based on operating point
+            - Adaptive control based on system identification
+            - Online tuning (manual or auto-tuning algorithms)
+            - Mode-dependent gains (startup, normal, emergency)
+            - Load-dependent gain adjustments
+            - Performance vs stability trade-offs
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> 
+            >>> # Create controller with initial gains
+            >>> pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...           out_min=0.0, out_max=100.0)
+            >>> pid.set_setpoint(25.0)
+            >>> 
+            >>> # Update only kp
+            >>> pid.set_gains(kp=3.0)  # ki, kd unchanged
+            >>> 
+            >>> # Update ki and kd, leave kp unchanged
+            >>> pid.set_gains(ki=0.8, kd=0.15)
+            >>> 
+            >>> # Update all gains
+            >>> pid.set_gains(kp=2.5, ki=0.6, kd=0.12)
+            >>> 
+            >>> # Gain scheduling based on error magnitude
+            >>> def gain_scheduling_controller():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(25.0)
+            ...     
+            ...     while True:
+            ...         temp = read_sensor()
+            ...         error = abs(25.0 - temp)
+            ...         
+            ...         # Adjust gains based on error
+            ...         if error > 10.0:  # Far from setpoint
+            ...             pid.set_gains(kp=3.0, ki=1.0, kd=0.2)
+            ...         elif error > 2.0:  # Moderate error
+            ...             pid.set_gains(kp=2.0, ki=0.5, kd=0.1)
+            ...         else:  # Near setpoint
+            ...             pid.set_gains(kp=1.0, ki=0.3, kd=0.05)
+            ...         
+            ...         output = pid.update(temp)
+            >>> 
+            >>> # Mode-dependent gains
+            >>> def mode_adaptive_gains():
+            ...     motor_pid = PID(kp=1.5, ki=0.8, kd=0.05, fs=50.0,
+            ...                     out_min=-100.0, out_max=100.0)
+            ...     
+            ...     mode = "normal"  # startup, normal, precision
+            ...     
+            ...     if mode == "startup":
+            ...         motor_pid.set_gains(kp=2.5, ki=1.5, kd=0.1)
+            ...     elif mode == "normal":
+            ...         motor_pid.set_gains(kp=1.5, ki=0.8, kd=0.05)
+            ...     else:  # precision
+            ...         motor_pid.set_gains(kp=0.8, ki=0.3, kd=0.02)
+            >>> 
+            >>> # Load-dependent gain adjustment
+            >>> def load_adaptive_gains():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     load = measure_load()
+            ...     scale_factor = 1.0 / (1.0 + load/100.0)
+            ...     
+            ...     pid.set_gains(
+            ...         kp=2.0 * scale_factor,
+            ...         ki=0.5 * scale_factor,
+            ...         kd=0.1 * scale_factor
+            ...     )
+            >>> 
+            >>> # Invalid gain values
+            >>> try:
+            ...     pid.set_gains(kp=-1.0)  # Negative gain
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+        ```
+        
+        Notes:
+            
+            - Gain changes take effect on the next update() call
+            - Controller state (integrator, derivative filter) is preserved
+            - No output discontinuity when gains change
+            - For aggressive tuning, consider resetting controller after gain change
+            - Use gain scheduling carefully to avoid instability
+        """
+        ...
+    
+    def set_beta(self, beta: float) -> None:
+        """
+        Set setpoint weighting for proportional term.
+        
+        Configures the proportional term's response to setpoint changes, enabling
+        control over overshoot behavior. Beta = 0 implements proportional-on-
+        measurement (P-on-M), eliminating derivative kick and reducing overshoot
+        on setpoint steps. Beta = 1 provides full proportional action for fastest
+        response but may cause overshoot.
+        
+        :param beta: Setpoint weighting in range [0, 1]
+                     - 0.0: Proportional-on-measurement only (no overshoot on SP change)
+                     - 0.5: Partial setpoint weighting (reduced overshoot)
+                     - 1.0: Full proportional action (fastest response, may overshoot)
+        
+        :raises FilterConfigurationError: If beta not in [0, 1]
+        :raises TypeError: If beta cannot be converted to float
+        
+        Control Law with Beta:
+            
+            Proportional term: P = Kp × (beta × setpoint - measurement)
+            
+            When beta = 0:
+                
+                - P = -Kp × measurement (proportional-on-measurement)
+                - No immediate response to setpoint changes
+                - Eliminates overshoot on setpoint steps
+                - Slower rise time
+            
+            When beta = 1:
+                
+                - P = Kp × (setpoint - measurement) (standard P term)
+                - Immediate response to setpoint changes
+                - May cause overshoot on setpoint steps
+                - Faster rise time
+        
+        Beta Selection Guidelines:
+            
+            Use beta = 0.0 when:
+                
+                - Overshoot is unacceptable (safety, quality)
+                - Setpoint changes frequently
+                - System is highly responsive
+                - Example: Temperature ovens, level control
+            
+            Use beta = 0.3-0.7 when:
+                
+                - Moderate overshoot acceptable
+                - Balance between speed and overshoot
+                - General-purpose applications
+                - Example: HVAC, motor positioning
+            
+            Use beta = 1.0 when:
+                
+                - Fast response is critical
+                - Overshoot acceptable or desired
+                - Setpoint changes rarely
+                - Example: Fast servo systems, tracking control
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> import time
+            >>> 
+            >>> # Temperature controller - no overshoot allowed
+            >>> oven_pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                out_min=0.0, out_max=100.0,
+            ...                beta=0.0)  # No overshoot
+            >>> oven_pid.set_setpoint(180.0)  # 180°C target
+            >>> 
+            >>> # Motor position - fast response desired
+            >>> servo_pid = PID(kp=5.0, ki=2.0, kd=0.5, fs=100.0,
+            ...                 out_min=-100.0, out_max=100.0,
+            ...                 beta=1.0)  # Full proportional action
+            >>> 
+            >>> # HVAC - balanced performance
+            >>> hvac_pid = PID(kp=1.5, ki=0.3, kd=0.05, fs=1.0,
+            ...                out_min=0.0, out_max=100.0,
+            ...                beta=0.5)  # Moderate overshoot
+            >>> 
+            >>> # Demonstrating beta effect on setpoint step
+            >>> def compare_beta_response():
+            ...     # Two identical controllers, different beta
+            ...     pid_standard = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                        out_min=0.0, out_max=100.0, beta=1.0)
+            ...     pid_no_overshoot = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                            out_min=0.0, out_max=100.0, beta=0.0)
+            ...     
+            ...     # Setpoint step from 0 to 100
+            ...     pid_standard.set_setpoint(100.0)
+            ...     pid_no_overshoot.set_setpoint(100.0)
+            ...     
+            ...     # Simulate response
+            ...     measurement = 0.0
+            ...     for i in range(100):
+            ...         out1 = pid_standard.update(measurement)
+            ...         out2 = pid_no_overshoot.update(measurement)
+            ...         
+            ...         # beta=1.0 will show larger initial output
+            ...         # beta=0.0 will show gradual increase
+            ...         if i < 5:
+            ...             print(f"Step {i}: beta=1.0 → {out1:.1f}, beta=0.0 → {out2:.1f}")
+            >>> 
+            >>> # Application-specific beta selection
+            >>> def application_beta_selection():
+            ...     # Medical device - zero overshoot
+            ...     drug_pump = PID(kp=1.0, ki=0.2, kd=0.05, fs=10.0,
+            ...                     out_min=0.0, out_max=100.0)
+            ...     drug_pump.set_beta(0.0)  # Safety critical
+            ...     
+            ...     # 3D printer extruder - minimal overshoot
+            ...     extruder = PID(kp=3.0, ki=1.0, kd=0.2, fs=10.0,
+            ...                    out_min=0.0, out_max=100.0)
+            ...     extruder.set_beta(0.2)  # Quality critical
+            ...     
+            ...     # Robot joint - fast response
+            ...     robot_joint = PID(kp=5.0, ki=2.0, kd=0.5, fs=100.0,
+            ...                       out_min=-100.0, out_max=100.0)
+            ...     robot_joint.set_beta(0.8)  # Speed critical
+            >>> 
+            >>> # Adaptive beta based on setpoint change magnitude
+            >>> def adaptive_beta():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0, beta=0.5)
+            ...     
+            ...     prev_setpoint = 50.0
+            ...     pid.set_setpoint(prev_setpoint)
+            ...     
+            ...     while True:
+            ...         new_setpoint = get_new_setpoint()
+            ...         sp_change = abs(new_setpoint - prev_setpoint)
+            ...         
+            ...         # Adjust beta based on setpoint change size
+            ...         if sp_change > 20:  # Large change
+            ...             pid.set_beta(0.0)  # Avoid overshoot
+            ...         elif sp_change > 5:  # Medium change
+            ...             pid.set_beta(0.3)  # Small overshoot OK
+            ...         else:  # Small change
+            ...             pid.set_beta(0.8)  # Fast response
+            ...         
+            ...         pid.set_setpoint(new_setpoint)
+            ...         prev_setpoint = new_setpoint
+            >>> 
+            >>> # Invalid beta values
+            >>> try:
+            ...     oven_pid.set_beta(-0.1)  # Below 0
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+            >>> 
+            >>> try:
+            ...     oven_pid.set_beta(1.5)  # Above 1
+            >>> except FilterConfigurationError as e:
+            ...     print(f"Error: {e}")
+        ```
+        
+        Notes:
+            
+            - Beta change takes effect on next update() call
+            - Does not affect integral or derivative terms
+            - Does not cause output discontinuity
+            - Commonly set to 0.0 for temperature control
+            - Commonly set to 1.0 for position/velocity control
+            - Consider adaptive beta for varying setpoint dynamics
+        """
+        ...
+    
+    def set_tau_d(self, tau: float) -> None:
+        """
+        Set derivative filter time constant.
+        
+        Configures first-order low-pass filtering of the derivative term to reduce
+        high-frequency noise amplification. The derivative term is naturally
+        sensitive to measurement noise; filtering improves stability and reduces
+        control output jitter at the cost of slightly reduced derivative action.
+        
+        :param tau: Time constant in seconds (> 0 enables filter, 0 disables)
+        
+        :raises FilterConfigurationError: If tau < 0
+        :raises TypeError: If tau cannot be converted to float
+        
+        Filter Characteristics:
+            
+            Derivative filter equation:
+                
+                D_filtered = alpha × D_raw + (1 - alpha) × D_filtered_prev
+                
+                where alpha = dt / (tau + dt)
+            
+            Effect of tau:
+                
+                - tau = 0: No filtering (maximum noise amplification)
+                - tau = 0.01-0.05s: Light filtering (responsive, some noise)
+                - tau = 0.1-0.5s: Moderate filtering (balanced)
+                - tau > 0.5s: Heavy filtering (smooth, reduced D action)
+            
+            Cutoff frequency:
+                
+                f_cutoff ≈ 1 / (2π × tau)
+                
+                Example: tau = 0.1s → fc ≈ 1.6 Hz
+        
+        Tau Selection Guidelines:
+            
+            Use tau = 0 when:
+                
+                - Measurement is very clean (low noise)
+                - Maximum derivative action needed
+                - Sampling rate is low relative to system dynamics
+            
+            Use tau = 0.01-0.1s when:
+                
+                - Moderate measurement noise
+                - General-purpose applications
+                - Sampling rate 10-100 Hz
+            
+            Use tau > 0.1s when:
+                
+                - High measurement noise
+                - Derivative term causing output jitter
+                - Need smooth control output
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> 
+            >>> # No filtering - clean measurement
+            >>> position_pid = PID(kp=5.0, ki=2.0, kd=0.5, fs=100.0,
+            ...                    out_min=-100.0, out_max=100.0,
+            ...                    tau_d_filter=0.0)  # No filter
+            >>> 
+            >>> # Light filtering - some noise
+            >>> temp_pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                out_min=0.0, out_max=100.0,
+            ...                tau_d_filter=0.05)  # fc ≈ 3 Hz
+            >>> 
+            >>> # Heavy filtering - noisy sensor
+            >>> pressure_pid = PID(kp=1.5, ki=0.3, kd=0.2, fs=10.0,
+            ...                    out_min=0.0, out_max=100.0,
+            ...                    tau_d_filter=0.2)  # fc ≈ 0.8 Hz
+            >>> 
+            >>> # Adjust filtering at runtime
+            >>> def adaptive_derivative_filtering():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0, tau_d_filter=0.05)
+            ...     
+            ...     # Measure noise level
+            ...     noise_std = measure_noise_std()
+            ...     
+            ...     # Adjust filter based on noise
+            ...     if noise_std > 0.5:  # High noise
+            ...         pid.set_tau_d(0.2)  # Heavy filtering
+            ...     elif noise_std > 0.1:  # Moderate noise
+            ...         pid.set_tau_d(0.1)  # Moderate filtering
+            ...     else:  # Low noise
+            ...         pid.set_tau_d(0.02)  # Light filtering
+            >>> 
+            >>> # Demonstrating filter effect
+            >>> def compare_filtering():
+            ...     # Two controllers, different filtering
+            ...     pid_unfiltered = PID(kp=2.0, ki=0.5, kd=0.5, fs=10.0,
+            ...                          out_min=0.0, out_max=100.0, tau_d_filter=0.0)
+            ...     pid_filtered = PID(kp=2.0, ki=0.5, kd=0.5, fs=10.0,
+            ...                        out_min=0.0, out_max=100.0, tau_d_filter=0.1)
+            ...     
+            ...     # Add noise to measurement
+            ...     import random
+            ...     clean_signal = 50.0
+            ...     
+            ...     for i in range(50):
+            ...         noisy_meas = clean_signal + random.gauss(0, 2.0)
+            ...         
+            ...         out1 = pid_unfiltered.update(noisy_meas)
+            ...         out2 = pid_filtered.update(noisy_meas)
+            ...         
+            ...         # Unfiltered will show more output variation
+            ...         if i % 10 == 0:
+            ...             print(f"Unfiltered: {out1:.2f}, Filtered: {out2:.2f}")
+            >>> 
+            >>> # Calculate appropriate tau from cutoff frequency
+            >>> def tau_from_cutoff_frequency(fc_hz):
+            ...     '''Convert desired cutoff frequency to tau.'''
+            ...     import math
+            ...     tau = 1.0 / (2.0 * math.pi * fc_hz)
+            ...     return tau
+            >>> 
+            >>> # Example: Want 2 Hz cutoff
+            >>> tau_value = tau_from_cutoff_frequency(2.0)
+            >>> temp_pid.set_tau_d(tau_value)  # tau ≈ 0.08s
+            >>> 
+            >>> # Mode-dependent filtering
+            >>> def mode_based_filtering():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     mode = "normal"  # startup, normal, precision
+            ...     
+            ...     if mode == "startup":
+            ...         # Fast response, less filtering
+            ...         pid.set_tau_d(0.02)
+            ...     elif mode == "normal":
+            ...         # Balanced
+            ...         pid.set_tau_d(0.1)
+            ...     else:  # precision
+            ...         # Smooth output, heavy filtering
+            ...         pid.set_tau_d(0.3)
+            >>> 
+            >>> # Disable filtering
+            >>> temp_pid.set_tau_d(0.0)  # No derivative filter
+        ```
+        
+        Notes:
+            
+            - Tau change takes effect on next update() call
+            - Does not affect proportional or integral terms
+            - Larger tau = smoother derivative, more lag
+            - Smaller tau = noisier derivative, less lag
+            - Typical range: 0.0 to 0.5 seconds
+            - Consider tau = 1/(10×fs) as starting point
+        """
+        ...
+    
+    def set_aw(self, mode: int | None = None, k_aw: float | None = None) -> None:
+        """
+        Configure anti-windup settings.
+        
+        Adjusts the controller's anti-windup strategy to prevent integrator buildup
+        when the output saturates. Anti-windup is critical for systems with actuator
+        limits to avoid excessive overshoot and long settling times when returning
+        from saturation. Three modes are available: no anti-windup, conditional
+        integration (clamping), and back-calculation.
+        
+        :param mode: Anti-windup mode (AW_NONE, AW_CLAMP, or AW_BACKCALC), or None to leave unchanged
+        :param k_aw: Back-calculation gain for AW_BACKCALC mode (>= 0), or None to leave unchanged
+        
+        :raises FilterConfigurationError: If mode is invalid or k_aw < 0
+        :raises TypeError: If parameters cannot be converted to appropriate types
+        
+        Anti-Windup Modes:
+            
+            AW_NONE (0): No anti-windup
+                
+                - Integrator continues to accumulate when saturated
+                - Can lead to large overshoot when constraint is removed
+                - Use only if output never saturates or for testing
+            
+            AW_CLAMP (1): Conditional integration (default)
+                
+                - Stops integration when output is saturated
+                - Simple and effective for most applications
+                - Minimal computational overhead
+                - Recommended for general use
+            
+            AW_BACKCALC (2): Back-calculation with gain k_aw
+                
+                - Drives integrator back when saturated
+                - More aggressive than clamping
+                - Requires tuning of k_aw gain
+                - Better performance for systems with large saturation
+        
+        Back-Calculation Gain (k_aw):
+            
+            Used only in AW_BACKCALC mode:
+                
+                - k_aw = 0: No back-calculation (equivalent to AW_CLAMP)
+                - k_aw = 1: Standard back-calculation rate
+                - k_aw > 1: Faster integrator reduction (aggressive)
+                - k_aw < 1: Slower integrator reduction (conservative)
+            
+            Typical values: 0.5 to 2.0
+            
+            Selection guidelines:
+                
+                - Start with k_aw = 1.0
+                - Increase if overshoot after saturation is excessive
+                - Decrease if integrator resets too quickly
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> 
+            >>> # Default: clamping anti-windup
+            >>> pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...           out_min=0.0, out_max=100.0,
+            ...           aw_mode=PID.AW_CLAMP)  # Default
+            >>> 
+            >>> # Back-calculation anti-windup
+            >>> motor_pid = PID(kp=1.5, ki=0.8, kd=0.05, fs=50.0,
+            ...                 out_min=-100.0, out_max=100.0,
+            ...                 aw_mode=PID.AW_BACKCALC,
+            ...                 k_aw=1.0)
+            >>> 
+            >>> # Change anti-windup mode at runtime
+            >>> pid.set_aw(mode=PID.AW_BACKCALC, k_aw=1.5)
+            >>> 
+            >>> # Demonstrating anti-windup necessity
+            >>> def demonstrate_windup():
+            ...     # Two controllers, with and without anti-windup
+            ...     pid_no_aw = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                     out_min=0.0, out_max=100.0,
+            ...                     aw_mode=PID.AW_NONE)
+            ...     
+            ...     pid_with_aw = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                       out_min=0.0, out_max=100.0,
+            ...                       aw_mode=PID.AW_CLAMP)
+            ...     
+            ...     # Large setpoint step with slow system
+            ...     pid_no_aw.set_setpoint(100.0)
+            ...     pid_with_aw.set_setpoint(100.0)
+            ...     
+            ...     # Simulate: output saturates, integrator builds up
+            ...     for i in range(100):
+            ...         measurement = i * 0.5  # Slow system
+            ...         
+            ...         out1 = pid_no_aw.update(measurement)
+            ...         out2 = pid_with_aw.update(measurement)
+            ...         
+            ...         # pid_no_aw will show larger overshoot later
+            >>> 
+            >>> # Application-specific anti-windup selection
+            >>> def select_antiwindup_strategy():
+            ...     # Fast system with frequent saturation
+            ...     servo = PID(kp=5.0, ki=2.0, kd=0.5, fs=100.0,
+            ...                 out_min=-100.0, out_max=100.0)
+            ...     servo.set_aw(mode=PID.AW_BACKCALC, k_aw=1.5)  # Aggressive
+            ...     
+            ...     # Slow system with occasional saturation
+            ...     heater = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                  out_min=0.0, out_max=100.0)
+            ...     heater.set_aw(mode=PID.AW_CLAMP)  # Simple clamping
+            ...     
+            ...     # System that should never saturate
+            ...     flow = PID(kp=1.0, ki=0.2, kd=0.05, fs=10.0,
+            ...                out_min=-50.0, out_max=50.0)
+            ...     flow.set_aw(mode=PID.AW_NONE)  # No anti-windup needed
+            >>> 
+            >>> # Adaptive anti-windup based on saturation frequency
+            >>> def adaptive_antiwindup():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     saturation_count = 0
+            ...     total_updates = 0
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...         
+            ...         # Check if saturated
+            ...         if output >= 99.9 or output <= 0.1:
+            ...             saturation_count += 1
+            ...         
+            ...         total_updates += 1
+            ...         
+            ...         # Adjust anti-windup every 100 samples
+            ...         if total_updates % 100 == 0:
+            ...             saturation_rate = saturation_count / 100.0
+            ...             
+            ...             if saturation_rate > 0.5:  # Frequent saturation
+            ...                 pid.set_aw(mode=PID.AW_BACKCALC, k_aw=2.0)
+            ...             elif saturation_rate > 0.1:  # Occasional saturation
+            ...                 pid.set_aw(mode=PID.AW_CLAMP)
+            ...             else:  # Rare saturation
+            ...                 pid.set_aw(mode=PID.AW_NONE)
+            ...             
+            ...             saturation_count = 0
+            >>> 
+            >>> # Tuning back-calculation gain
+            >>> def tune_backcalc_gain():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0,
+            ...               aw_mode=PID.AW_BACKCALC, k_aw=1.0)
+            ...     
+            ...     # Test different k_aw values
+            ...     for k_aw_test in [0.5, 1.0, 1.5, 2.0]:
+            ...         pid.set_aw(k_aw=k_aw_test)
+            ...         pid.reset()
+            ...         
+            ...         # Measure overshoot after saturation
+            ...         overshoot = simulate_step_response(pid)
+            ...         print(f"k_aw={k_aw_test}: overshoot={overshoot:.1f}%")
+            >>> 
+            >>> # Change only k_aw, keep mode
+            >>> motor_pid.set_aw(k_aw=2.0)  # mode unchanged
+            >>> 
+            >>> # Change only mode, keep k_aw
+            >>> motor_pid.set_aw(mode=PID.AW_CLAMP)  # k_aw unchanged
+        ```
+        
+        Notes:
+            
+            - Settings take effect on next update() call
+            - AW_CLAMP is recommended for most applications
+            - AW_BACKCALC provides better performance but needs tuning
+            - AW_NONE should only be used if saturation never occurs
+            - k_aw has no effect in AW_NONE or AW_CLAMP modes
+            - Consider actuator dynamics when choosing anti-windup
+        """
+        ...
+    
+    def preload_integrator(self, i0: float) -> None:
+        """
+        Manually set integrator state (clamped to i_min/i_max).
+        
+        Directly sets the controller's integrator value, enabling initialization
+        to a specific state or compensation for known disturbances. The provided
+        value is automatically clamped to the configured integrator limits
+        [i_min, i_max]. Useful for bumpless initialization, feed-forward
+        compensation, or recovering from reset conditions.
+        
+        :param i0: Desired integrator value (will be clamped to [i_min, i_max])
+        
+        :raises TypeError: If i0 cannot be converted to float
+        
+        Use Cases:
+            
+            Bumpless initialization:
+                
+                - Set integrator to match expected steady-state output
+                - Prevents initial output transient
+                - Example: Start heater at 30% power → preload integrator to 30.0
+            
+            Feed-forward compensation:
+                
+                - Preload known disturbance compensation
+                - Reduces settling time for predictable loads
+                - Example: Known gravity compensation in vertical motion
+            
+            State recovery:
+                
+                - Restore controller state after temporary shutdown
+                - Maintain continuity in interrupted control
+                - Example: Resume from saved state after power cycle
+            
+            Manual-to-auto transfer:
+                
+                - Initialize integrator to match manual output
+                - Alternative to tracking mode for simple cases
+                - Example: Operator manually set 50% → preload to 50.0
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> 
+            >>> # Bumpless startup for heater
+            >>> heater_pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                  out_min=0.0, out_max=100.0)
+            >>> heater_pid.set_setpoint(25.0)
+            >>> 
+            >>> # System at 20°C, expect ~30% power needed
+            >>> heater_pid.preload_integrator(30.0)
+            >>> 
+            >>> # First update will start near 30% output
+            >>> initial_temp = 20.0
+            >>> power = heater_pid.update(initial_temp)
+            >>> print(f"Initial power: {power:.1f}%")
+            >>> # Initial power: 32.5% (close to preloaded value)
+            >>> 
+            >>> # Feed-forward for gravity compensation
+            >>> def gravity_compensation():
+            ...     # Vertical motion controller
+            ...     pid = PID(kp=5.0, ki=2.0, kd=0.5, fs=100.0,
+            ...               out_min=-100.0, out_max=100.0)
+            ...     
+            ...     # Known gravity compensation needed: 35% thrust
+            ...     gravity_compensation_value = 35.0
+            ...     pid.preload_integrator(gravity_compensation_value)
+            ...     
+            ...     # PID will regulate around this baseline
+            ...     pid.set_setpoint(10.0)  # Target 10m height
+            >>> 
+            >>> # State recovery after power cycle
+            >>> def save_and_restore_state():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     # Run for a while
+            ...     for i in range(100):
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...     
+            ...     # Save integrator state before shutdown
+            ...     saved_integrator = pid.u - (pid.kp * error) - (pid.kd * derivative)
+            ...     save_to_nvram(saved_integrator)
+            ...     
+            ...     # ... power cycle ...
+            ...     
+            ...     # Restore state after restart
+            ...     new_pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                   out_min=0.0, out_max=100.0)
+            ...     restored_value = load_from_nvram()
+            ...     new_pid.preload_integrator(restored_value)
+            >>> 
+            >>> # Manual-to-auto transfer (simple case)
+            >>> def simple_bumpless_transfer():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(50.0)
+            ...     
+            ...     # Operator has been running manually at 45%
+            ...     manual_output = 45.0
+            ...     
+            ...     # Transfer to auto: preload integrator
+            ...     pid.preload_integrator(manual_output)
+            ...     
+            ...     # First auto update will be close to manual output
+            ...     measurement = read_sensor()
+            ...     auto_output = pid.update(measurement)
+            ...     print(f"Manual: {manual_output:.1f}%, Auto: {auto_output:.1f}%")
+            >>> 
+            >>> # Clamping demonstration
+            >>> def demonstrate_clamping():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0,
+            ...               i_min=0.0, i_max=100.0)
+            ...     
+            ...     # Try to preload beyond limits
+            ...     pid.preload_integrator(150.0)  # Above i_max
+            ...     # Integrator will be clamped to 100.0
+            ...     
+            ...     pid.preload_integrator(-50.0)  # Below i_min
+            ...     # Integrator will be clamped to 0.0
+            >>> 
+            >>> # Adaptive baseline adjustment
+            >>> def adaptive_baseline():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     # Measure steady-state disturbance
+            ...     disturbance = measure_disturbance()
+            ...     
+            ...     # Preload to compensate
+            ...     pid.preload_integrator(disturbance)
+            ...     
+            ...     # PID now regulates around new baseline
+            >>> 
+            >>> # Multi-phase initialization
+            >>> def multi_phase_startup():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     # Phase 1: Warmup at 20%
+            ...     pid.preload_integrator(20.0)
+            ...     pid.set_setpoint(phase1_target)
+            ...     # ... run phase 1 ...
+            ...     
+            ...     # Phase 2: Production at 50%
+            ...     pid.preload_integrator(50.0)
+            ...     pid.set_setpoint(phase2_target)
+            ...     # ... run phase 2 ...
+        ```
+        
+        Notes:
+            
+            - Provided value is clamped to [i_min, i_max]
+            - Does not affect proportional or derivative terms
+            - Takes effect immediately (next update() uses new value)
+            - Use with caution - incorrect preload can cause transients
+            - For true bumpless transfer, consider tracking mode
+            - Can be called multiple times to adjust integrator
+        """
+        ...
+    
+    def start_tracking(self, u_manual: float) -> None:
+        """
+        Enable tracking mode to follow external output.
+        
+        Activates tracking mode where the controller's integrator is continuously
+        adjusted to make the PID output match an external (manual) output value.
+        This enables perfect bumpless transfer when switching from manual to
+        automatic control - the controller output matches the manual output at
+        the moment of transfer, eliminating output discontinuities.
+        
+        :param u_manual: External output value to track
+        
+        :raises TypeError: If u_manual cannot be converted to float
+        
+        Tracking Mode Behavior:
+            
+            While tracking is active:
+                
+                - Proportional and derivative terms computed normally
+                - Integrator adjusted to make: u_PID = u_manual
+                - Integrator equation: I = u_manual - P - D
+                - Controller output forced to u_manual
+                - No actual control action (open loop)
+            
+            On stop_tracking():
+                
+                - Integrator retains last tracked value
+                - Controller resumes normal closed-loop operation
+                - Output continuous (no bump or step)
+        
+        Use Cases:
+            
+            Manual-to-auto transfer:
+                
+                - Operator controls manually, PID tracks
+                - Switch to auto: PID output = last manual output
+                - Zero output discontinuity at transfer
+            
+            External control handoff:
+                
+                - Another controller manages output
+                - PID tracks for bumpless takeover
+                - Smooth control authority transfer
+            
+            Initialization with unknown steady-state:
+                
+                - System running under external control
+                - PID tracks to learn required output
+                - Transfer when PID is synchronized
+            
+            Safety interlocks:
+                
+                - Safety system overrides PID
+                - PID tracks safety output
+                - Bumpless return when safe
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> 
+            >>> # Manual-to-auto bumpless transfer
+            >>> pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...           out_min=0.0, out_max=100.0)
+            >>> pid.set_setpoint(50.0)
+            >>> 
+            >>> manual_mode = True
+            >>> manual_output = 30.0
+            >>> 
+            >>> while True:
+            ...     measurement = read_sensor()
+            ...     
+            ...     if manual_mode:
+            ...         # Manual mode: operator controls
+            ...         manual_output = read_operator_input()
+            ...         
+            ...         # PID tracks manual output
+            ...         pid.start_tracking(manual_output)
+            ...         
+            ...         output = manual_output
+            ...     else:
+            ...         # Auto mode: PID controls
+            ...         pid.stop_tracking()
+            ...         output = pid.update(measurement)
+            ...     
+            ...     apply_output(output)
+            ...     
+            ...     # When switching manual→auto, no output bump
+            >>> 
+            >>> # External controller handoff
+            >>> def external_handoff():
+            ...     # Two controllers for same actuator
+            ...     pid_primary = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                       out_min=0.0, out_max=100.0)
+            ...     pid_backup = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                      out_min=0.0, out_max=100.0)
+            ...     
+            ...     use_primary = True
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         
+            ...         if use_primary:
+            ...             # Primary active, backup tracks
+            ...             output_primary = pid_primary.update(measurement)
+            ...             pid_backup.start_tracking(output_primary)
+            ...             output = output_primary
+            ...         else:
+            ...             # Backup active, primary tracks
+            ...             output_backup = pid_backup.update(measurement)
+            ...             pid_primary.start_tracking(output_backup)
+            ...             output = output_backup
+            ...         
+            ...         apply_output(output)
+            ...         
+            ...         # Can switch controllers without bump
+            >>> 
+            >>> # Safety override with tracking
+            >>> def safety_override_system():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(75.0)
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         safe = check_safety_conditions()
+            ...         
+            ...         if safe:
+            ...             # Normal operation
+            ...             pid.stop_tracking()
+            ...             output = pid.update(measurement)
+            ...         else:
+            ...             # Safety override: reduce output
+            ...             safe_output = calculate_safe_output()
+            ...             pid.start_tracking(safe_output)
+            ...             output = safe_output
+            ...         
+            ...         apply_output(output)
+            ...         
+            ...         # Bumpless transition safe ↔ normal
+            >>> 
+            >>> # Learning phase before control
+            >>> def learning_phase():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(60.0)
+            ...     
+            ...     # Phase 1: Learn by tracking existing control
+            ...     print("Learning phase...")
+            ...     for i in range(100):
+            ...         measurement = read_sensor()
+            ...         existing_output = read_existing_controller()
+            ...         
+            ...         pid.start_tracking(existing_output)
+            ...         pid.update(measurement)  # Update for tracking
+            ...     
+            ...     # Phase 2: Take over control
+            ...     print("Taking over control...")
+            ...     pid.stop_tracking()
+            ...     
+            ...     # Now PID controls with no bump
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...         apply_output(output)
+            >>> 
+            >>> # Cascade control with tracking
+            >>> def cascade_control():
+            ...     # Master PID sets setpoint for slave
+            ...     master_pid = PID(kp=1.0, ki=0.2, kd=0.05, fs=10.0,
+            ...                      out_min=0.0, out_max=100.0)
+            ...     slave_pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=100.0,
+            ...                     out_min=0.0, out_max=100.0)
+            ...     
+            ...     cascade_enabled = True
+            ...     
+            ...     while True:
+            ...         outer_measurement = read_outer_sensor()
+            ...         inner_measurement = read_inner_sensor()
+            ...         
+            ...         if cascade_enabled:
+            ...             # Cascade: master controls slave setpoint
+            ...             inner_setpoint = master_pid.update(outer_measurement)
+            ...             slave_pid.set_setpoint(inner_setpoint)
+            ...             slave_pid.stop_tracking()
+            ...             output = slave_pid.update(inner_measurement)
+            ...         else:
+            ...             # Single loop: slave tracks master output
+            ...             master_output = master_pid.update(outer_measurement)
+            ...             slave_pid.start_tracking(master_output)
+            ...             output = master_output
+            ...         
+            ...         apply_output(output)
+            >>> 
+            >>> # Gain-switched controller with tracking
+            >>> def gain_switched_control():
+            ...     # Two PIDs with different tuning
+            ...     pid_fast = PID(kp=5.0, ki=2.0, kd=0.5, fs=50.0,
+            ...                    out_min=-100.0, out_max=100.0)
+            ...     pid_smooth = PID(kp=1.0, ki=0.3, kd=0.05, fs=50.0,
+            ...                      out_min=-100.0, out_max=100.0)
+            ...     
+            ...     use_fast = True
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         error_magnitude = abs(measurement - setpoint)
+            ...         
+            ...         # Switch based on error
+            ...         if error_magnitude > 10:
+            ...             # Use fast controller
+            ...             if not use_fast:
+            ...                 pid_smooth.start_tracking(pid_fast.u)
+            ...             use_fast = True
+            ...         else:
+            ...             # Use smooth controller
+            ...             if use_fast:
+            ...                 pid_fast.start_tracking(pid_smooth.u)
+            ...             use_fast = False
+            ...         
+            ...         if use_fast:
+            ...             pid_smooth.start_tracking(pid_fast.u)
+            ...             output = pid_fast.update(measurement)
+            ...         else:
+            ...             pid_fast.start_tracking(pid_smooth.u)
+            ...             output = pid_smooth.update(measurement)
+            ...         
+            ...         apply_output(output)
+        ```
+        
+        Notes:
+            
+            - Tracking overrides normal PID computation
+            - Controller output forced to u_manual while tracking
+            - Integrator adjusted to maintain u_manual = P + I + D
+            - Must call update() even while tracking (to update P and D terms)
+            - Call stop_tracking() to resume normal control
+            - Tracking mode persists until stop_tracking() or reset()
+            - u_manual not clamped (tracking can exceed output limits)
+        """
+        ...
+    
+    def stop_tracking(self) -> None:
+        """
+        Disable tracking mode, return to normal PID operation.
+        
+        Deactivates tracking mode, allowing the controller to resume normal
+        closed-loop operation. The integrator retains its last tracked value,
+        ensuring output continuity (no bump) when transitioning from tracking
+        to normal control.
+        
+        :return: None
+        
+        Behavior on Stop:
+            
+            - Tracking mode flag cleared
+            - Integrator state preserved from last tracking update
+            - Next update() computes normal PID output
+            - Output continuous at transition (bumpless)
+            - Proportional and derivative terms resume normal computation
+        
+        Transition Continuity:
+            
+            At the moment of stop_tracking():
+                
+                - Last tracked output: u_manual
+                - Integrator state: I = u_manual - P - D
+                - First normal output: u_normal = P + I + D = u_manual
+                - Result: No output discontinuity
+        
+        Use Cases:
+            
+            - Complete manual-to-auto transfer
+            - Resume control after external override
+            - End of initialization/learning phase
+            - Return from safety override
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> 
+            >>> # Basic tracking cycle
+            >>> pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...           out_min=0.0, out_max=100.0)
+            >>> pid.set_setpoint(50.0)
+            >>> 
+            >>> # Enable tracking
+            >>> manual_output = 35.0
+            >>> pid.start_tracking(manual_output)
+            >>> 
+            >>> # Update while tracking
+            >>> for i in range(10):
+            ...     measurement = read_sensor()
+            ...     pid.update(measurement)  # Updates P and D, adjusts I
+            >>> 
+            >>> # Stop tracking, resume control
+            >>> pid.stop_tracking()
+            >>> 
+            >>> # Next update computes normal PID (no output bump)
+            >>> measurement = read_sensor()
+            >>> output = pid.update(measurement)
+            >>> 
+            >>> # State machine for manual/auto control
+            >>> def manual_auto_state_machine():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     state = "MANUAL"  # MANUAL or AUTO
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         mode_switch = read_mode_switch()
+            ...         
+            ...         # State transitions
+            ...         if mode_switch == "AUTO" and state == "MANUAL":
+            ...             # Manual → Auto: stop tracking
+            ...             pid.stop_tracking()
+            ...             state = "AUTO"
+            ...             print("Switched to AUTO mode")
+            ...         
+            ...         elif mode_switch == "MANUAL" and state == "AUTO":
+            ...             # Auto → Manual: will start tracking next iteration
+            ...             state = "MANUAL"
+            ...             print("Switched to MANUAL mode")
+            ...         
+            ...         # State actions
+            ...         if state == "MANUAL":
+            ...             manual_output = read_operator_input()
+            ...             pid.start_tracking(manual_output)
+            ...             output = manual_output
+            ...         else:  # AUTO
+            ...             output = pid.update(measurement)
+            ...         
+            ...         apply_output(output)
+            >>> 
+            >>> # Conditional auto-enable
+            >>> def conditional_auto_enable():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(60.0)
+            ...     
+            ...     auto_enabled = False
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         
+            ...         # Check if conditions met for auto control
+            ...         in_range = abs(measurement - 60.0) < 5.0
+            ...         system_stable = check_stability()
+            ...         
+            ...         if in_range and system_stable and not auto_enabled:
+            ...             # Enable auto control
+            ...             pid.stop_tracking()
+            ...             auto_enabled = True
+            ...             print("Auto control enabled")
+            ...         
+            ...         if auto_enabled:
+            ...             output = pid.update(measurement)
+            ...         else:
+            ...             # Manual control, PID tracks
+            ...             manual_output = get_manual_output()
+            ...             pid.start_tracking(manual_output)
+            ...             output = manual_output
+            ...         
+            ...         apply_output(output)
+            >>> 
+            >>> # Safety system with auto-resume
+            >>> def safety_with_auto_resume():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     in_override = False
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         safe = check_safety()
+            ...         
+            ...         if not safe and not in_override:
+            ...             # Enter override
+            ...             print("Safety override activated")
+            ...             in_override = True
+            ...         
+            ...         if safe and in_override:
+            ...             # Exit override
+            ...             pid.stop_tracking()
+            ...             print("Resuming normal control")
+            ...             in_override = False
+            ...         
+            ...         if in_override:
+            ...             safe_output = calculate_safe_output()
+            ...             pid.start_tracking(safe_output)
+            ...             output = safe_output
+            ...         else:
+            ...             output = pid.update(measurement)
+            ...         
+            ...         apply_output(output)
+            >>> 
+            >>> # Timed tracking release
+            >>> def timed_auto_transfer():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     # Track for 5 seconds, then auto
+            ...     import time
+            ...     start_time = time.time()
+            ...     tracking_duration = 5.0
+            ...     
+            ...     manual_output = 40.0
+            ...     pid.start_tracking(manual_output)
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         elapsed = time.time() - start_time
+            ...         
+            ...         if elapsed >= tracking_duration:
+            ...             # Time's up, enable auto
+            ...             pid.stop_tracking()
+            ...             
+            ...             # Now in auto mode
+            ...             output = pid.update(measurement)
+            ...         else:
+            ...             # Still tracking
+            ...             pid.update(measurement)  # Update for tracking
+            ...             output = manual_output
+            ...         
+            ...         apply_output(output)
+            ...         time.sleep(0.1)
+        ```
+        
+        Notes:
+            
+            - Safe to call even if not tracking (no effect)
+            - Integrator state preserved for bumpless transition
+            - Next update() after stop produces continuous output
+            - No need to track exit order with other method calls
+            - Can re-enable tracking later with start_tracking()
+        """
+        ...
+    
+    def reset(self) -> None:
+        """
+        Reset controller to initial state.
+        
+        Clears all internal controller state, returning it to the condition
+        immediately after construction. This is useful when starting control
+        of a different process, recovering from unusual conditions, or
+        restarting after a significant disturbance. All accumulated error
+        and history information is discarded.
+        
+        :return: None
+        
+        State Cleared by Reset:
+            
+            - Integrator (accumulated error): Set to 0
+            - Previous measurement (for derivative): Cleared
+            - Derivative filter state: Cleared
+            - Controller output: Set to 0
+            - Sample counter: Reset to 0
+            - Tracking mode: Disabled
+            - Setpoint: Preserved (not reset)
+            - Gains and limits: Preserved (not reset)
+        
+        Effects:
+            
+            - Next update() will compute derivative assuming zero previous measurement
+            - Integrator starts from zero (may cause transient if non-zero needed)
+            - Output returns to zero until next update()
+            - No memory of previous control actions
+        
+        When to Use Reset:
+            
+            Required:
+                
+                - Switching to control different process
+                - Process undergoes discontinuous state change
+                - Long period of inactivity (controller was stopped)
+                - Recovering from fault or error condition
+            
+            Optional but recommended:
+                
+                - Large setpoint changes (> 50% of range)
+                - Significant load or disturbance changes
+                - After tuning gain changes
+                - Mode transitions with different dynamics
+            
+            Usually not needed:
+                
+                - Normal setpoint changes
+                - Temporary measurement dropout
+                - Brief control interruptions
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> 
+            >>> # Create and run controller
+            >>> pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...           out_min=0.0, out_max=100.0)
+            >>> pid.set_setpoint(50.0)
+            >>> 
+            >>> # Run for a while
+            >>> for i in range(100):
+            ...     measurement = read_sensor()
+            ...     output = pid.update(measurement)
+            >>> 
+            >>> # Reset before switching processes
+            >>> pid.reset()
+            >>> pid.set_setpoint(75.0)  # New target
+            >>> 
+            >>> # Start fresh
+            >>> measurement = read_sensor()
+            >>> output = pid.update(measurement)
+            >>> 
+            >>> # Multi-process control
+            >>> def multi_process_controller():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     processes = ["A", "B", "C"]
+            ...     current_process = "A"
+            ...     
+            ...     for process in processes:
+            ...         # Reset when switching processes
+            ...         pid.reset()
+            ...         
+            ...         # Configure for new process
+            ...         setpoint = get_process_setpoint(process)
+            ...         pid.set_setpoint(setpoint)
+            ...         
+            ...         # Control this process
+            ...         for i in range(100):
+            ...             measurement = read_process_sensor(process)
+            ...             output = pid.update(measurement)
+            ...             apply_to_process(process, output)
+            >>> 
+            >>> # Error recovery
+            >>> def error_recovery_example():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(60.0)
+            ...     
+            ...     while True:
+            ...         try:
+            ...             measurement = read_sensor()
+            ...             output = pid.update(measurement)
+            ...             apply_output(output)
+            ...         
+            ...         except SensorError:
+            ...             # Sensor failed, stop control
+            ...             apply_output(0.0)
+            ...             
+            ...             # Wait for sensor recovery
+            ...             wait_for_sensor_recovery()
+            ...             
+            ...             # Reset PID before resuming
+            ...             pid.reset()
+            ...             print("PID reset after sensor recovery")
+            >>> 
+            >>> # Batch process control
+            >>> def batch_process_control():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     while True:
+            ...         # Wait for new batch
+            ...         wait_for_batch_start()
+            ...         
+            ...         # Reset for new batch
+            ...         pid.reset()
+            ...         pid.set_setpoint(get_batch_temperature())
+            ...         
+            ...         # Control this batch
+            ...         while batch_in_progress():
+            ...             temp = read_temperature()
+            ...             power = pid.update(temp)
+            ...             set_heater(power)
+            ...         
+            ...         # Batch complete
+            ...         set_heater(0.0)
+            >>> 
+            >>> # Mode switching with reset
+            >>> def mode_switching():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     mode = "startup"
+            ...     
+            ...     if mode == "startup":
+            ...         # Startup mode
+            ...         pid.reset()
+            ...         pid.set_gains(kp=1.0, ki=0.2, kd=0.05)
+            ...         pid.set_setpoint(30.0)
+            ...     
+            ...     elif mode == "production":
+            ...         # Production mode - reset for clean start
+            ...         pid.reset()
+            ...         pid.set_gains(kp=2.0, ki=0.5, kd=0.1)
+            ...         pid.set_setpoint(75.0)
+            ...     
+            ...     elif mode == "shutdown":
+            ...         # Shutdown - reset and ramp down
+            ...         pid.reset()
+            ...         pid.set_gains(kp=0.5, ki=0.1, kd=0.0)
+            ...         pid.set_setpoint(0.0)
+            >>> 
+            >>> # Reset after parameter changes
+            >>> def reset_after_tuning():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     # Run with initial gains
+            ...     for i in range(100):
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...     
+            ...     # Change gains significantly
+            ...     pid.set_gains(kp=5.0, ki=2.0, kd=0.5)
+            ...     
+            ...     # Reset to avoid transient from old integrator state
+            ...     pid.reset()
+            ...     
+            ...     # Continue with new gains
+            ...     for i in range(100):
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            >>> 
+            >>> # Selective reset (manual implementation)
+            >>> def selective_reset():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(50.0)
+            ...     
+            ...     # Run controller
+            ...     for i in range(100):
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...     
+            ...     # Want to reset only integrator, keep setpoint and gains
+            ...     current_setpoint = pid.setpoint
+            ...     current_kp, current_ki, current_kd = pid.kp, pid.ki, pid.kd
+            ...     
+            ...     pid.reset()  # Clears everything
+            ...     
+            ...     # Restore what we want to keep
+            ...     pid.set_setpoint(current_setpoint)
+            ...     # Gains automatically preserved (not affected by reset)
+        ```
+        
+        Notes:
+            
+            - Setpoint is preserved (not reset)
+            - Gains (kp, ki, kd) are preserved
+            - Output limits are preserved
+            - Beta, tau_d, anti-windup settings are preserved
+            - Only dynamic state is cleared
+            - Safe to call at any time
+            - No output is applied by reset() itself
+        """
+        ...
+    
+    @micropython.native
+    def update(self, meas: float, dt_s: float | None = None) -> float:
+        """
+        Compute PID control output.
+        
+        Executes one iteration of the PID control algorithm, computing the control
+        output based on the current measurement, setpoint, and accumulated error.
+        Implements proportional-on-measurement with setpoint weighting (beta),
+        derivative-on-measurement to avoid kick, optional derivative filtering,
+        and anti-windup protection. Returns the computed output clamped to the
+        configured limits.
+        
+        :param meas: Current process measurement (sensor reading)
+        :param dt_s: Time step in seconds. Required if fs not provided in constructor.
+                     Ignored if fs was provided (uses 1/fs instead).
+        
+        :return: Control output, clamped to [out_min, out_max]
+        
+        :raises FilterOperationError: If dt_s not provided and fs not set
+        :raises TypeError: If meas or dt_s cannot be converted to float
+        
+        Control Algorithm:
+            
+            Error terms:
+                
+                e_p = beta × setpoint - measurement  # Proportional error
+                e_i = setpoint - measurement         # Integral error
+                de = -(measurement - measurement_prev) / dt  # Derivative (on measurement)
+            
+            Control output:
+                
+                P = kp × e_p
+                I = ki × ∫e_i dt  (with anti-windup)
+                D = kd × de  (with optional filtering)
+                
+                u = P + I + D
+                
+                u_output = clamp(u, out_min, out_max)
+        
+        Timing Modes:
+            
+            Fixed sampling rate (fs provided in constructor):
+                
+                - dt_s parameter ignored
+                - Uses dt = 1/fs for all calculations
+                - Recommended for constant-rate control loops
+                - Example: fs=10.0 → dt=0.1s
+            
+            Variable sampling rate (fs=None in constructor):
+                
+                - dt_s parameter required on each update()
+                - Uses provided dt_s for calculations
+                - Useful for irregular sampling or event-driven control
+                - Example: update(meas, dt_s=0.105)
+        
+        First Update Behavior:
+            
+            On the very first call to update():
+                
+                - Derivative term is zero (no previous measurement)
+                - Integrator starts from preloaded value (or zero)
+                - Proportional term computed normally
+                - Output may differ from subsequent calls
+        
+        Performance Characteristics:
+            
+            - Execution time: ~50-100 µs (depends on platform and anti-windup mode)
+            - Decorated with @micropython.native for speed
+            - No memory allocation (in-place computation)
+            - Deterministic execution time
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> import time
+            >>> 
+            >>> # Fixed sampling rate controller
+            >>> pid_fixed = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                 out_min=0.0, out_max=100.0)
+            >>> pid_fixed.set_setpoint(25.0)
+            >>> 
+            >>> # Control loop at 10 Hz
+            >>> while True:
+            ...     temp = read_thermometer()
+            ...     power = pid_fixed.update(temp)  # No dt needed
+            ...     set_heater(power)
+            ...     time.sleep(0.1)  # 10 Hz
+            >>> 
+            >>> # Variable sampling rate controller
+            >>> pid_variable = PID(kp=2.0, ki=0.5, kd=0.1, fs=None,
+            ...                    out_min=0.0, out_max=100.0)
+            >>> pid_variable.set_setpoint(50.0)
+            >>> 
+            >>> # Control loop with measured dt
+            >>> last_time = time.time()
+            >>> while True:
+            ...     current_time = time.time()
+            ...     dt = current_time - last_time
+            ...     last_time = current_time
+            ...     
+            ...     measurement = read_sensor()
+            ...     output = pid_variable.update(measurement, dt_s=dt)
+            ...     apply_output(output)
+            >>> 
+            >>> # Temperature control example
+            >>> def temperature_control():
+            ...     oven_pid = PID(kp=3.0, ki=0.8, kd=0.2, fs=10.0,
+            ...                    out_min=0.0, out_max=100.0,
+            ...                    beta=0.3, tau_d_filter=0.1)
+            ...     
+            ...     oven_pid.set_setpoint(180.0)  # 180°C target
+            ...     
+            ...     while True:
+            ...         current_temp = read_thermocouple()
+            ...         heater_power = oven_pid.update(current_temp)
+            ...         
+            ...         print(f"Temp: {current_temp:.1f}°C, Power: {heater_power:.1f}%")
+            ...         
+            ...         set_heater_pwm(heater_power)
+            ...         time.sleep(0.1)  # 10 Hz
+            >>> 
+            >>> # Motor speed control
+            >>> def motor_speed_control():
+            ...     motor_pid = PID(kp=1.5, ki=0.8, kd=0.05, fs=50.0,
+            ...                     out_min=-100.0, out_max=100.0,
+            ...                     aw_mode=PID.AW_BACKCALC, k_aw=1.0)
+            ...     
+            ...     target_rpm = 1500.0
+            ...     motor_pid.set_setpoint(target_rpm)
+            ...     
+            ...     while True:
+            ...         current_rpm = read_encoder()
+            ...         pwm_output = motor_pid.update(current_rpm)
+            ...         
+            ...         # Output is ±100% PWM duty cycle
+            ...         set_motor_pwm(pwm_output)
+            ...         time.sleep(0.02)  # 50 Hz
+            >>> 
+            >>> # Level control with noise
+            >>> def level_control():
+            ...     level_pid = PID(kp=2.0, ki=0.3, kd=0.5, fs=5.0,
+            ...                     out_min=0.0, out_max=100.0,
+            ...                     tau_d_filter=0.2)  # Filter noisy derivative
+            ...     
+            ...     level_pid.set_setpoint(50.0)  # 50% level target
+            ...     
+            ...     while True:
+            ...         level_percent = read_level_sensor()
+            ...         valve_position = level_pid.update(level_percent)
+            ...         
+            ...         set_valve(valve_position)
+            ...         time.sleep(0.2)  # 5 Hz
+            >>> 
+            >>> # Event-driven control (variable dt)
+            >>> def event_driven_control():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=None,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(60.0)
+            ...     
+            ...     last_time = time.time()
+            ...     
+            ...     while True:
+            ...         # Wait for sensor event (irregular timing)
+            ...         wait_for_sensor_ready()
+            ...         
+            ...         current_time = time.time()
+            ...         dt = current_time - last_time
+            ...         last_time = current_time
+            ...         
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement, dt_s=dt)
+            ...         apply_output(output)
+            >>> 
+            >>> # Tracking mode integration
+            >>> def manual_auto_control():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(50.0)
+            ...     
+            ...     manual_mode = False
+            ...     manual_output = 30.0
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         
+            ...         if manual_mode:
+            ...             # Track manual output
+            ...             manual_output = read_manual_input()
+            ...             pid.start_tracking(manual_output)
+            ...             pid.update(measurement)  # Update for tracking
+            ...             output = manual_output
+            ...         else:
+            ...             # Auto mode
+            ...             pid.stop_tracking()
+            ...             output = pid.update(measurement)
+            ...         
+            ...         apply_output(output)
+            ...         time.sleep(0.1)
+            >>> 
+            >>> # Data logging
+            >>> def logged_control():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(75.0)
+            ...     
+            ...     log_file = open("control_log.csv", "w")
+            ...     log_file.write("time,measurement,output,setpoint\\n")
+            ...     
+            ...     start_time = time.time()
+            ...     
+            ...     while True:
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...         
+            ...         elapsed = time.time() - start_time
+            ...         log_file.write(f"{elapsed:.2f},{measurement:.2f},{output:.2f},{pid.setpoint:.2f}\\n")
+            ...         
+            ...         apply_output(output)
+            ...         time.sleep(0.1)
+            >>> 
+            >>> # Cascade control
+            >>> def cascade_control():
+            ...     # Outer loop: Position control
+            ...     position_pid = PID(kp=1.0, ki=0.2, kd=0.05, fs=10.0,
+            ...                        out_min=-50.0, out_max=50.0)  # Output: velocity setpoint
+            ...     
+            ...     # Inner loop: Velocity control
+            ...     velocity_pid = PID(kp=2.0, ki=1.0, kd=0.1, fs=50.0,
+            ...                        out_min=-100.0, out_max=100.0)  # Output: motor PWM
+            ...     
+            ...     position_pid.set_setpoint(100.0)  # Target position
+            ...     
+            ...     # Outer loop runs at 10 Hz
+            ...     for outer_tick in range(100):
+            ...         position = read_position()
+            ...         velocity_setpoint = position_pid.update(position)
+            ...         
+            ...         velocity_pid.set_setpoint(velocity_setpoint)
+            ...         
+            ...         # Inner loop runs 5× faster (50 Hz)
+            ...         for inner_tick in range(5):
+            ...             velocity = read_velocity()
+            ...             pwm = velocity_pid.update(velocity)
+            ...             set_motor_pwm(pwm)
+            ...             time.sleep(0.02)  # 50 Hz
+            >>> 
+            >>> # Error handling
+            >>> def robust_control():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(50.0)
+            ...     
+            ...     while True:
+            ...         try:
+            ...             measurement = read_sensor()
+            ...             
+            ...             # Validate measurement
+            ...             if not (0.0 <= measurement <= 100.0):
+            ...                 raise ValueError("Measurement out of range")
+            ...             
+            ...             output = pid.update(measurement)
+            ...             apply_output(output)
+            ...         
+            ...         except Exception as e:
+            ...             print(f"Control error: {e}")
+            ...             apply_output(0.0)  # Safe state
+            ...         
+            ...         time.sleep(0.1)
+            >>> 
+            >>> # Missing dt error demonstration
+            >>> try:
+            ...     pid_no_fs = PID(kp=2.0, ki=0.5, kd=0.1, fs=None,
+            ...                     out_min=0.0, out_max=100.0)
+            ...     output = pid_no_fs.update(50.0)  # Missing dt_s
+            >>> except FilterOperationError as e:
+            ...     print(f"Error: {e}")
+            ...     # Must provide dt_s when fs=None
+        ```
+        
+        Notes:
+            
+            - Call at consistent rate when using fixed fs
+            - Provide accurate dt_s when using variable rate
+            - First call has no derivative (no previous measurement)
+            - Output automatically clamped to [out_min, out_max]
+            - Tracking mode overrides normal computation
+            - Integrator managed according to anti-windup mode
+            - Derivative filtered if tau_d > 0
+        """
+        ...
+    
+    def set_setpoint(self, sp: float, keep_output: bool = False) -> None:
+        """
+        Change controller setpoint.
+        
+        Updates the target value (setpoint) for the controller. Optionally
+        implements bumpless setpoint change by adjusting the integrator to
+        maintain the current output, preventing output discontinuities when
+        the setpoint changes. This is useful for smooth setpoint ramping or
+        when setpoint changes should not cause sudden actuator movements.
+        
+        :param sp: New setpoint value (target for the controlled variable)
+        :param keep_output: If True and controller has run at least once,
+                           adjusts integrator to maintain current output
+                           (bumpless setpoint change). If False, integrator
+                           is unchanged (may cause output step).
+        
+        :raises TypeError: If sp cannot be converted to float
+        
+        Bumpless Setpoint Change (keep_output=True):
+            
+            Behavior:
+                
+                - Calculates new error: e_new = sp_new - measurement
+                - Adjusts integrator: I_new = u_current - P_new - D_current
+                - Result: Next output ≈ current output (no step)
+            
+            Requirements:
+                
+                - Controller must have run at least once (update() called)
+                - Valid measurement must be available
+                - If not met, acts like keep_output=False
+            
+            Use cases:
+                
+                - Setpoint ramping or profiling
+                - Avoiding actuator stress from sudden changes
+                - Smooth transitions in multi-setpoint sequences
+                - User-adjustable setpoints during operation
+        
+        Standard Setpoint Change (keep_output=False):
+            
+            Behavior:
+                
+                - Setpoint updated immediately
+                - Integrator unchanged
+                - Next output reflects new error
+                - May cause output step (proportional to setpoint change)
+            
+            Use cases:
+                
+                - Fast response to setpoint changes desired
+                - System can handle output steps
+                - Initial setpoint setting
+                - Aggressive control preferred
+        
+        Example
+        -------
+        ```python
+            >>> from ufilter import PID
+            >>> import time
+            >>> 
+            >>> # Basic setpoint change
+            >>> pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...           out_min=0.0, out_max=100.0)
+            >>> 
+            >>> # Initial setpoint
+            >>> pid.set_setpoint(25.0)
+            >>> 
+            >>> # Run for a while
+            >>> for i in range(50):
+            ...     temp = read_sensor()
+            ...     power = pid.update(temp)
+            ...     time.sleep(0.1)
+            >>> 
+            >>> # Change setpoint (standard - may cause output step)
+            >>> pid.set_setpoint(30.0, keep_output=False)
+            >>> 
+            >>> # Bumpless setpoint change
+            >>> def bumpless_setpoint_change():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     pid.set_setpoint(50.0)
+            ...     
+            ...     # Run until settled
+            ...     for i in range(100):
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...         apply_output(output)
+            ...         time.sleep(0.1)
+            ...     
+            ...     # Change setpoint without output bump
+            ...     pid.set_setpoint(60.0, keep_output=True)
+            ...     
+            ...     # Output continues smoothly
+            ...     measurement = read_sensor()
+            ...     output = pid.update(measurement)
+            >>> 
+            >>> # Setpoint ramping
+            >>> def setpoint_ramp():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     # Ramp from 20 to 80 over 60 seconds
+            ...     start_sp = 20.0
+            ...     end_sp = 80.0
+            ...     ramp_time = 60.0  # seconds
+            ...     
+            ...     pid.set_setpoint(start_sp)
+            ...     
+            ...     start_time = time.time()
+            ...     
+            ...     while True:
+            ...         elapsed = time.time() - start_time
+            ...         
+            ...         if elapsed < ramp_time:
+            ...             # Calculate ramped setpoint
+            ...             progress = elapsed / ramp_time
+            ...             current_sp = start_sp + (end_sp - start_sp) * progress
+            ...             
+            ...             # Bumpless update
+            ...             pid.set_setpoint(current_sp, keep_output=True)
+            ...         else:
+            ...             # Ramp complete
+            ...             pid.set_setpoint(end_sp, keep_output=False)
+            ...         
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...         apply_output(output)
+            ...         time.sleep(0.1)
+            >>> 
+            >>> # Multi-step process
+            >>> def multi_step_process():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     # Process steps: preheat, soak, production, cooldown
+            ...     steps = [
+            ...         ("preheat", 40.0, 60),    # 40°C for 60 seconds
+            ...         ("soak", 60.0, 120),      # 60°C for 120 seconds
+            ...         ("production", 80.0, 300), # 80°C for 300 seconds
+            ...         ("cooldown", 30.0, 180)   # 30°C for 180 seconds
+            ...     ]
+            ...     
+            ...     for step_name, setpoint, duration in steps:
+            ...         print(f"Step: {step_name}, Target: {setpoint}°C")
+            ...         
+            ...         # Smooth transition between steps
+            ...         pid.set_setpoint(setpoint, keep_output=True)
+            ...         
+            ...         # Hold setpoint for duration
+            ...         for i in range(int(duration * 10)):  # 10 Hz
+            ...             temp = read_sensor()
+            ...             power = pid.update(temp)
+            ...             set_heater(power)
+            ...             time.sleep(0.1)
+            >>> 
+            >>> # User-adjustable setpoint
+            >>> def user_adjustable_control():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     current_setpoint = 50.0
+            ...     pid.set_setpoint(current_setpoint)
+            ...     
+            ...     while True:
+            ...         # Check for user input
+            ...         new_setpoint = read_user_input()
+            ...         
+            ...         if new_setpoint != current_setpoint:
+            ...             # User changed setpoint - bumpless transition
+            ...             pid.set_setpoint(new_setpoint, keep_output=True)
+            ...             current_setpoint = new_setpoint
+            ...             print(f"New setpoint: {new_setpoint:.1f}")
+            ...         
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...         apply_output(output)
+            ...         time.sleep(0.1)
+            >>> 
+            >>> # Comparing bumpless vs standard
+            >>> def compare_setpoint_methods():
+            ...     # Standard change
+            ...     pid1 = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                out_min=0.0, out_max=100.0)
+            ...     pid1.set_setpoint(50.0)
+            ...     
+            ...     # Bumpless change
+            ...     pid2 = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...                out_min=0.0, out_max=100.0)
+            ...     pid2.set_setpoint(50.0)
+            ...     
+            ...     # Run both until settled
+            ...     for i in range(100):
+            ...         measurement = 48.0  # Near setpoint
+            ...         pid1.update(measurement)
+            ...         pid2.update(measurement)
+            ...     
+            ...     # Record outputs before change
+            ...     out1_before = pid1.u
+            ...     out2_before = pid2.u
+            ...     
+            ...     # Change setpoint
+            ...     pid1.set_setpoint(55.0, keep_output=False)  # Standard
+            ...     pid2.set_setpoint(55.0, keep_output=True)   # Bumpless
+            ...     
+            ...     # Check outputs after change
+            ...     out1_after = pid1.update(48.0)
+            ...     out2_after = pid2.update(48.0)
+            ...     
+            ...     print(f"Standard: {out1_before:.1f} → {out1_after:.1f} (step)")
+            ...     print(f"Bumpless: {out2_before:.1f} → {out2_after:.1f} (smooth)")
+            >>> 
+            >>> # Adaptive setpoint based on load
+            >>> def load_adaptive_setpoint():
+            ...     pid = PID(kp=2.0, ki=0.5, kd=0.1, fs=10.0,
+            ...               out_min=0.0, out_max=100.0)
+            ...     
+            ...     base_setpoint = 60.0
+            ...     pid.set_setpoint(base_setpoint)
+            ...     
+            ...     while True:
+            ...         load = measure_load()
+            ...         
+            ...         # Adjust setpoint based on load
+            ...         if load > 80:  # Heavy load
+            ...             adjusted_sp = base_setpoint - 5.0
+            ...         elif load < 20:  # Light load
+            ...             adjusted_sp = base_setpoint + 5.0
+            ...         else:  # Normal load
+            ...             adjusted_sp = base_setpoint
+            ...         
+            ...         # Smooth adjustment
+            ...         pid.set_setpoint(adjusted_sp, keep_output=True)
+            ...         
+            ...         measurement = read_sensor()
+            ...         output = pid.update(measurement)
+            ...         apply_output(output)
+            ...         time.sleep(0.1)
+            >>> 
+            >>> # Setpoint profiling
+            >>> def trapezoidal_profile():
+            ...     pid = PID(kp=5.0, ki=2.0, kd=0.5, fs=100.0,
+            ...               out_min=-100.0, out_max=100.0)
+            ...     
+            ...     # Trapezoidal motion profile
+            ...     start_pos = 0.0
+            ...     end_pos = 100.0
+            ...     accel_time = 2.0  # seconds
+            ...     const_velocity_time = 5.0  # seconds
+            ...     decel_time = 2.0  # seconds
+            ...     
+            ...     # Calculate velocities
+            ...     accel_dist = 0.5 * (end_pos - start_pos) * accel_time / (accel_time + const_velocity_time + decel_time)
+            ...     
+            ...     start_time = time.time()
+            ...     
+            ...     while True:
+            ...         elapsed = time.time() - start_time
+            ...         
+            ...         if elapsed < accel_time:
+            ...             # Acceleration phase
+            ...             setpoint = start_pos + 0.5 * accel_dist * (elapsed / accel_time) ** 2
+            ...         elif elapsed < accel_time + const_velocity_time:
+            ...             # Constant velocity phase
+            ...             t_const = elapsed - accel_time
+            ...             setpoint = start_pos + accel_dist + const_velocity * t_const
+            ...         elif elapsed < accel_time + const_velocity_time + decel_time:
+            ...             # Deceleration phase
+            ...             t_decel = elapsed - accel_time - const_velocity_time
+            ...             # ... calculate deceleration position ...
+            ...             pass
+            ...         else:
+            ...             # Profile complete
+            ...             setpoint = end_pos
+            ...         
+            ...         pid.set_setpoint(setpoint, keep_output=True)
+            ...         
+            ...         position = read_encoder()
+            ...         output = pid.update(position)
+            ...         set_motor(output)
+            ...         time.sleep(0.01)  # 100 Hz
+        ```
+        
+        Notes:
+            
+            - New setpoint takes effect on next update() call
+            - keep_output=True prevents output discontinuities
+            - keep_output requires at least one prior update() call
+            - Setpoint not clamped (can be any float value)
+            - For smooth ramping, use small incremental changes with keep_output=True
+            - Standard setpoint change (keep_output=False) causes proportional kick if beta > 0
+        """
+        ...
+
+
+class FilterChain(Base):
     """
     Chain multiple filters in series for complex signal processing.
     
@@ -3956,7 +8986,7 @@ class FilterChain(BaseFilter):
         
         - Flexible composition of filter elements
         - Dynamic chain reconfiguration during operation
-        - Unified interface through BaseFilter compatibility
+        - Unified interface through Base compatibility
         - Memory-efficient implementation
         - Runtime chain modification (add/remove filters)
         - Simple signal flow - sequential processing
@@ -3990,7 +9020,7 @@ class FilterChain(BaseFilter):
         - Can combine different filter types (IIR, FIR, etc.)
     """
     
-    def __init__(self, *filters: BaseFilter) -> None:
+    def __init__(self, *filters: Base) -> None:
         """
         Initialize filter chain with a sequence of filters.
         
@@ -3999,10 +9029,10 @@ class FilterChain(BaseFilter):
         processing pipeline.
         
         :param *filters: One or more filter objects (variable argument list)
-                        All must be instances of BaseFilter subclasses
+                        All must be instances of Base subclasses
                         Order determines processing sequence
         
-        :raises ValueError: If no filters are provided or if any argument is not a BaseFilter
+        :raises ValueError: If no filters are provided or if any argument is not a Base
         
         Chain Design Guidelines:
         
@@ -4016,13 +9046,13 @@ class FilterChain(BaseFilter):
         ```python
             >>> # Create a multi-stage processing chain
             >>> # Stage 1: Median filter for outlier rejection
-            >>> outlier_filter = MedianFilter(window_size=3)
+            >>> outlier_filter = Median(window_size=3)
             >>> 
             >>> # Stage 2: Low-pass filter for noise reduction
-            >>> noise_filter = LowPassFilter(fc=10.0, fs=100.0)
+            >>> noise_filter = LowPass(fc=10.0, fs=100.0)
             >>> 
             >>> # Stage 3: Kalman filter for optimal tracking
-            >>> tracker = KalmanFilter(process_noise=0.01, measurement_noise=0.1)
+            >>> tracker = Kalman(process_noise=0.01, measurement_noise=0.1)
             >>> 
             >>> # Create the chain connecting all three filters
             >>> processing_chain = FilterChain(outlier_filter, noise_filter, tracker)
@@ -4063,8 +9093,8 @@ class FilterChain(BaseFilter):
             >>> # Create a simple processing chain
             >>> # Median filter followed by low-pass filter
             >>> chain = FilterChain(
-            ...     MedianFilter(window_size=3),
-            ...     LowPassFilter(fc=10.0, fs=100.0)
+            ...     Median(window_size=3),
+            ...     LowPass(fc=10.0, fs=100.0)
             ... )
             >>> 
             >>> # Process a sample with outlier followed by valid readings
@@ -4100,8 +9130,8 @@ class FilterChain(BaseFilter):
         ```python
             >>> # Create a filter chain
             >>> chain = FilterChain(
-            ...     MovingAverageFilter(window_size=5),
-            ...     LowPassFilter(fc=10.0, fs=100.0)
+            ...     MovingAverage(window_size=5),
+            ...     LowPass(fc=10.0, fs=100.0)
             ... )
             >>> 
             >>> # Process some data
@@ -4120,16 +9150,16 @@ class FilterChain(BaseFilter):
         ```
         """
 
-    def add_filter(self, filter_obj: BaseFilter) -> None:
+    def add_filter(self, filter_obj: Base) -> None:
         """
         Add filter to end of chain.
         
         Appends a new filter to the end of the filter chain. The new filter will 
         receive input from the previously last filter in the chain.
         
-        :param filter_obj: Filter to add (must be BaseFilter instance)
+        :param filter_obj: Filter to add (must be Base instance)
         
-        :raises ValueError: If filter_obj is not a BaseFilter instance
+        :raises ValueError: If filter_obj is not a Base instance
         
         Dynamic Chain Modification:
         
@@ -4142,11 +9172,11 @@ class FilterChain(BaseFilter):
         -------
         ```python
             >>> # Create initial chain
-            >>> chain = FilterChain(MovingAverageFilter(window_size=3))
+            >>> chain = FilterChain(MovingAverage(window_size=3))
             >>> print(f"Initial chain length: {len(chain.filters)}")
             >>> 
             >>> # Add another filter dynamically
-            >>> chain.add_filter(LowPassFilter(fc=10.0, fs=100.0))
+            >>> chain.add_filter(LowPass(fc=10.0, fs=100.0))
             >>> print(f"Updated chain length: {len(chain.filters)}")
             >>> 
             >>> # Process data through extended chain
@@ -4156,22 +9186,22 @@ class FilterChain(BaseFilter):
             >>> # Conditional filter addition
             >>> def adaptive_chain(signal_level):
             ...     '''Add appropriate filter based on signal conditions.'''
-            ...     chain = FilterChain(MedianFilter(window_size=3))
+            ...     chain = FilterChain(Median(window_size=3))
             ...     
             ...     if signal_level > 10.0:
             ...         # Add high noise filtering for strong signals
-            ...         chain.add_filter(LowPassFilter(fc=5.0, fs=100.0))
+            ...         chain.add_filter(LowPass(fc=5.0, fs=100.0))
             ...         print("Added strong noise filter")
             ...     else:
             ...         # Add light filtering for weaker signals
-            ...         chain.add_filter(LowPassFilter(fc=20.0, fs=100.0))
+            ...         chain.add_filter(LowPass(fc=20.0, fs=100.0))
             ...         print("Added light noise filter")
             ...     
             ...     return chain
         ```
         """
 
-    def remove_filter(self, index: int) -> BaseFilter:
+    def remove_filter(self, index: int) -> Base:
         """
         Remove filter from chain.
         
@@ -4195,9 +9225,9 @@ class FilterChain(BaseFilter):
         ```python
             >>> # Create a three-stage filter chain
             >>> chain = FilterChain(
-            ...     MedianFilter(window_size=3),
-            ...     LowPassFilter(fc=10.0, fs=100.0),
-            ...     MovingAverageFilter(window_size=5)
+            ...     Median(window_size=3),
+            ...     LowPass(fc=10.0, fs=100.0),
+            ...     MovingAverage(window_size=5)
             ... )
             >>> print(f"Initial chain length: {len(chain.filters)}")
             >>> 

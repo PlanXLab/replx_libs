@@ -1,32 +1,16 @@
-"""
-MQTT 5.0 Properties
-
-Handles encoding and decoding of MQTT 5.0 properties.
-"""
-
 from .enums import PropertyType, PROPERTY_DATA_TYPE
 import struct
 
+__version__ = "1.0.0"
+__author__ = "PlanXLab Development Team"
+
 
 class Properties:
-    """
-    MQTT 5.0 Properties container
-    
-    Stores and manages MQTT 5.0 properties with encoding/decoding support.
-    """
-    
     def __init__(self):
         self._properties = {}
     
     def set(self, property_id, value):
-        """
-        Set a property value
-        
-        :param property_id: PropertyType constant
-        :param value: Property value (type depends on property)
-        """
         if property_id == PropertyType.USER_PROPERTY:
-            # User properties can have multiple values
             if property_id not in self._properties:
                 self._properties[property_id] = []
             self._properties[property_id].append(value)
@@ -34,27 +18,18 @@ class Properties:
             self._properties[property_id] = value
     
     def get(self, property_id, default=None):
-        """Get a property value"""
         return self._properties.get(property_id, default)
     
     def has(self, property_id):
-        """Check if property exists"""
         return property_id in self._properties
     
     def remove(self, property_id):
-        """Remove a property"""
         self._properties.pop(property_id, None)
     
     def clear(self):
-        """Clear all properties"""
         self._properties.clear()
     
     def pack(self):
-        """
-        Encode properties to bytes
-        
-        :return: bytes (property length + properties data)
-        """
         if not self._properties:
             return _encode_variable_length(0)
         
@@ -67,7 +42,6 @@ class Properties:
                 continue
             
             if prop_id == PropertyType.USER_PROPERTY:
-                # Multiple user properties
                 for key, val in value:
                     data.append(prop_id)
                     data.extend(_encode_utf8_pair(key, val))
@@ -75,12 +49,10 @@ class Properties:
                 data.append(prop_id)
                 data.extend(self._encode_property_value(value, data_type))
         
-        # Prepend property length
         return _encode_variable_length(len(data)) + bytes(data)
     
     @staticmethod
     def _encode_property_value(value, data_type):
-        """Encode a single property value"""
         if data_type == 'byte':
             return struct.pack('!B', value)
         elif data_type == 'uint16':
@@ -100,16 +72,8 @@ class Properties:
     
     @staticmethod
     def unpack(data, offset=0):
-        """
-        Decode properties from bytes
-        
-        :param data: bytes to decode
-        :param offset: starting offset
-        :return: (Properties object, new offset)
-        """
         props = Properties()
         
-        # Read property length
         prop_length, offset = _decode_variable_length(data, offset)
         
         if prop_length == 0:
@@ -118,16 +82,13 @@ class Properties:
         end_offset = offset + prop_length
         
         while offset < end_offset:
-            # Read property ID
             prop_id = data[offset]
             offset += 1
             
             data_type = PROPERTY_DATA_TYPE.get(prop_id)
             if data_type is None:
-                # Unknown property, skip
                 break
             
-            # Decode value
             value, offset = Properties._decode_property_value(data, offset, data_type)
             
             if prop_id == PropertyType.USER_PROPERTY:
@@ -142,7 +103,6 @@ class Properties:
     
     @staticmethod
     def _decode_property_value(data, offset, data_type):
-        """Decode a single property value"""
         if data_type == 'byte':
             value = data[offset]
             return value, offset + 1
@@ -169,16 +129,7 @@ class Properties:
         return f"Properties({self._properties})"
 
 
-# ==========================================
-# Encoding/Decoding Utility Functions
-# ==========================================
-
 def _encode_variable_length(value):
-    """
-    Encode variable length integer (1-4 bytes)
-    
-    Used for remaining length and some properties.
-    """
     result = bytearray()
     while True:
         byte = value % 128
@@ -192,11 +143,6 @@ def _encode_variable_length(value):
 
 
 def _decode_variable_length(data, offset):
-    """
-    Decode variable length integer
-    
-    :return: (value, new offset)
-    """
     multiplier = 1
     value = 0
     
@@ -220,7 +166,6 @@ def _decode_variable_length(data, offset):
 
 
 def _encode_utf8(string):
-    """Encode UTF-8 string with length prefix"""
     if isinstance(string, str):
         encoded = string.encode('utf-8')
     else:
@@ -230,11 +175,6 @@ def _encode_utf8(string):
 
 
 def _decode_utf8(data, offset):
-    """
-    Decode UTF-8 string with length prefix
-    
-    :return: (string, new offset)
-    """
     length = struct.unpack_from('!H', data, offset)[0]
     offset += 2
     
@@ -245,7 +185,6 @@ def _decode_utf8(data, offset):
 
 
 def _encode_binary(data):
-    """Encode binary data with length prefix"""
     if isinstance(data, str):
         data = data.encode('utf-8')
     
@@ -253,11 +192,6 @@ def _encode_binary(data):
 
 
 def _decode_binary(data, offset):
-    """
-    Decode binary data with length prefix
-    
-    :return: (bytes, new offset)
-    """
     length = struct.unpack_from('!H', data, offset)[0]
     offset += 2
     
@@ -268,5 +202,4 @@ def _decode_binary(data, offset):
 
 
 def _encode_utf8_pair(key, value):
-    """Encode UTF-8 key-value pair (for User Properties)"""
     return _encode_utf8(key) + _encode_utf8(value)

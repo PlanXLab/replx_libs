@@ -316,10 +316,22 @@
         "typehints": {
           "ver": 1.0,
           "files": [
-            "ext.pyi",
-            "pbl.pyi",
-            "ws2812.pyi",
-            "__init__.pyi"
+            "__init__.pyi",
+            {
+              "name": "ext",
+              "ver": 1.0,
+              "files": [
+                "ws2812.pyi",
+                "__init__.pyi"
+              ]
+            },
+            {
+              "name": "pbl",
+              "ver": 1.0,
+              "files": [
+                "__init__.pyi"
+              ]
+            }
           ]
         }
       },

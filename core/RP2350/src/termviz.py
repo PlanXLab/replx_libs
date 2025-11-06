@@ -1,9 +1,9 @@
-__version__ = "1.0.0"
-__author__ = "PlanXLab Development Team"
-
 import sys
 import array
 import micropython
+
+__version__ = "1.0.0"
+__author__ = "PlanXLab Development Team"
 
 
 class Color:

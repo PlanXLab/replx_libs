@@ -1,14 +1,10 @@
-"""
-Module: 'upaho.message' on micropython-v1.25.0-rp2-RPI_PICO2_W
-
-MQTT Message Classes
-"""
-# MCU: {'build': '', 'ver': '1.25.0', 'version': '1.25.0', 'port': 'rp2', 'board': 'RPI_PICO2_W', 'mpy': 'v6.3', 'family': 'micropython', 'cpu': 'RP2350', 'arch': 'armv7emsp'}
-# Stubber: v1.24.0
-
 from __future__ import annotations
 from typing import Optional
 from .properties import Properties
+
+__version__ = "1.0.0"
+__author__ = "PlanXLab Development Team"
+
 
 class MQTTMessage:
     """
@@ -108,29 +104,6 @@ class MQTTMessageInfo:
             >>> # Returned by publish()
             >>> info = client.publish("sensors/temp", "23.5", qos=1)
             >>> print(f"Message ID: {info.mid}")
-        ```
-        """
-    
-    def wait_for_publish(self, timeout: Optional[float] = None) -> None:
-        """
-        Block until the message is acknowledged by the broker.
-        
-        Waits for the publish operation to complete based on QoS level:
-        - QoS 0: Returns immediately
-        - QoS 1: Waits for PUBACK
-        - QoS 2: Waits for PUBCOMP (4-way handshake)
-        
-        :param timeout: Maximum time to wait in seconds (None = wait forever)
-        
-        :raises TimeoutError: If timeout expires before acknowledgment
-        
-        Example
-        -------
-        ```python
-            >>> # Publish and wait for confirmation
-            >>> info = client.publish("important/data", payload, qos=2)
-            >>> info.wait_for_publish(timeout=5.0)
-            >>> print("Message delivered successfully")
         ```
         """
     

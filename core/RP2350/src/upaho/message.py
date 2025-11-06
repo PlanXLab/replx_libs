@@ -1,19 +1,10 @@
-"""
-MQTT Message Classes
-
-Defines message objects for received and published messages.
-"""
-
 from .properties import Properties
+
+__version__ = "1.0.0"
+__author__ = "PlanXLab Development Team"
 
 
 class MQTTMessage:
-    """
-    MQTT Message received from broker
-    
-    Compatible with paho-mqtt MQTTMessage.
-    """
-    
     __slots__ = ['timestamp', 'state', 'dup', 'mid', '_topic', '_payload', 
                  '_qos', '_retain', '_properties']
     
@@ -30,7 +21,6 @@ class MQTTMessage:
     
     @property
     def topic(self):
-        """Message topic (str)"""
         if isinstance(self._topic, bytes):
             return self._topic.decode('utf-8')
         return self._topic
@@ -44,7 +34,6 @@ class MQTTMessage:
     
     @property
     def payload(self):
-        """Message payload (bytes)"""
         return self._payload
     
     @payload.setter
@@ -58,7 +47,6 @@ class MQTTMessage:
     
     @property
     def qos(self):
-        """Quality of Service (0, 1, or 2)"""
         return self._qos
     
     @qos.setter
@@ -67,7 +55,6 @@ class MQTTMessage:
     
     @property
     def retain(self):
-        """Retain flag (bool)"""
         return self._retain
     
     @retain.setter
@@ -76,7 +63,6 @@ class MQTTMessage:
     
     @property
     def properties(self):
-        """MQTT 5.0 properties"""
         return self._properties
     
     @properties.setter
@@ -90,65 +76,40 @@ class MQTTMessage:
 
 
 class MQTTMessageInfo:
-    """
-    Information about a published message
+    __slots__ = ['_mid', '_rc', '_published']
     
-    Compatible with paho-mqtt MQTTMessageInfo.
-    """
-    
-    __slots__ = ['_mid', '_rc', '_published', '_condition']
-    
-    RC_QUEUED = 0        # Message is queued
-    RC_PUBLISHED = 1     # Message sent to broker
-    RC_CONFIRMED = 2     # QoS 1/2 confirmed
+    RC_QUEUED = 0
+    RC_PUBLISHED = 1
+    RC_CONFIRMED = 2
     
     def __init__(self, mid):
         self._mid = mid
         self._rc = self.RC_QUEUED
         self._published = False
-        self._condition = None  # Could be used for wait_for_publish
     
     @property
     def mid(self):
-        """Message ID"""
         return self._mid
     
     @property
     def rc(self):
-        """Result code"""
         return self._rc
     
     def is_published(self):
-        """Check if message is published"""
         return self._published
     
     def _set_published(self):
-        """Mark as published (internal use)"""
         self._published = True
         self._rc = self.RC_PUBLISHED
     
     def _set_confirmed(self):
-        """Mark as confirmed (internal use)"""
         self._rc = self.RC_CONFIRMED
-    
-    def wait_for_publish(self, timeout=None):
-        """
-        Wait for message to be published (simplified)
-        
-        Note: In MicroPython without threading, this is a no-op.
-        Use loop() to process the message instead.
-        """
-        # MicroPython limitation: no blocking wait without threading
-        # Users should call loop() to process messages
-        pass
     
     def __repr__(self):
         return f"MQTTMessageInfo(mid={self._mid}, rc={self._rc}, published={self._published})"
 
 
 class SubscriptionInfo:
-    """Information about a subscription request"""
-    
     __slots__ = ['_mid', '_topic', '_qos', '_granted_qos']
     
     def __init__(self, mid, topic, qos):
@@ -174,7 +135,6 @@ class SubscriptionInfo:
         return self._granted_qos
     
     def _set_granted_qos(self, qos):
-        """Set granted QoS (internal use)"""
         self._granted_qos = qos
     
     def __repr__(self):

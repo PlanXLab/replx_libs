@@ -1,3 +1,42 @@
+"""
+AS5600 12-bit Magnetic Rotary Encoder Driver
+
+Hardware:
+    - Resolution: 12-bit (4096 positions, 0.087° precision)
+    - Interface: I2C (fixed address 0x36)
+    - Supply: 3.3V or 5V
+    - Magnetic field: 2-3mm optimal distance from diametric magnet
+    - Output rate: Up to 1kHz
+
+Features:
+    - Absolute angle measurement (0-360°)
+    - Angular velocity calculation
+    - Multi-turn counting
+    - Soft zero calibration with file persistence
+    - Configurable filtering (EMA, lowpass, slew rate)
+    - Lazy caching for high-frequency polling
+    - Magnetic field strength detection
+
+Example:
+    >>> from ext import AS5600
+    >>> encoder = AS5600(scl=5, sda=4)
+    >>> 
+    >>> # Calibrate soft zero
+    >>> encoder.calibrate_soft_zero(samples=64)
+    >>> 
+    >>> # Read angle
+    >>> angle_rad = encoder.angle(filtered=True)
+    >>> angle_deg = angle_rad * 180 / 3.14159
+    >>> 
+    >>> # Read velocity
+    >>> vel_rad_s = encoder.velocity(filtered=True)
+    >>> vel_rpm = vel_rad_s * 60 / (2 * 3.14159)
+    >>> 
+    >>> # Multi-turn counting
+    >>> turns, path = encoder.turn()
+    >>> print(f"Net turns: {turns:.2f}, Total path: {path:.2f}")
+"""
+
 __version__ = "1.1.0"
 __author__  = "PlanX Lab Development Team"
 
@@ -9,15 +48,85 @@ from ufilter import AngleEMA, TauLowPass, SlewRateLimiter
 
 
 def to_deg(rad: float) -> float:
+    """Convert radians to degrees (0-360 range)."""
     deg = rad * 180.0 / math.pi
     return deg % 360.0
 
 def to_deg_signed(rad: float) -> float:
+    """Convert radians to signed degrees (-180 to 180 range)."""
     d = to_deg(rad)
     return d - 360.0 if d >= 180.0 else d
 
 
 class AS5600:
+    """
+    AS5600 12-bit magnetic rotary encoder driver with advanced filtering.
+    
+    Hardware Configuration:
+        - I2C Address: 0x36 (fixed, not configurable)
+        - Resolution: 12-bit (4096 positions per revolution)
+        - Angular precision: 0.087° (360° / 4096)
+        - Update rate: Up to 1kHz
+        - Magnetic field range: 2-3mm from diametric magnet
+        
+    Features:
+        1. Angle Measurement:
+           - Absolute position within 360°
+           - Soft zero calibration with file persistence
+           - Optional EMA filtering for noise reduction
+           
+        2. Velocity Calculation:
+           - Angular velocity in rad/s
+           - Configurable lowpass and slew rate limiting
+           - Automatic zero detection for stopped rotation
+           
+        3. Multi-turn Counting:
+           - Net turn counter (signed)
+           - Total path traveled (unsigned)
+           - Robust direction change detection
+           
+        4. Magnetic Field Detection:
+           - STATUS_NORMAL: Optimal field strength
+           - STATUS_WEAK_MAGNET: Too far from magnet
+           - STATUS_STRONG_MAGNET: Too close to magnet
+           - STATUS_NO_MAGNET: No magnet detected
+           
+        5. Performance Optimization:
+           - Lazy caching to reduce I2C traffic
+           - Configurable cache window (default: 500µs)
+           
+    Args:
+        scl: I2C clock pin number
+        sda: I2C data pin number
+        addr: I2C address (default: 0x36)
+        ema_alpha: Angle EMA filter coefficient 0-1 (default: 0.25)
+        vel_tau_s: Velocity lowpass time constant in seconds (default: 0.02)
+        vel_slew_rise: Max velocity increase rate in rad/s² (default: 1e9)
+        vel_slew_fall: Max velocity decrease rate in rad/s² (default: 1e9)
+        cal_file: Calibration file path (default: "lib/ticle/as5600_zero.cal")
+        apply_conf: Apply configuration on init (default: True)
+        hysteresis: Hysteresis setting 0-3 (default: 1)
+        slow_filter: Slow filter setting 0-3 (default: 3)
+        fast_filter_threshold: Fast filter threshold 0-6 (default: 4)
+        watchdog: Watchdog enable 0/1 (default: 0)
+        cache_window_us: Cache validity window in µs (default: 500)
+        
+    Example:
+        >>> # Basic usage
+        >>> enc = AS5600(scl=5, sda=4)
+        >>> angle = enc.angle(filtered=True)
+        >>> 
+        >>> # Calibration
+        >>> enc.calibrate_soft_zero(samples=64, verbose=True)
+        >>> 
+        >>> # Velocity measurement
+        >>> vel = enc.velocity(filtered=True, omega_clip=50.0)
+        >>> rpm = vel * 60 / (2 * math.pi)
+        >>> 
+        >>> # Multi-turn counting
+        >>> net_turns, total_path = enc.turn()
+        >>> enc.reset_turn()  # Reset counters
+    """
     _REG_CONF_H                   = 0x07
     _REG_CONF_L                   = 0x08
     _REG_STATUS                   = 0x0B  # MD=0x20, ML=0x10, MH=0x08

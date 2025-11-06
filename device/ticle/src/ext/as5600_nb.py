@@ -1,4 +1,4 @@
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__  = "PlanX Lab Development Team"
 
 from .nb_impl import NBAdapterBase
@@ -7,6 +7,40 @@ from . import math
 
 
 class AS5600NB(NBAdapterBase):
+    """
+    Non-blocking adapter for AS5600 12-bit magnetic rotary encoder.
+    
+    Provides asynchronous access to angle, angular velocity, and multi-turn data
+    through a channel-based subscription system.
+    
+    Channels:
+        Q_ANGLE (U_RAD): Absolute angle in radians [0, 2π)
+        Q_ANGVEL (U_RAD_S): Angular velocity in rad/s
+        Q_TURN (U_NONE): Multi-turn counter (accumulated_turns, path_turns)
+    
+    Status Bits:
+        NO_SIGNAL: No magnet detected
+        CALIBRATING: Weak magnetic field
+        SATURATED: Magnetic field too strong
+        BUS_ERR: I2C communication error
+    
+    Example:
+        >>> from ext import AS5600, AS5600NB
+        >>> dev = AS5600(scl=5, sda=4)
+        >>> nb = AS5600NB(dev, filtered=True)
+        >>> 
+        >>> def on_angle(sample):
+        ...     print(f"Angle: {sample.value:.3f} rad")
+        >>> 
+        >>> nb.subscribe(nb.Q_ANGLE, on_angle)
+        >>> nb.update_once()  # Call periodically
+    
+    Args:
+        dev: AS5600 device instance
+        filtered: Enable EMA/lowpass filtering (default: True)
+        include_turn: Include multi-turn channel (default: True)
+        include_extras: Include status info in src field (default: False)
+    """
     Q_ANGLE   = _N.Q_ANGLE
     Q_ANGVEL  = _N.Q_ANGVEL
     Q_TURN    = _N.Q_TURN
@@ -17,8 +51,11 @@ class AS5600NB(NBAdapterBase):
 
     F_SENSOR  = _N.F_SENSOR
 
-    OK        = _N.OK
-    BUS_ERR   = _N.BUS_ERR
+    OK           = _N.OK
+    CALIBRATING  = _N.CALIBRATING
+    SATURATED    = _N.SATURATED
+    NO_SIGNAL    = _N.NO_SIGNAL
+    BUS_ERR      = _N.BUS_ERR
 
     ChannelInfo = _N.ChannelInfo
     Sample      = _N.Sample
@@ -55,11 +92,37 @@ class AS5600NB(NBAdapterBase):
             self._cfg["include_extras"] = bool(kw["include_extras"])
 
     def _update_impl(self):
+        """
+        Update sensor readings and emit samples for all configured channels.
+        
+        Checks magnetic field status and sets appropriate status bits:
+        - NO_SIGNAL: No magnet detected
+        - CALIBRATING: Weak magnetic field
+        - SATURATED: Magnetic field too strong
+        - BUS_ERR: I2C communication error
+        
+        Returns:
+            bool: True if update successful, False on error
+        """
         self.dev.reset_cache()
 
         status_bits = self.OK
         src_str = ""
 
+        # Check magnetic field status
+        try:
+            mag_status = self.dev.status()
+            if mag_status == self.dev.STATUS_NO_MAGNET:
+                status_bits |= self.NO_SIGNAL
+            elif mag_status == self.dev.STATUS_WEAK_MAGNET:
+                status_bits |= self.CALIBRATING
+            elif mag_status == self.dev.STATUS_STRONG_MAGNET:
+                status_bits |= self.SATURATED
+            # STATUS_FIELD_RANGE and STATUS_NORMAL don't set status bits
+        except Exception:
+            status_bits |= self.BUS_ERR
+
+        # Read sensor values
         a = self.dev.angle(soft_zero=True, filtered=self._cfg["filtered"])
         v = self.dev.velocity(filtered=self._cfg["filtered"])
 
@@ -67,6 +130,7 @@ class AS5600NB(NBAdapterBase):
         if self._cfg.get("include_turn", True):
             t_val = self.dev.turn(soft_zero=True, filtered=self._cfg["filtered"])
 
+        # Optional: Include detailed status in src field
         if self._cfg.get("include_extras", False):
             try:
                 st = self.dev.status()
@@ -76,6 +140,7 @@ class AS5600NB(NBAdapterBase):
             except Exception:
                 src_str = ""
 
+        # Check I2C bus error
         try:
             if getattr(self.dev, "_i2c", None) and getattr(self.dev._i2c, "last_error", 0) != 0:
                 status_bits |= self.BUS_ERR
