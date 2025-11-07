@@ -26,16 +26,16 @@
         }
       },
       "RP2350": {
-        "ver": 1.1,
+        "ver": 1.0,
         "src": {
-          "ver": 1.1,
+          "ver": 1.0,
           "files": [
             "ringbuffer.py", "slip.py", "termviz.py", "ublynk.py", "ufilter.py", "utools.py",
             { "name": "upaho", "ver": 1.0, "files": ["client.py", "enums.py", "message.py", "packets.py", "properties.py", "__init__.py"] }
           ]
         },
         "typehints": {
-          "ver": 1.1,
+          "ver": 1.0,
           "files": [
             "ringbuffer.pyi", "slip.pyi", "termviz.pyi", "ublynk.pyi", "ufilter.pyi", "utools.pyi",
             {
@@ -69,7 +69,7 @@
         "core": "RP2350",
         "ver": 1.0,
         "src": {
-          "ver": 1.1,
+          "ver": 1.0,
           "files": [
             "__init__.py", "_utils.py", "adc.py", "basic.py", "ble.py", "bus_lock.py", "i2c.py", "io.py", "keyreader.py",
             "pwm.py", "repl.py", "spi.py", "wifi.py",
