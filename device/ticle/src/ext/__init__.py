@@ -14,7 +14,7 @@ __all__ = (
 _lazy_map = {
     # DOM_AUDIO: Buzzer, microphone
     "PassiveBuzzer": (".passive_buzzer", "PassiveBuzzer"),
-    "PassiveBuzzerAmplified": (".audio.passive_buzzer_amp", "PassiveBuzzerAmplified"),
+    "PassiveBuzzerAmplified": (".passive_buzzer", "PassiveBuzzerAmplified"),
     # DOM_MOTION: IMU, accelerometer, gyro
     "MPU6050": (".mpu6050", "MPU6050"),
     "MPU6050NB": (".mpu6050_nb", "MPU6050NB"),
