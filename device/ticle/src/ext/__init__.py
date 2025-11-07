@@ -5,12 +5,15 @@ import sys
 
 
 __all__ = (
+    "PassiveBuzzer",
     "AS5600", "AS5600NB", "BME68x", "BME68xNB", "BNO055", "BNO055NB", "Button",  "ButtonNB", "Buttons", "HD44780I2c", 
     "KY022",  "KY022NB", "MPU6050", "MPU6050NB", "Relays", "Servos",  "SR04", "SR04NB", "SR04s", "VL53L0X", "VL53L0XNB", "WS2812Matrix",
 )
 
 # class path for ext package - imports from flattened deployment structure
 _lazy_map = {
+    # DOM_AUDIO: Buzzer, microphone
+    "PassiveBuzzer": (".passive_buzzer", "PassiveBuzzer"),
     # DOM_MOTION: IMU, accelerometer, gyro
     "MPU6050": (".mpu6050", "MPU6050"),
     "MPU6050NB": (".mpu6050_nb", "MPU6050NB"),
