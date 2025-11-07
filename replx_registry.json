@@ -243,6 +243,7 @@
                 "client.pyi",
                 "enums.pyi",
                 "message.pyi",
+                "packets.pyi",
                 "properties.pyi",
                 "__init__.pyi"
               ]
