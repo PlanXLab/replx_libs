@@ -15,10 +15,11 @@ __author__ = "PlanXLab Development Team"
 
 
 __all__ = (
-    "DistanceScanner", "ServoFnd", "UltrasonicGrid", "WS2812Matrix_Effect", 
+    "BTAmpButton", "DistanceScanner", "ServoFnd", "UltrasonicGrid", "WS2812Matrix_Effect", 
 )
 
 _lazy_map = {
+    "BTAmpButton" : (".btamp_button", "BTAmpButton"),
     "DistanceScanner": (".distance_scanner", "DistanceScanner"),
     "ServoFnd": (".servo_fnd", "ServoFnd"),
     "UltrasonicGrid": (".ultrasonic_grid", "UltrasonicGrid"),
