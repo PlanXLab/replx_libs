@@ -1,258 +1,69 @@
 {
   "schema_version": 1,
-  "repo": "PlanXLab/upyboard_libs",
+  "repo": "PlanXLab/replx_libs",
   "ref": "main",
   "generated_at": "2025-10-22T00:00:00Z",
-
   "targets": {
     "RP2350": { "devices": ["ticle"] },
     "EFR32MG": { "devices": ["xnode"] }
   },
-
   "items": {
     "core": {
       "EFR32MG": {
         "ver": 1.0,
-        "src": {
-          "ver": 1.0,
-          "files": [
-            "utools.py"
-          ]
-        },
+        "src": { "ver": 1.0, "files": ["utools.py"] },
         "typehints": {
           "ver": 1.0,
           "files": [
-            "binascii.pyi",
-            "errno.pyi",
-            "hashlib.pyi",
-            "io.pyi",
-            "json.pyi",
-            "machine.pyi",
-            "math.pyi",
-            "micropython.pyi",
-            "network.pyi",
-            "os.pyi",
-            "select.pyi",
-            "socket.pyi",
-            "ssl.pyi",
-            "struct.pyi",
-            "sys.pyi",
-            "time.pyi",
-            "ubinascii.pyi",
-            "ucryptolib.pyi",
-            "uerrno.pyi",
-            "uhashlib.pyi",
-            "uio.pyi",
-            "ujson.pyi",
-            "umachine.pyi",
-            "uos.pyi",
-            "uselect.pyi",
-            "usocket.pyi",
-            "ussl.pyi",
-            "ustruct.pyi",
-            "utime.pyi",
-            "utools.pyi",
-            {
-              "name": "digi",
-              "ver": 1.0,
-              "files": [
-                "ble.pyi",
-                "cloud.pyi",
-                "gnss.pyi",
-                "__init__.pyi"
-              ]
-            },
-            {
-              "name": "xbee",
-              "ver": 1.0,
-              "files": [
-                "modem_status.pyi",
-                "relay.pyi",
-                "__init__.pyi"
-              ]
-            }
+            "binascii.pyi", "errno.pyi", "hashlib.pyi", "io.pyi", "json.pyi", "machine.pyi",
+            "math.pyi", "micropython.pyi", "network.pyi", "os.pyi", "select.pyi", "socket.pyi",
+            "ssl.pyi", "struct.pyi", "sys.pyi", "time.pyi", "ubinascii.pyi", "ucryptolib.pyi",
+            "uerrno.pyi", "uhashlib.pyi", "uio.pyi", "ujson.pyi", "umachine.pyi", "uos.pyi",
+            "uselect.pyi", "usocket.pyi", "ussl.pyi", "ustruct.pyi", "utime.pyi", "utools.pyi",
+            { "name": "digi", "ver": 1.0, "files": ["ble.pyi", "cloud.pyi", "gnss.pyi", "__init__.pyi"] },
+            { "name": "xbee", "ver": 1.0, "files": ["modem_status.pyi", "relay.pyi", "__init__.pyi"] }
           ]
         }
       },
-
       "RP2350": {
         "ver": 1.1,
         "src": {
           "ver": 1.1,
           "files": [
-            "ringbuffer.py",
-            "slip.py",
-            "termviz.py",
-            "ublynk.py",
-            "ufilter.py",
-            "utools.py",
-            {
-              "name": "upaho",
-              "ver": 1.0,
-              "files": [
-                "client.py",
-                "enums.py",
-                "message.py",
-                "packets.py",
-                "properties.py",
-                "__init__.py"
-              ]
-            }
+            "ringbuffer.py", "slip.py", "termviz.py", "ublynk.py", "ufilter.py", "utools.py",
+            { "name": "upaho", "ver": 1.0, "files": ["client.py", "enums.py", "message.py", "packets.py", "properties.py", "__init__.py"] }
           ]
         },
         "typehints": {
           "ver": 1.1,
           "files": [
-            "ringbuffer.pyi",
-            "slip.pyi",
-            "termviz.pyi",
-            "ublynk.pyi",
-            "ufilter.pyi",
-            "utools.pyi",
+            "ringbuffer.pyi", "slip.pyi", "termviz.pyi", "ublynk.pyi", "ufilter.pyi", "utools.pyi",
             {
-              "name": "micropython",
-              "ver": 1.0,
+              "name": "micropython", "ver": 1.0,
               "files": [
-                "array.pyi",
-                "binascii.pyi",
-                "bluetooth.pyi",
-                "builtins.pyi",
-                "cmath.pyi",
-                "collections.pyi",
-                "cryptolib.pyi",
-                "deflate.pyi",
-                "dht.pyi",
-                "ds18x20.pyi",
-                "errno.pyi",
-                "framebuf.pyi",
-                "gc.pyi",
-                "hashlib.pyi",
-                "heapq.pyi",
-                "io.pyi",
-                "json.pyi",
-                "lwip.pyi",
-                "machine.pyi",
-                "math.pyi",
-                "micropython.pyi",
-                "mip.pyi",
-                "neopixel.pyi",
-                "network.pyi",
-                "ntptime.pyi",
-                "onewire.pyi",
-                "os.pyi",
-                "platform.pyi",
-                "random.pyi",
-                "requests.pyi",
-                "rp2.pyi",
-                "select.pyi",
-                "socket.pyi",
-                "ssl.pyi",
-                "struct.pyi",
-                "sys.pyi",
-                "time.pyi",
-                "tls.pyi",
-                "uarray.pyi",
-                "ubinascii.pyi",
-                "ubluetooth.pyi",
-                "ucollections.pyi",
-                "ucryptolib.pyi",
-                "uctypes.pyi",
-                "uerrno.pyi",
-                "uhashlib.pyi",
-                "uheapq.pyi",
-                "uio.pyi",
-                "ujson.pyi",
-                "umachine.pyi",
-                "uos.pyi",
-                "uplatform.pyi",
-                "urandom.pyi",
-                "ure.pyi",
-                "urequests.pyi",
-                "uselect.pyi",
-                "usocket.pyi",
-                "ustruct.pyi",
-                "usys.pyi",
-                "utime.pyi",
-                "uwebsocket.pyi",
-                "vfs.pyi",
-                "websocket.pyi",
-                "_asyncio.pyi",
-                "_boot_fat.pyi",
-                "_onewire.pyi",
-                "_rp2.pyi",
-                "_thread.pyi",
-                {
-                  "name": "aioble",
-                  "ver": 1.0,
-                  "files": [
-                    "central.pyi",
-                    "client.pyi",
-                    "core.pyi",
-                    "device.pyi",
-                    "l2cap.pyi",
-                    "peripheral.pyi",
-                    "security.pyi",
-                    "server.pyi",
-                    "__init__.pyi"
-                  ]
-                },
-                {
-                  "name": "asyncio",
-                  "ver": 1.0,
-                  "files": [
-                    "core.pyi",
-                    "event.pyi",
-                    "funcs.pyi",
-                    "lock.pyi",
-                    "stream.pyi",
-                    "__init__.pyi"
-                  ]
-                },
-                {
-                  "name": "mip",
-                  "ver": 1.0,
-                  "files": [
-                    "__init__.pyi"
-                  ]
-                },
-                {
-                  "name": "requests",
-                  "ver": 1.0,
-                  "files": [
-                    "__init__.pyi"
-                  ]
-                },
-                {
-                  "name": "uasyncio",
-                  "ver": 1.0,
-                  "files": [
-                    "core.pyi",
-                    "event.pyi",
-                    "funcs.pyi",
-                    "lock.pyi",
-                    "stream.pyi",
-                    "__init__.pyi"
-                  ]
-                }
+                "array.pyi", "binascii.pyi", "bluetooth.pyi", "builtins.pyi", "cmath.pyi", "collections.pyi",
+                "cryptolib.pyi", "deflate.pyi", "dht.pyi", "ds18x20.pyi", "errno.pyi", "framebuf.pyi",
+                "gc.pyi", "hashlib.pyi", "heapq.pyi", "io.pyi", "json.pyi", "lwip.pyi", "machine.pyi",
+                "math.pyi", "micropython.pyi", "mip.pyi", "neopixel.pyi", "network.pyi", "ntptime.pyi",
+                "onewire.pyi", "os.pyi", "platform.pyi", "random.pyi", "requests.pyi", "rp2.pyi",
+                "select.pyi", "socket.pyi", "ssl.pyi", "struct.pyi", "sys.pyi", "time.pyi", "tls.pyi",
+                "uarray.pyi", "ubinascii.pyi", "ubluetooth.pyi", "ucollections.pyi", "ucryptolib.pyi",
+                "uctypes.pyi", "uerrno.pyi", "uhashlib.pyi", "uheapq.pyi", "uio.pyi", "ujson.pyi",
+                "umachine.pyi", "uos.pyi", "uplatform.pyi", "urandom.pyi", "ure.pyi", "urequests.pyi",
+                "uselect.pyi", "usocket.pyi", "ustruct.pyi", "usys.pyi", "utime.pyi", "uwebsocket.pyi",
+                "vfs.pyi", "websocket.pyi", "_asyncio.pyi", "_boot_fat.pyi", "_onewire.pyi", "_rp2.pyi", "_thread.pyi",
+                { "name": "aioble", "ver": 1.0, "files": ["central.pyi", "client.pyi", "core.pyi", "device.pyi", "l2cap.pyi", "peripheral.pyi", "security.pyi", "server.pyi", "__init__.pyi"] },
+                { "name": "asyncio", "ver": 1.0, "files": ["core.pyi", "event.pyi", "funcs.pyi", "lock.pyi", "stream.pyi", "__init__.pyi"] },
+                { "name": "mip", "ver": 1.0, "files": ["__init__.pyi"] },
+                { "name": "requests", "ver": 1.0, "files": ["__init__.pyi"] },
+                { "name": "uasyncio", "ver": 1.0, "files": ["core.pyi", "event.pyi", "funcs.pyi", "lock.pyi", "stream.pyi", "__init__.pyi"] }
               ]
             },
-            {
-              "name": "upaho",
-              "ver": 1.0,
-              "files": [
-                "client.pyi",
-                "enums.pyi",
-                "message.pyi",
-                "packets.pyi",
-                "properties.pyi",
-                "__init__.pyi"
-              ]
-            }
+            { "name": "upaho", "ver": 1.0, "files": ["client.pyi", "enums.pyi", "message.pyi", "packets.pyi", "properties.pyi", "__init__.pyi"] }
           ]
         }
       }
     },
-
     "device": {
       "ticle": {
         "core": "RP2350",
@@ -260,240 +71,58 @@
         "src": {
           "ver": 1.1,
           "files": [
-            "__init__.py",
+            "__init__.py", "_utils.py", "adc.py", "basic.py", "ble.py", "bus_lock.py", "i2c.py", "io.py", "keyreader.py",
+            "pwm.py", "repl.py", "spi.py", "wifi.py",
             {
-              "name": "ext",
-              "ver": 1.0,
+              "name": "ext", "ver": 1.0,
               "files": [
-                "nb_impl.py",
-                "__init__.py",
-                {
-                  "name": "audio",
-                  "ver": 1.0,
-                  "files": [
-                    {
-                      "name": "passive_buzzer",
-                      "ver": 1.0,
-                      "files": [
-                        "passive_buzzer.py"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "name": "motion",
-                  "ver": 1.0,
-                  "files": [
-                    {
-                      "name": "mpu6050",
-                      "ver": 1.0,
-                      "files": [
-                        "mpu6050.py",
-                        "mpu6050_nb.py"
-                      ]
-                    },
-                    {
-                      "name": "bno055",
-                      "ver": 1.0,
-                      "files": [
-                        "bno055.py",
-                        "bno055_nb.py"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "name": "orientation",
-                  "ver": 1.0,
-                  "files": [
-                    {
-                      "name": "as5600",
-                      "ver": 1.0,
-                      "files": [
-                        "as5600.py",
-                        "as5600_nb.py"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "name": "distance",
-                  "ver": 1.0,
-                  "files": [
-                    {
-                      "name": "sr04",
-                      "ver": 1.0,
-                      "files": [
-                        "sr04.py",
-                        "sr04s.py",
-                        "sr04_nb.py"
-                      ]
-                    },
-                    {
-                      "name": "vl53l0x",
-                      "ver": 1.0,
-                      "files": [
-                        "vl53l0x.py",
-                        "vl53l0x_nb.py"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "name": "environmental",
-                  "ver": 1.0,
-                  "files": [
-                    {
-                      "name": "bme68x",
-                      "ver": 1.0,
-                      "files": [
-                        "bme68x.py",
-                        "bme68x_nb.py"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "name": "input",
-                  "ver": 1.0,
-                  "files": [
-                    {
-                      "name": "button",
-                      "ver": 1.0,
-                      "files": [
-                        "button.py",
-                        "buttons.py",
-                        "button_nb.py"
-                      ]
-                    },
-                    {
-                      "name": "ky022",
-                      "ver": 1.0,
-                      "files": [
-                        "ky022.py",
-                        "ky022_nb.py"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "name": "actuators",
-                  "ver": 1.0,
-                  "files": [
-                    {
-                      "name": "relays",
-                      "ver": 1.0,
-                      "files": [
-                        "relays.py"
-                      ]
-                    },
-                    {
-                      "name": "servos",
-                      "ver": 1.0,
-                      "files": [
-                        "servos.py"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "name": "display",
-                  "ver": 1.0,
-                  "files": [
-                    {
-                      "name": "hd44780i2c",
-                      "ver": 1.0,
-                      "files": [
-                        "hd44780i2c.py"
-                      ]
-                    },
-                    {
-                      "name": "ws2812",
-                      "ver": 1.0,
-                      "files": [
-                        "ws2812.py"
-                      ]
-                    }
-                  ]
-                }
+                "nb_impl.py", "__init__.py",
+                { "name": "audio", "ver": 1.0, "files": [{ "name": "passive_buzzer", "ver": 1.0, "files": ["passive_buzzer.py"] }] },
+                { "name": "motion", "ver": 1.0, "files": [
+                  { "name": "mpu6050", "ver": 1.0, "files": ["mpu6050.py", "mpu6050_nb.py"] },
+                  { "name": "bno055", "ver": 1.0, "files": ["bno055.py", "bno055_nb.py"] }
+                ]},
+                { "name": "orientation", "ver": 1.0, "files": [{ "name": "as5600", "ver": 1.0, "files": ["as5600.py", "as5600_nb.py"] }] },
+                { "name": "distance", "ver": 1.0, "files": [
+                  { "name": "sr04", "ver": 1.0, "files": ["sr04.py", "sr04s.py", "sr04_nb.py"] },
+                  { "name": "vl53l0x", "ver": 1.0, "files": ["vl53l0x.py", "vl53l0x_nb.py"] }
+                ]},
+                { "name": "environmental", "ver": 1.0, "files": [{ "name": "bme68x", "ver": 1.0, "files": ["bme68x.py", "bme68x_nb.py"] }] },
+                { "name": "input", "ver": 1.0, "files": [
+                  { "name": "button", "ver": 1.0, "files": ["button.py", "buttons.py", "button_nb.py"] },
+                  { "name": "ky022", "ver": 1.0, "files": ["ky022.py", "ky022_nb.py"] }
+                ]},
+                { "name": "actuators", "ver": 1.0, "files": [
+                  { "name": "relays", "ver": 1.0, "files": ["relays.py"] },
+                  { "name": "servos", "ver": 1.0, "files": ["servos.py"] }
+                ]},
+                { "name": "display", "ver": 1.0, "files": [
+                  { "name": "hd44780i2c", "ver": 1.0, "files": ["hd44780i2c.py"] },
+                  { "name": "ws2812", "ver": 1.0, "files": ["ws2812.py"] }
+                ]}
               ]
             },
-            {
-              "name": "font",
-              "ver": 1.0,
-              "files": [
-                "pixelroborobo.py",
-                "vga2_bold_16x16.py"
-              ]
-            },
-            {
-              "name": "pbl",
-              "ver": 1.0,
-              "files": [
-                "btamp_button.py",
-                "distance_scanner.py",
-                "servo_fnd.py",
-                "ultrasonic_grid.py",
-                "ws2812matrix_effect.py",
-                "__init__.py"
-              ]
-            }
+            { "name": "font", "ver": 1.0, "files": ["pixelroborobo.py", "vga2_bold_16x16.py"] },
+            { "name": "pbl", "ver": 1.0, "files": ["btamp_button.py", "distance_scanner.py", "servo_fnd.py", "ultrasonic_grid.py", "ws2812matrix_effect.py", "__init__.py"] }
           ]
         },
         "typehints": {
           "ver": 1.0,
           "files": [
             "__init__.pyi",
-            {
-              "name": "ext",
-              "ver": 1.0,
-              "files": [
-                "__init__.pyi",
-                {
-                  "name": "display",
-                  "ver": 1.0,
-                  "files": [
-                    {
-                      "name": "ws2812",
-                      "ver": 1.0,
-                      "files": [
-                        "ws2812.pyi"
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "name": "pbl",
-              "ver": 1.0,
-              "files": [
-                "__init__.pyi"
-              ]
-            }
+            { "name": "ext", "ver": 1.0, "files": [
+              "__init__.pyi",
+              { "name": "display", "ver": 1.0, "files": [{ "name": "ws2812", "ver": 1.0, "files": ["ws2812.pyi"] }] }
+            ]},
+            { "name": "pbl", "ver": 1.0, "files": ["__init__.pyi"] }
           ]
         }
       },
-
       "xnode": {
         "core": "EFR32MG",
         "ver": 1.0,
-        "src": {
-          "ver": 1.0,
-          "files": [
-            "autoctrl.py",
-            "ext.py",
-            "__init__.py"
-          ]
-        },
-        "typehints": {
-          "ver": 1.0,
-          "files": [
-            "autoctrl.pyi",
-            "ext.pyi",
-            "__init__.pyi"
-          ]
-        }
+        "src": { "ver": 1.0, "files": ["autoctrl.py", "ext.py", "__init__.py"] },
+        "typehints": { "ver": 1.0, "files": ["autoctrl.pyi", "ext.pyi", "__init__.pyi"] }
       }
     }
   }
