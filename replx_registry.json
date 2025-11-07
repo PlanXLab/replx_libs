@@ -264,31 +264,144 @@
               "name": "ext",
               "ver": 1.0,
               "files": [
-                "as5600.py",
-                "as5600_nb.py",
-                "bme68x.py",
-                "bme68x_nb.py",
-                "bno055.py",
-                "bno055_nb.py",
-                "btaac.py",
-                "button.py",
-                "buttons.py",
-                "button_nb.py",
-                "hd44780i2c.py",
-                "ky022.py",
-                "ky022_nb.py",
-                "mpu6050.py",
-                "mpu6050_nb.py",
                 "nb_impl.py",
-                "relays.py",
-                "servos.py",
-                "sr04.py",
-                "sr04s.py",
-                "sr04_nb.py",
-                "vl53l0x.py",
-                "vl53l0x_nb.py",
-                "ws2812.py",
-                "__init__.py"
+                "__init__.py",
+                {
+                  "name": "motion",
+                  "ver": 1.0,
+                  "files": [
+                    {
+                      "name": "mpu6050",
+                      "ver": 1.0,
+                      "files": [
+                        "mpu6050.py",
+                        "mpu6050_nb.py"
+                      ]
+                    },
+                    {
+                      "name": "bno055",
+                      "ver": 1.0,
+                      "files": [
+                        "bno055.py",
+                        "bno055_nb.py"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "orientation",
+                  "ver": 1.0,
+                  "files": [
+                    {
+                      "name": "as5600",
+                      "ver": 1.0,
+                      "files": [
+                        "as5600.py",
+                        "as5600_nb.py"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "distance",
+                  "ver": 1.0,
+                  "files": [
+                    {
+                      "name": "sr04",
+                      "ver": 1.0,
+                      "files": [
+                        "sr04.py",
+                        "sr04s.py",
+                        "sr04_nb.py"
+                      ]
+                    },
+                    {
+                      "name": "vl53l0x",
+                      "ver": 1.0,
+                      "files": [
+                        "vl53l0x.py",
+                        "vl53l0x_nb.py"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "environmental",
+                  "ver": 1.0,
+                  "files": [
+                    {
+                      "name": "bme68x",
+                      "ver": 1.0,
+                      "files": [
+                        "bme68x.py",
+                        "bme68x_nb.py"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "input",
+                  "ver": 1.0,
+                  "files": [
+                    {
+                      "name": "button",
+                      "ver": 1.0,
+                      "files": [
+                        "button.py",
+                        "buttons.py",
+                        "button_nb.py"
+                      ]
+                    },
+                    {
+                      "name": "ky022",
+                      "ver": 1.0,
+                      "files": [
+                        "ky022.py",
+                        "ky022_nb.py"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "actuators",
+                  "ver": 1.0,
+                  "files": [
+                    {
+                      "name": "relays",
+                      "ver": 1.0,
+                      "files": [
+                        "relays.py"
+                      ]
+                    },
+                    {
+                      "name": "servos",
+                      "ver": 1.0,
+                      "files": [
+                        "servos.py"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "display",
+                  "ver": 1.0,
+                  "files": [
+                    {
+                      "name": "hd44780i2c",
+                      "ver": 1.0,
+                      "files": [
+                        "hd44780i2c.py"
+                      ]
+                    },
+                    {
+                      "name": "ws2812",
+                      "ver": 1.0,
+                      "files": [
+                        "ws2812.py"
+                      ]
+                    }
+                  ]
+                }
               ]
             },
             {
@@ -303,6 +416,7 @@
               "name": "pbl",
               "ver": 1.0,
               "files": [
+                "btamp_button.py",
                 "distance_scanner.py",
                 "servo_fnd.py",
                 "ultrasonic_grid.py",
@@ -320,8 +434,20 @@
               "name": "ext",
               "ver": 1.0,
               "files": [
-                "ws2812.pyi",
-                "__init__.pyi"
+                "__init__.pyi",
+                {
+                  "name": "display",
+                  "ver": 1.0,
+                  "files": [
+                    {
+                      "name": "ws2812",
+                      "ver": 1.0,
+                      "files": [
+                        "ws2812.pyi"
+                      ]
+                    }
+                  ]
+                }
               ]
             },
             {
