@@ -13,10 +13,21 @@ class PassiveBuzzer:
 
     BASE_FREQ = 16.35
 
-    def __init__(self, pin: int = 1, tempo: int = 120):
-        self._pwm = machine.PWM(machine.Pin(pin))
+    def __init__(self, pin: int = 1, tempo: int = 120, volume: int = 50, boost: bool = False):
+        self._pin = machine.Pin(pin, machine.Pin.OUT)
+        self._pwm = machine.PWM(self._pin)
         self._pwm.duty_u16(0)
         self._tempo = tempo
+        self._volume = max(0, min(100, volume))
+        self._boost = boost
+        
+        # Boost mode: duty cycle을 비대칭으로 설정 (소리 증폭)
+        if self._boost:
+            # 90% duty cycle (거의 최대)
+            self._max_duty = 58982  # 약 90%
+        else:
+            self._max_duty = int(65535 * self._volume / 100)
+        
         self._is_playing = False
         self._melody_task = None
 
@@ -42,8 +53,10 @@ class PassiveBuzzer:
             return
 
         freq = self._note_to_freq(note_octave)
+        
+        # 주파수 설정 전에 duty를 먼저 설정
+        self._pwm.duty_u16(self._max_duty)
         self._pwm.freq(int(freq))
-        self._pwm.duty_u16(32768)
 
         if echo:
             echo_delay = duration * 0.1
@@ -56,7 +69,7 @@ class PassiveBuzzer:
 
             for i in range(num_echoes):
                 utime.sleep(echo_delay)
-                self._pwm.duty_u16(int(32768 * (echo_decay ** (i + 1))))
+                self._pwm.duty_u16(int(self._max_duty * (echo_decay ** (i + 1))))
                 utime.sleep(duration * 0.2)
                 self._pwm.duty_u16(0)
                 utime.sleep(duration * 0.1)
@@ -74,8 +87,10 @@ class PassiveBuzzer:
             return
 
         freq = self._note_to_freq(note_octave)
+        
+        # 주파수 설정 전에 duty를 먼저 설정
+        self._pwm.duty_u16(self._max_duty)
         self._pwm.freq(int(freq))
-        self._pwm.duty_u16(32768)
 
         if echo:
             echo_delay = duration * 0.1
@@ -90,7 +105,7 @@ class PassiveBuzzer:
                 if not self._is_playing:
                     break
                 await asyncio.sleep(echo_delay)
-                self._pwm.duty_u16(int(32768 * (echo_decay ** (i + 1))))
+                self._pwm.duty_u16(int(self._max_duty * (echo_decay ** (i + 1))))
                 await asyncio.sleep(duration * 0.2)
                 self._pwm.duty_u16(0)
                 await asyncio.sleep(duration * 0.1)
@@ -153,10 +168,29 @@ class PassiveBuzzer:
             raise ValueError("BPM must be positive")
         self._tempo = bpm
 
+    def set_volume(self, volume: int):
+        if volume < 0 or volume > 100:
+            raise ValueError("Volume must be between 0 and 100")
+        self._volume = volume
+        if not self._boost:
+            self._max_duty = int(65535 * self._volume / 100)
+
+    def set_boost(self, enabled: bool):
+        self._boost = enabled
+        if self._boost:
+            self._max_duty = 58982  # 90%
+        else:
+            self._max_duty = int(65535 * self._volume / 100)
+
+    @property
+    def volume(self) -> int:
+        return self._volume
+
     @property
     def is_playing(self) -> bool:
         return self._is_playing
 
     def deinit(self):
         self.stop()
+        self._pwm.deinit()
         self._pwm.deinit()

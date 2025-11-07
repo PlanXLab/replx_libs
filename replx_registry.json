@@ -77,7 +77,7 @@
               "name": "ext", "ver": 1.0,
               "files": [
                 "nb_impl.py", "__init__.py",
-                { "name": "audio", "ver": 1.0, "files": [{ "name": "passive_buzzer", "ver": 1.0, "files": ["passive_buzzer.py"] }] },
+                { "name": "audio", "ver": 1.0, "files": [{ "name": "passive_buzzer", "ver": 1.0, "files": ["passive_buzzer.py", "passive_buzzer_amp.py"] }] },
                 { "name": "motion", "ver": 1.0, "files": [
                   { "name": "mpu6050", "ver": 1.0, "files": ["mpu6050.py", "mpu6050_nb.py"] },
                   { "name": "bno055", "ver": 1.0, "files": ["bno055.py", "bno055_nb.py"] }
