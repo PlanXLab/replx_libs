@@ -1,0 +1,7 @@
+{
+  "name": "ESP32C5",
+  "type": "platform",
+  "description": "Espressif ESP32-C5 platform - RISC-V WiFi 6 capable",
+  "includes": ["_std/*", "_std_peri/*", "_std_comm/*"],
+  "note": "Full shared core support"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "ESP32S3",
+  "type": "platform",
+  "description": "Espressif ESP32-S3 platform - WiFi/BLE capable",
+  "includes": ["_std/*", "_std_peri/*", "_std_comm/*"],
+  "note": "Full shared core support"
+}

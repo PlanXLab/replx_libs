@@ -1,0 +1,7 @@
+{
+  "name": "xnode",
+  "type": "device",
+  "description": "XNode - Digi XBee based device with Zigbee/Thread support",
+  "includes": ["_xnode/*"],
+  "note": "Includes platform-specific modules for XNode device"
+}

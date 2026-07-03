@@ -1,0 +1,7 @@
+{
+  "name": "ESP32P4C6",
+  "type": "platform",
+  "description": "Espressif ESP32-P4C6 platform - high-performance RISC-V",
+  "includes": ["_std/*", "_std_peri/*", "_std_comm/*"],
+  "note": "Full shared core support"
+}

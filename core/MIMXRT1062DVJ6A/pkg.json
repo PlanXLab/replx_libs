@@ -1,0 +1,7 @@
+{
+  "name": "MIMXRT1062DVJ6A",
+  "type": "platform",
+  "description": "NXP i.MX RT1062 platform - Teensy 4.x compatible",
+  "includes": ["_std/*", "_std_peri/*"],
+  "note": "Includes all shared core except communication modules"
+}

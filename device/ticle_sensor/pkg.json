@@ -1,0 +1,25 @@
+{
+  "name": "ticle_sensor",
+  "type": "device",
+  "description": "TiCLE Sensor - Complete sensor and actuator platform",
+  "includes": [
+    "_std/actuators/servo*",
+    "_std/audio/buzzer*",
+    "_std/display/lcd_hd44780",
+    "_std/distance/us*",
+    "_std/environmental/bme68x*",
+    "_std/motion/bno055*",
+    "_std/orientation/as5600*",
+    "_ticle/ws2812",
+    "_ticle/distance/us2",
+    "_ticle/ain",
+    "_ticle/basic",
+    "_ticle/bus_lock",
+    "_ticle/i2c",
+    "_ticle/pio_capture",
+    "_ticle/pio_waveform",
+    "_ticle/spi",
+    "_ticle/utools"
+  ],
+  "note": "Includes comprehensive sensor suite and actuators"
+}

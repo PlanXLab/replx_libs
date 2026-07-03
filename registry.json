@@ -1,0 +1,1426 @@
+{
+  "schema_version": 5,
+  "repo": "PlanXLab/replx_libs",
+  "ref": "main",
+  "generated_at": "2026-07-03T00:25:26Z",
+  "platform_cores": {
+    "EFR32MG": {
+      "includes": [
+        "_EFR32MG/*"
+      ]
+    },
+    "ESP32C5": {
+      "includes": [
+        "_std/*",
+        "_std_peri/*",
+        "_std_comm/*"
+      ]
+    },
+    "ESP32P4C6": {
+      "includes": [
+        "_std/*",
+        "_std_peri/*",
+        "_std_comm/*"
+      ]
+    },
+    "ESP32S3": {
+      "includes": [
+        "_std/*",
+        "_std_peri/*",
+        "_std_comm/*"
+      ]
+    },
+    "MIMXRT1062DVJ6A": {
+      "includes": [
+        "_std/*",
+        "_std_peri/*"
+      ]
+    },
+    "RP2350": {
+      "includes": [
+        "_std/*",
+        "_std_peri/*",
+        "_std_comm/*"
+      ]
+    }
+  },
+  "device_configs": {
+    "ticle_lite": {
+      "includes": [
+        "_std/actuators/servo*",
+        "_std/display/lcd_hd44780",
+        "_std/distance/us*",
+        "_std/input/button*",
+        "_std/motion/mpu6050*",
+        "_ticle/audio/*",
+        "_ticle/display/ws2812",
+        "_ticle/distance/us2",
+        "_ticle/ain",
+        "_ticle/basic",
+        "_ticle/bus_lock",
+        "_ticle/i2c",
+        "_ticle/pio_capture",
+        "_ticle/pio_waveform",
+        "_ticle/spi",
+        "_ticle/utools"
+      ]
+    },
+    "ticle_sensor": {
+      "includes": [
+        "_std/actuators/servo*",
+        "_std/audio/buzzer*",
+        "_std/display/lcd_hd44780",
+        "_std/distance/us*",
+        "_std/environmental/bme68x*",
+        "_std/motion/bno055*",
+        "_std/orientation/as5600*",
+        "_ticle/ws2812",
+        "_ticle/distance/us2",
+        "_ticle/ain",
+        "_ticle/basic",
+        "_ticle/bus_lock",
+        "_ticle/i2c",
+        "_ticle/pio_capture",
+        "_ticle/pio_waveform",
+        "_ticle/spi",
+        "_ticle/utools"
+      ]
+    },
+    "xnode": {
+      "includes": [
+        "_xnode/*"
+      ]
+    }
+  },
+  "packages": {
+    "termio": {
+      "version": "1.5.0",
+      "type": "core",
+      "source": "core/_std/src/termio.py",
+      "deploy_path": "termio.py",
+      "category": "utility",
+      "interface": [
+        "std_io"
+      ],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "terminal",
+        "input",
+        "keyboard",
+        "serial",
+        "repl",
+        "stdin"
+      ],
+      "typehint": "core/_std/typehints/termio.pyi"
+    },
+    "termio_async": {
+      "version": "1.2.0",
+      "type": "core",
+      "source": "core/_std/src/termio_async.py",
+      "deploy_path": "termio_async.py",
+      "category": "utility",
+      "interface": [
+        "std_io"
+      ],
+      "depends": [
+        "termio"
+      ],
+      "platforms": "*",
+      "tags": [
+        "terminal",
+        "async",
+        "asyncio",
+        "keyboard",
+        "serial"
+      ],
+      "typehint": "core/_std/typehints/termio_async.pyi"
+    },
+    "termviz": {
+      "version": "1.6.0",
+      "type": "core",
+      "source": "core/_std/src/termviz.py",
+      "deploy_path": "termviz.py",
+      "category": "utility",
+      "interface": [],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "terminal",
+        "visualization",
+        "color",
+        "ansi",
+        "chart",
+        "graph"
+      ],
+      "typehint": "core/_std/typehints/termviz.pyi"
+    },
+    "ufilter": {
+      "version": "1.3.0",
+      "type": "core",
+      "source": "core/_std/src/ufilter.py",
+      "deploy_path": "ufilter.py",
+      "category": "utility",
+      "interface": [],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "filter",
+        "median",
+        "lowpass",
+        "kalman",
+        "moving-average",
+        "butterworth"
+      ],
+      "typehint": "core/_std/typehints/ufilter.pyi"
+    },
+    "utools": {
+      "version": "1.1.0",
+      "type": "core",
+      "source": "core/_std/src/utools.py",
+      "deploy_path": "utools.py",
+      "category": "utility",
+      "interface": [],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "utility",
+        "clamp",
+        "map",
+        "range",
+        "random"
+      ],
+      "typehint": "core/_std/typehints/utools.pyi"
+    },
+    "ain": {
+      "version": "2.3",
+      "type": "core",
+      "source": "core/_std_peri/src/ain.py",
+      "deploy_path": "ain.py",
+      "category": "peripheral",
+      "interface": [
+        "ADC"
+      ],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "adc",
+        "analog",
+        "input",
+        "voltage",
+        "sensor"
+      ],
+      "typehint": "core/_std_peri/typehints/ain.pyi"
+    },
+    "ain_async": {
+      "version": "2.2",
+      "type": "core",
+      "source": "core/_std_peri/src/ain_async.py",
+      "deploy_path": "ain_async.py",
+      "category": "peripheral",
+      "interface": [
+        "ADC"
+      ],
+      "depends": [
+        "ain"
+      ],
+      "platforms": "*",
+      "tags": [
+        "adc",
+        "analog",
+        "async",
+        "asyncio",
+        "input"
+      ],
+      "typehint": "core/_std_peri/typehints/ain_async.pyi"
+    },
+    "dio": {
+      "version": "2.1",
+      "type": "core",
+      "source": "core/_std_peri/src/dio.py",
+      "deploy_path": "dio.py",
+      "category": "peripheral",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "gpio",
+        "digital",
+        "input",
+        "output",
+        "dio",
+        "irq"
+      ],
+      "typehint": "core/_std_peri/typehints/dio.pyi"
+    },
+    "dio_async": {
+      "version": "2.1",
+      "type": "core",
+      "source": "core/_std_peri/src/dio_async.py",
+      "deploy_path": "dio_async.py",
+      "category": "peripheral",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "dio"
+      ],
+      "platforms": "*",
+      "tags": [
+        "gpio",
+        "digital",
+        "async",
+        "asyncio",
+        "input",
+        "output"
+      ],
+      "typehint": "core/_std_peri/typehints/dio_async.pyi"
+    },
+    "i2c": {
+      "version": "1.0",
+      "type": "core",
+      "source": "core/_std_peri/src/i2c.py",
+      "deploy_path": "i2c.py",
+      "category": "peripheral",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "i2c",
+        "bus",
+        "master",
+        "communication",
+        "sensor"
+      ],
+      "typehint": "core/_std_peri/typehints/i2c.pyi"
+    },
+    "pout": {
+      "version": "2.0",
+      "type": "core",
+      "source": "core/_std_peri/src/pout.py",
+      "deploy_path": "pout.py",
+      "category": "peripheral",
+      "interface": [
+        "PWM"
+      ],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "pwm",
+        "output",
+        "duty",
+        "frequency",
+        "analog-output"
+      ],
+      "typehint": "core/_std_peri/typehints/pout.pyi"
+    },
+    "ble": {
+      "version": "2.1.0",
+      "type": "core",
+      "source": "core/_std_comm/src/ble.py",
+      "deploy_path": "ble.py",
+      "category": "communication",
+      "interface": [
+        "BLE"
+      ],
+      "depends": [],
+      "platforms": "rp2, esp32, nrf",
+      "tags": [
+        "ble",
+        "bluetooth",
+        "wireless",
+        "peripheral",
+        "central"
+      ],
+      "typehint": "core/_std_comm/typehints/ble.pyi"
+    },
+    "mesh": {
+      "version": "1.0.0",
+      "type": "core",
+      "source": "core/_std_comm/src/mesh.py",
+      "deploy_path": "mesh.py",
+      "category": "communication",
+      "interface": [
+        "BLE"
+      ],
+      "depends": [],
+      "platforms": "rp2, esp32, nrf",
+      "tags": [
+        "mesh",
+        "ble",
+        "bluetooth",
+        "network",
+        "multi-hop"
+      ],
+      "typehint": "core/_std_comm/typehints/mesh.pyi"
+    },
+    "ublynk": {
+      "version": "1.0.0",
+      "type": "core",
+      "source": "core/_std_comm/src/ublynk.py",
+      "deploy_path": "ublynk.py",
+      "category": "communication",
+      "interface": [
+        "WiFi"
+      ],
+      "depends": [
+        "wifi"
+      ],
+      "platforms": "rp2, esp32",
+      "tags": [
+        "blynk",
+        "iot",
+        "cloud",
+        "virtual-pin"
+      ],
+      "typehint": "core/_std_comm/typehints/ublynk.pyi"
+    },
+    "wifi": {
+      "version": "2.0.0",
+      "type": "core",
+      "source": "core/_std_comm/src/wifi.py",
+      "deploy_path": "wifi.py",
+      "category": "communication",
+      "interface": [
+        "WiFi"
+      ],
+      "depends": [],
+      "platforms": "rp2, esp32",
+      "tags": [
+        "wifi",
+        "network",
+        "wireless",
+        "sta",
+        "ap",
+        "connect"
+      ],
+      "typehint": "core/_std_comm/typehints/wifi.pyi"
+    },
+    "upaho": {
+      "version": "1.1.0",
+      "type": "core",
+      "source": "core/_std_comm/src/upaho/__init__.py",
+      "deploy_path": "upaho/__init__.py",
+      "category": "communication",
+      "interface": [
+        "WiFi"
+      ],
+      "depends": [
+        "wifi"
+      ],
+      "platforms": "rp2, esp32",
+      "tags": [
+        "mqtt",
+        "paho",
+        "iot",
+        "pubsub",
+        "message-queue"
+      ],
+      "typehint": "core/_std_comm/typehints/upaho/__init__.pyi",
+      "submodules": [
+        "core/_std_comm/src/upaho/client.py",
+        "core/_std_comm/src/upaho/enums.py",
+        "core/_std_comm/src/upaho/message.py",
+        "core/_std_comm/src/upaho/packets.py",
+        "core/_std_comm/src/upaho/properties.py"
+      ],
+      "submodules_typehints": [
+        "core/_std_comm/typehints/upaho/client.pyi",
+        "core/_std_comm/typehints/upaho/enums.pyi",
+        "core/_std_comm/typehints/upaho/message.pyi",
+        "core/_std_comm/typehints/upaho/packets.pyi",
+        "core/_std_comm/typehints/upaho/properties.pyi"
+      ]
+    },
+    "termviz@EFR32MG": {
+      "version": "1.0.0",
+      "type": "core",
+      "source": "core/_EFR32MG/src/termviz.py",
+      "deploy_path": "termviz.py",
+      "category": "utility",
+      "interface": [],
+      "depends": [],
+      "platforms": "EFR32MG",
+      "tags": [
+        "terminal",
+        "color",
+        "ansi"
+      ],
+      "typehint": "core/_EFR32MG/typehints/termviz.pyi"
+    },
+    "utools@EFR32MG": {
+      "version": "1.1.0",
+      "type": "core",
+      "source": "core/_EFR32MG/src/utools.py",
+      "deploy_path": "utools.py",
+      "category": "utility",
+      "interface": [],
+      "depends": [],
+      "platforms": "EFR32MG",
+      "tags": [
+        "utility",
+        "clamp",
+        "map",
+        "range",
+        "random"
+      ],
+      "typehint": "core/_EFR32MG/typehints/utools.pyi"
+    },
+    "relay": {
+      "version": "1.0.0",
+      "type": "device-std",
+      "source": "device/_std/src/actuators/relay.py",
+      "deploy_path": "relay.py",
+      "category": "actuators",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "dio"
+      ],
+      "platforms": "*",
+      "tags": [
+        "relay",
+        "actuator",
+        "switch",
+        "gpio",
+        "interlock"
+      ],
+      "typehint": "device/_std/typehints/actuators/relay.pyi"
+    },
+    "relay_async": {
+      "version": "1.0.0",
+      "type": "device-std",
+      "source": "device/_std/src/actuators/relay_async.py",
+      "deploy_path": "relay_async.py",
+      "category": "actuators",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "relay"
+      ],
+      "platforms": "*",
+      "tags": [
+        "relay",
+        "actuator",
+        "async",
+        "asyncio"
+      ],
+      "typehint": "device/_std/typehints/actuators/relay_async.pyi"
+    },
+    "servo": {
+      "version": "4.4",
+      "type": "device-std",
+      "source": "device/_std/src/actuators/servo.py",
+      "deploy_path": "servo.py",
+      "category": "actuators",
+      "interface": [
+        "PWM"
+      ],
+      "depends": [
+        "pout",
+        "utools"
+      ],
+      "platforms": "*",
+      "tags": [
+        "servo",
+        "motor",
+        "actuator",
+        "pwm",
+        "positional",
+        "continuous",
+        "easing"
+      ],
+      "typehint": "device/_std/typehints/actuators/servo.pyi"
+    },
+    "servo_async": {
+      "version": "1.1.1",
+      "type": "device-std",
+      "source": "device/_std/src/actuators/servo_async.py",
+      "deploy_path": "servo_async.py",
+      "category": "actuators",
+      "interface": [
+        "PWM"
+      ],
+      "depends": [
+        "servo"
+      ],
+      "platforms": "*",
+      "tags": [
+        "servo",
+        "motor",
+        "async",
+        "asyncio",
+        "actuator"
+      ],
+      "typehint": "device/_std/typehints/actuators/servo_async.pyi"
+    },
+    "buzzer": {
+      "version": "2.2.0",
+      "type": "device-std",
+      "source": "device/_std/src/audio/buzzer.py",
+      "deploy_path": "buzzer.py",
+      "category": "audio",
+      "interface": [
+        "PWM"
+      ],
+      "depends": [
+        "pout"
+      ],
+      "platforms": "*",
+      "tags": [
+        "buzzer",
+        "audio",
+        "tone",
+        "melody",
+        "rtttl",
+        "beep",
+        "music"
+      ],
+      "typehint": "device/_std/typehints/audio/buzzer.pyi"
+    },
+    "buzzer_async": {
+      "version": "1.0.0",
+      "type": "device-std",
+      "source": "device/_std/src/audio/buzzer_async.py",
+      "deploy_path": "buzzer_async.py",
+      "category": "audio",
+      "interface": [
+        "PWM"
+      ],
+      "depends": [
+        "buzzer"
+      ],
+      "platforms": "*",
+      "tags": [
+        "buzzer",
+        "audio",
+        "tone",
+        "melody",
+        "rtttl",
+        "beep",
+        "music",
+        "async",
+        "asyncio"
+      ],
+      "typehint": "device/_std/typehints/audio/buzzer_async.pyi"
+    },
+    "lcd_hd44780": {
+      "version": "1.0.0",
+      "type": "device-std",
+      "source": "device/_std/src/display/lcd_hd44780.py",
+      "deploy_path": "lcd_hd44780.py",
+      "category": "display",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "i2c"
+      ],
+      "platforms": "*",
+      "tags": [
+        "lcd",
+        "display",
+        "hd44780",
+        "pcf8574",
+        "i2c",
+        "text",
+        "graphics"
+      ],
+      "typehint": "device/_std/typehints/display/lcd_hd44780.pyi"
+    },
+    "us": {
+      "version": "3.5",
+      "type": "device-std",
+      "source": "device/_std/src/distance/us.py",
+      "deploy_path": "us.py",
+      "category": "distance",
+      "sensor_type": "B",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "dio",
+        "ufilter"
+      ],
+      "platforms": "*",
+      "tags": [
+        "ultrasonic",
+        "distance",
+        "sr04",
+        "hc-sr04",
+        "ranging",
+        "multi-sensor"
+      ],
+      "typehint": "device/_std/typehints/distance/us.pyi"
+    },
+    "us_async": {
+      "version": "2.2.0",
+      "type": "device-std",
+      "source": "device/_std/src/distance/us_async.py",
+      "deploy_path": "us_async.py",
+      "category": "distance",
+      "sensor_type": "B",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "sr04",
+        "io_async"
+      ],
+      "platforms": "*",
+      "tags": [
+        "ultrasonic",
+        "distance",
+        "sr04",
+        "hc-sr04",
+        "ranging",
+        "async",
+        "asyncio",
+        "irq",
+        "multi-sensor"
+      ],
+      "typehint": "device/_std/typehints/distance/us_async.pyi"
+    },
+    "vl53l0x": {
+      "version": "2.1.0",
+      "type": "device-std",
+      "source": "device/_std/src/distance/vl53l0x.py",
+      "deploy_path": "vl53l0x.py",
+      "category": "distance",
+      "sensor_type": "A",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "i2c",
+        "ufilter"
+      ],
+      "platforms": "*",
+      "tags": [
+        "tof",
+        "lidar",
+        "distance",
+        "laser",
+        "vl53l0x",
+        "ranging"
+      ],
+      "typehint": "device/_std/typehints/distance/vl53l0x.pyi"
+    },
+    "vl53l0x_async": {
+      "version": "1.1.0",
+      "type": "device-std",
+      "source": "device/_std/src/distance/vl53l0x_async.py",
+      "deploy_path": "vl53l0x_async.py",
+      "category": "distance",
+      "sensor_type": "A",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "vl53l0x"
+      ],
+      "platforms": "*",
+      "tags": [
+        "tof",
+        "lidar",
+        "distance",
+        "laser",
+        "vl53l0x",
+        "ranging",
+        "async",
+        "asyncio"
+      ],
+      "typehint": "device/_std/typehints/distance/vl53l0x_async.pyi"
+    },
+    "bme68x": {
+      "version": "2.2.0",
+      "type": "device-std",
+      "source": "device/_std/src/environmental/bme68x.py",
+      "deploy_path": "bme68x.py",
+      "category": "environmental",
+      "sensor_type": "A",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "i2c"
+      ],
+      "platforms": "*",
+      "tags": [
+        "bme680",
+        "bme688",
+        "temperature",
+        "pressure",
+        "humidity",
+        "gas",
+        "iaq",
+        "air quality"
+      ],
+      "typehint": "device/_std/typehints/environmental/bme68x.pyi"
+    },
+    "bme68x_async": {
+      "version": "1.1.0",
+      "type": "device-std",
+      "source": "device/_std/src/environmental/bme68x_async.py",
+      "deploy_path": "bme68x_async.py",
+      "category": "environmental",
+      "sensor_type": "A",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "bme68x"
+      ],
+      "platforms": "*",
+      "tags": [
+        "bme680",
+        "bme688",
+        "temperature",
+        "pressure",
+        "humidity",
+        "gas",
+        "async",
+        "asyncio"
+      ],
+      "typehint": "device/_std/typehints/environmental/bme68x_async.pyi"
+    },
+    "button": {
+      "version": "2.2",
+      "type": "device-std",
+      "source": "device/_std/src/input/button.py",
+      "deploy_path": "button.py",
+      "category": "input",
+      "sensor_type": "C",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "dio"
+      ],
+      "platforms": "*",
+      "tags": [
+        "button",
+        "input",
+        "gpio",
+        "gesture",
+        "click",
+        "long_press"
+      ],
+      "typehint": "device/_std/typehints/input/button.pyi"
+    },
+    "button_async": {
+      "version": "1.1.0",
+      "type": "device-std",
+      "source": "device/_std/src/input/button_async.py",
+      "deploy_path": "button_async.py",
+      "category": "input",
+      "sensor_type": "C",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "button"
+      ],
+      "platforms": "*",
+      "tags": [
+        "button",
+        "input",
+        "gpio",
+        "gesture",
+        "async",
+        "asyncio"
+      ],
+      "typehint": "device/_std/typehints/input/button_async.pyi"
+    },
+    "ky022": {
+      "version": "1.0.0",
+      "type": "device-std",
+      "source": "device/_std/src/input/ky022.py",
+      "deploy_path": "ky022.py",
+      "category": "input",
+      "sensor_type": "C",
+      "interface": [
+        "GPIO (IRQ)"
+      ],
+      "depends": [
+        "machine",
+        "micropython"
+      ],
+      "platforms": "*",
+      "tags": [
+        "ir",
+        "infrared",
+        "remote",
+        "receiver",
+        "nec",
+        "sirc",
+        "ky022"
+      ],
+      "typehint": "device/_std/typehints/input/ky022.pyi"
+    },
+    "ky022_async": {
+      "version": "1.1.0",
+      "type": "device-std",
+      "source": "device/_std/src/input/ky022_async.py",
+      "deploy_path": "ky022_async.py",
+      "category": "input",
+      "sensor_type": "C",
+      "interface": [
+        "GPIO (IRQ)"
+      ],
+      "depends": [
+        "ky022",
+        "asyncio"
+      ],
+      "platforms": "*",
+      "tags": [
+        "ir",
+        "infrared",
+        "remote",
+        "receiver",
+        "async"
+      ],
+      "typehint": "device/_std/typehints/input/ky022_async.pyi"
+    },
+    "bno055": {
+      "version": "1.0.0",
+      "type": "device-std",
+      "source": "device/_std/src/motion/bno055.py",
+      "deploy_path": "bno055.py",
+      "category": "motion",
+      "sensor_type": "D",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "i2c"
+      ],
+      "platforms": "*",
+      "tags": [
+        "imu",
+        "9dof",
+        "accelerometer",
+        "gyroscope",
+        "magnetometer",
+        "quaternion",
+        "euler",
+        "bno055"
+      ],
+      "typehint": "device/_std/typehints/motion/bno055.pyi"
+    },
+    "bno055_async": {
+      "version": "1.1.0",
+      "type": "device-std",
+      "source": "device/_std/src/motion/bno055_async.py",
+      "deploy_path": "bno055_async.py",
+      "category": "motion",
+      "sensor_type": "D",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "bno055"
+      ],
+      "platforms": "*",
+      "tags": [
+        "imu",
+        "9dof",
+        "async",
+        "asyncio",
+        "bno055"
+      ],
+      "typehint": "device/_std/typehints/motion/bno055_async.pyi"
+    },
+    "mpu6050": {
+      "version": "2.23",
+      "type": "device-std",
+      "source": "device/_std/src/motion/mpu6050.py",
+      "deploy_path": "mpu6050.py",
+      "category": "motion",
+      "sensor_type": "D",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "i2c"
+      ],
+      "platforms": "*",
+      "tags": [
+        "imu",
+        "6dof",
+        "accelerometer",
+        "gyroscope",
+        "dmp",
+        "quaternion",
+        "euler",
+        "tilt",
+        "mpu6050"
+      ],
+      "typehint": "device/_std/typehints/motion/mpu6050.pyi"
+    },
+    "mpu6050_async": {
+      "version": "1.2.0",
+      "type": "device-std",
+      "source": "device/_std/src/motion/mpu6050_async.py",
+      "deploy_path": "mpu6050_async.py",
+      "category": "motion",
+      "sensor_type": "D",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "mpu6050"
+      ],
+      "platforms": "*",
+      "tags": [
+        "imu",
+        "6dof",
+        "dmp",
+        "async",
+        "asyncio",
+        "mpu6050"
+      ],
+      "typehint": "device/_std/typehints/motion/mpu6050_async.pyi"
+    },
+    "as5600": {
+      "version": "1.0.2",
+      "type": "device-std",
+      "source": "device/_std/src/orientation/as5600.py",
+      "deploy_path": "as5600.py",
+      "category": "orientation",
+      "sensor_type": "D",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "i2c",
+        "ufilter"
+      ],
+      "platforms": "*",
+      "tags": [
+        "encoder",
+        "magnetic",
+        "angle",
+        "rotation",
+        "position",
+        "velocity",
+        "as5600"
+      ],
+      "typehint": "device/_std/typehints/orientation/as5600.pyi"
+    },
+    "as5600_async": {
+      "version": "1.1.0",
+      "type": "device-std",
+      "source": "device/_std/src/orientation/as5600_async.py",
+      "deploy_path": "as5600_async.py",
+      "category": "orientation",
+      "sensor_type": "D",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "as5600"
+      ],
+      "platforms": "*",
+      "tags": [
+        "encoder",
+        "magnetic",
+        "angle",
+        "async",
+        "asyncio"
+      ],
+      "typehint": "device/_std/typehints/orientation/as5600_async.pyi"
+    },
+    "ain@_ticle": {
+      "version": "2.0.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/ain.py",
+      "deploy_path": "ain.py",
+      "category": "peripheral",
+      "interface": [
+        "ADC"
+      ],
+      "depends": [],
+      "platforms": "rp2",
+      "tags": [
+        "adc",
+        "analog",
+        "dma",
+        "burst",
+        "continuous",
+        "rp2040",
+        "rp2350"
+      ],
+      "typehint": "device/_ticle/typehints/ain.pyi"
+    },
+    "basic@_ticle": {
+      "version": "1.0.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/basic.py",
+      "deploy_path": "basic.py",
+      "category": "board",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [],
+      "platforms": "rp2",
+      "tags": [
+        "led",
+        "button",
+        "bootsel",
+        "onboard",
+        "pico2w"
+      ]
+    },
+    "bus_lock@_ticle": {
+      "version": "1.1.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/bus_lock.py",
+      "deploy_path": "bus_lock.py",
+      "category": "utility",
+      "interface": [],
+      "depends": [],
+      "platforms": "rp2",
+      "tags": [
+        "spinlock",
+        "mutex",
+        "i2c",
+        "spi",
+        "multicore",
+        "thread-safe"
+      ]
+    },
+    "i2c@_ticle": {
+      "version": "1.0.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/i2c.py",
+      "deploy_path": "i2c.py",
+      "category": "peripheral",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "i2c",
+        "bus_lock"
+      ],
+      "platforms": "rp2",
+      "tags": [
+        "i2c",
+        "bus",
+        "spinlock",
+        "thread-safe",
+        "multicore"
+      ],
+      "typehint": "device/_ticle/typehints/i2c.pyi"
+    },
+    "pio_capture@_ticle": {
+      "version": "1.0.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/pio_capture.py",
+      "deploy_path": "pio_capture.py",
+      "category": "pio",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [],
+      "platforms": "rp2",
+      "tags": [
+        "pio",
+        "capture",
+        "dma",
+        "gpio",
+        "logic-analyzer",
+        "pulse",
+        "timing"
+      ],
+      "typehint": "device/_ticle/typehints/pio_capture.pyi"
+    },
+    "pio_waveform@_ticle": {
+      "version": "1.0.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/pio_waveform.py",
+      "deploy_path": "pio_waveform.py",
+      "category": "pio",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [],
+      "platforms": "rp2",
+      "tags": [
+        "pio",
+        "waveform",
+        "dma",
+        "gpio",
+        "output",
+        "pwm",
+        "signal"
+      ],
+      "typehint": "device/_ticle/typehints/pio_waveform.pyi"
+    },
+    "spi@_ticle": {
+      "version": "1.5.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/spi.py",
+      "deploy_path": "spi.py",
+      "category": "peripheral",
+      "interface": [
+        "SPI"
+      ],
+      "depends": [
+        "bus_lock",
+        "utools"
+      ],
+      "platforms": "rp2",
+      "tags": [
+        "spi",
+        "bus",
+        "spinlock",
+        "thread-safe",
+        "multicore",
+        "pio",
+        "dma",
+        "slave"
+      ],
+      "typehint": "device/_ticle/typehints/spi.pyi"
+    },
+    "utools@_ticle": {
+      "version": "1.2",
+      "type": "device-specific",
+      "source": "device/_ticle/src/utools.py",
+      "deploy_path": "utools.py",
+      "category": "utility",
+      "interface": [],
+      "depends": [],
+      "platforms": "rp2",
+      "tags": [
+        "pio",
+        "state-machine",
+        "rp2",
+        "utility"
+      ],
+      "typehint": "device/_ticle/typehints/utools.pyi"
+    },
+    "relay@_ticle": {
+      "version": "1.0.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/actuators/relay.py",
+      "deploy_path": "relay.py",
+      "category": "actuators",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [],
+      "platforms": "rp2",
+      "tags": [
+        "relay",
+        "safety",
+        "interlock",
+        "pio",
+        "watchdog",
+        "industrial"
+      ],
+      "typehint": "device/_ticle/typehints/actuators/relay.pyi"
+    },
+    "relay_async@_ticle": {
+      "version": "1.0.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/actuators/relay_async.py",
+      "deploy_path": "relay_async.py",
+      "category": "actuators",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "relay"
+      ],
+      "platforms": "rp2",
+      "tags": [
+        "relay",
+        "actuator",
+        "async",
+        "asyncio",
+        "pio"
+      ],
+      "typehint": "device/_ticle/typehints/actuators/relay_async.pyi"
+    },
+    "audio@_ticle": {
+      "version": "1.9",
+      "type": "device-specific",
+      "source": "device/_ticle/src/audio/audio.py",
+      "deploy_path": "audio.py",
+      "category": "audio",
+      "interface": [
+        "I2S"
+      ],
+      "depends": [
+        "machine"
+      ],
+      "platforms": "rp2",
+      "tags": [
+        "audio",
+        "i2s",
+        "microphone",
+        "speaker",
+        "wav",
+        "pcm",
+        "tone"
+      ],
+      "typehint": "device/_ticle/typehints/audio/audio.pyi"
+    },
+    "audio_async@_ticle": {
+      "version": "1.1.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/audio/audio_async.py",
+      "deploy_path": "audio_async.py",
+      "category": "audio",
+      "interface": [
+        "I2S"
+      ],
+      "depends": [
+        "audio"
+      ],
+      "platforms": "rp2",
+      "tags": [
+        "audio",
+        "i2s",
+        "wav",
+        "tone",
+        "note",
+        "record",
+        "async",
+        "asyncio"
+      ],
+      "typehint": "device/_ticle/typehints/audio/audio_async.pyi"
+    },
+    "us2@_ticle": {
+      "version": "3.2.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/distance/us2.py",
+      "deploy_path": "us2.py",
+      "category": "distance",
+      "sensor_type": "B",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "ufilter"
+      ],
+      "platforms": "rp2",
+      "tags": [
+        "ultrasonic",
+        "distance",
+        "sr04",
+        "hc-sr04",
+        "pio",
+        "multi-sensor",
+        "kalman"
+      ],
+      "typehint": "device/_ticle/typehints/distance/us2.pyi"
+    },
+    "ws2812@_ticle": {
+      "version": "1.4",
+      "type": "device-specific",
+      "source": "device/_ticle/src/display/ws2812/__init__.py",
+      "deploy_path": "ws2812/__init__.py",
+      "category": "display",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [],
+      "platforms": "rp2",
+      "tags": [
+        "led",
+        "neopixel",
+        "ws2812",
+        "rgb",
+        "strip",
+        "matrix",
+        "pio",
+        "effect"
+      ],
+      "typehint": "device/_ticle/typehints/display/ws2812/__init__.pyi",
+      "submodules": [
+        "device/_ticle/src/display/ws2812/effect.py",
+        "device/_ticle/src/display/ws2812/matrix.py",
+        "device/_ticle/src/display/ws2812/pixel.bin"
+      ],
+      "submodules_typehints": [
+        "device/_ticle/typehints/display/ws2812/effect.pyi",
+        "device/_ticle/typehints/display/ws2812/matrix.pyi"
+      ]
+    },
+    "autoctrl@_xnode": {
+      "version": "1.0.0",
+      "type": "device-specific",
+      "source": "device/_xnode/src/autoctrl.py",
+      "deploy_path": "autoctrl.py",
+      "category": "board",
+      "interface": [
+        "GPIO",
+        "I2C"
+      ],
+      "depends": [
+        "xnode"
+      ],
+      "platforms": "xbee",
+      "tags": [
+        "relay",
+        "pwm",
+        "fan",
+        "gas",
+        "door"
+      ],
+      "typehint": "device/_xnode/typehints/autoctrl.pyi"
+    },
+    "ext@_xnode": {
+      "version": "1.0.0",
+      "type": "device-specific",
+      "source": "device/_xnode/src/ext.py",
+      "deploy_path": "ext.py",
+      "category": "board",
+      "interface": [
+        "GPIO",
+        "I2C",
+        "UART"
+      ],
+      "depends": [],
+      "platforms": "xbee",
+      "tags": [
+        "pir",
+        "ir",
+        "imu",
+        "gps",
+        "sensor"
+      ],
+      "typehint": "device/_xnode/typehints/ext.pyi"
+    },
+    "xnode@_xnode": {
+      "version": "1.0.0",
+      "type": "device-specific",
+      "source": "device/_xnode/src/__init__.py",
+      "deploy_path": "__init__.py",
+      "category": "board",
+      "interface": [
+        "GPIO",
+        "I2C"
+      ],
+      "depends": [
+        "termviz"
+      ],
+      "platforms": "xbee",
+      "tags": [
+        "xbee",
+        "zigbee",
+        "xnode",
+        "digi"
+      ],
+      "typehint": "device/_xnode/typehints/__init__.pyi"
+    }
+  }
+}

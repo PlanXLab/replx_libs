@@ -1,0 +1,12 @@
+scripts
+test/
+__pycache__
+*.pyc
+*.pyo
+.DS_Store
+.vscode
+*.md
+temp.txt
+lect/
+TYPEHINT_STYLE.md
+AGENTS.md

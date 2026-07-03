@@ -1,0 +1,7 @@
+{
+  "name": "RP2350",
+  "type": "platform",
+  "description": "Raspberry Pi RP2350 platform - Pico 2 compatible",
+  "includes": ["_std/*", "_std_peri/*", "_std_comm/*"],
+  "note": "Full shared core support"
+}

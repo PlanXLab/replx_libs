@@ -1,0 +1,8 @@
+{
+  "name": "EFR32MG",
+  "type": "platform",
+  "description": "Silicon Labs EFR32MG (Zigbee/Thread) platform - platform-specific implementation",
+  "includes": ["_EFR32MG/*"],
+  "note": "Platform-specific implementation, no shared core modules"
+
+}
