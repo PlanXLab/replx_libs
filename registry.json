@@ -1038,7 +1038,7 @@
       "typehint": "device/_std/typehints/orientation/as5600_async.pyi"
     },
     "ain@_ticle": {
-      "version": "2.1",
+      "version": "2.3",
       "type": "device-specific",
       "source": "device/_ticle/src/ain.py",
       "deploy_path": "ain.py",

@@ -4,16 +4,16 @@ TiCLE Analog Input Driver.
 Allocation-conscious ADC API for single-channel and multi-channel analog input.
 Scalar methods default to channel 0. View objects and view property result lists
 are reused internally; copy returned lists when a long-lived snapshot is needed.
-TiCLE boards also provide RP2 DMA burst and continuous sampling helpers.
+TiCLE boards also provide RP2350 DMA burst and continuous sampling helpers.
 
 Example
 -------
 ```python
     >>> from ticle_lite.ain import Ain
     >>> ain = Ain([27, 28])
-    >>> vr = ain.read_u12()
-    >>> cds = ain.read_u12(idx=1)
-    >>> values = ain[:].value_u12.copy()
+    >>> vr = ain.read()
+    >>> cds = ain.read(idx=1)
+    >>> values = ain[:].value.copy()
     >>> ain.deinit()
 ```
 """
@@ -27,35 +27,35 @@ class Ain:
 
     :param pins: Single ADC pin number or list/tuple of ADC pin numbers.
     :param vref: ADC reference voltage used by voltage conversion.
+    :param bits: ADC resolution. 16 for raw 16-bit output, 12 for 12-bit output.
 
-    :raises ValueError: If no pin is provided or a pin is not ADC-capable.
+    :raises ValueError: If no pin is provided, a pin is not ADC-capable, or bits is invalid.
     :raises OSError: If ADC initialization fails.
 
     Example
     -------
     ```python
         >>> ain = Ain([27, 28], vref=3.3)
-        >>> ain.read_voltage()
+        >>> ain12 = Ain(27, bits=12)
     ```
     """
-    _FULL_RANGE: int
-    _ADC_BITS: int
-    _DEFAULT_VREF: float
 
-    def __init__(self, pins: int | list[int] | tuple[int, ...], *, vref: float = 3.3) -> None:
+    def __init__(self, pins: int | list[int] | tuple[int, ...], *, vref: float = 3.3, bits: int = 16) -> None:
         """
         Initialize TiCLE ADC channel(s).
 
-        :param pins: ADC GPIO pin number or pin sequence. RP2 ADC pins are 26..29.
+        :param pins: ADC GPIO pin number or pin sequence. RP2350 ADC pins are 26..29.
         :param vref: Reference voltage used for `read_voltage()`.
+        :param bits: ADC resolution. 16 for raw 16-bit output, 12 for 12-bit output.
 
-        :raises ValueError: If `pins` is empty or contains a non-ADC pin.
+        :raises ValueError: If `pins` is empty, contains a non-ADC pin, or `bits` is not 16 or 12.
         :raises OSError: If the ADC hardware cannot be initialized.
 
         Example
         -------
         ```python
-            >>> ain = Ain([27, 28])
+            >>> ain = Ain([27, 28])           # default 16-bit
+            >>> ain12 = Ain(27, bits=12)      # 12-bit
         ```
         """
         ...
@@ -70,7 +70,7 @@ class Ain:
         -------
         ```python
             >>> with Ain(27) as ain:
-            ...     ain.read_u12()
+            ...     ain.read()
         ```
         """
         ...
@@ -121,8 +121,8 @@ class Ain:
         -------
         ```python
             >>> ain = Ain([27, 28])
-            >>> ain[1].read_u12()
-            >>> values = ain[:].value_u12
+            >>> ain[1].read()
+            >>> values = ain[:].value
         ```
         """
         ...
@@ -140,40 +140,39 @@ class Ain:
         """
         ...
 
-    def read_u16(self, idx: int = 0) -> int:
+    @property
+    def bits(self) -> int:
         """
-        Read one ADC channel as a raw 16-bit value.
+        ADC resolution configured at construction time.
 
-        :param idx: Channel index. Defaults to channel 0.
-        :return: Raw ADC value in the range 0..65535.
-
-        :raises IndexError: If index is out of range.
+        :return: 16 or 12.
 
         Example
         -------
         ```python
-            >>> ain = Ain([27, 28])
-            >>> raw = ain.read_u16()
-            >>> raw2 = ain.read_u16(idx=1)
+            >>> ain = Ain(27, bits=12)
+            >>> ain.bits
+            12
         ```
         """
         ...
 
-    def read_u12(self, idx: int = 0) -> int:
+    def read(self, idx: int = 0) -> int:
         """
-        Read one ADC channel as a 12-bit value.
+        Read one ADC channel scaled to the configured bit width.
 
         :param idx: Channel index. Defaults to channel 0.
-        :return: ADC value in the range 0..4095.
+        :return: ADC value in the range 0..(2**bits - 1).
 
         :raises IndexError: If index is out of range.
 
         Example
         -------
         ```python
-            >>> ain = Ain([27, 28])
-            >>> vr = ain.read_u12()
-            >>> cds = ain.read_u12(idx=1)
+            >>> ain = Ain(27)
+            >>> raw = ain.read()           # 0..65535
+            >>> ain12 = Ain(27, bits=12)
+            >>> raw12 = ain12.read()       # 0..4095
         ```
         """
         ...
@@ -183,7 +182,7 @@ class Ain:
         Read one ADC channel as a percentage.
 
         :param idx: Channel index. Defaults to channel 0.
-        :return: ADC value scaled to 0.0..100.0.
+        :return: ADC value scaled to 0.0..100.0 based on configured bit width.
 
         :raises IndexError: If index is out of range.
 
@@ -201,7 +200,7 @@ class Ain:
         Read one ADC channel as voltage.
 
         :param idx: Channel index. Defaults to channel 0.
-        :return: ADC value scaled by per-channel reference, offset, and scale.
+        :return: ADC value scaled by per-channel reference voltage.
 
         :raises IndexError: If index is out of range.
 
@@ -214,12 +213,13 @@ class Ain:
         """
         ...
 
-    def read_into(self, buf, *, bits: int = 16):
+    def read_into(self, buf) -> list:
         """
         Read all channels into an existing mutable buffer.
 
+        Values are scaled to the configured bit width.
+
         :param buf: Mutable buffer with at least `len(ain)` slots.
-        :param bits: Output resolution. Use 16 for raw u16 or another value for u12.
         :return: The same buffer object passed in `buf`.
 
         :raises ValueError: If `buf` is too short.
@@ -227,22 +227,27 @@ class Ain:
         Example
         -------
         ```python
-            >>> ain = Ain([27, 28])
+            >>> ain = Ain([27, 28], bits=12)
             >>> buf = [0, 0]
-            >>> ain.read_into(buf, bits=12)
+            >>> ain.read_into(buf)
             [1234, 2048]
         ```
         """
         ...
 
-    def filtered_u16(self, samples: int = 10, *, idx: int = 0, interval_us: int = 100) -> int:
+    def filtered(self, filt, samples: int = 10, *, idx: int = 0, interval_us: int = 100) -> float:
         """
-        Read one channel repeatedly and return the average 16-bit value.
+        Feed channel readings into a filter object and return the final output.
 
-        :param samples: Number of samples to average.
+        Each sample is read, scaled to the configured bit width, and passed to
+        filt(value). The value returned by the last filt() call is returned.
+
+        :param filt: Callable that accepts a numeric sample and returns a float.
+                     Any ufilter.Base subclass (Alpha, MovingAverage, Median, …) works.
+        :param samples: Number of samples to feed into the filter.
         :param idx: Channel index. Defaults to channel 0.
         :param interval_us: Delay between samples in microseconds.
-        :return: Average raw ADC value in the range 0..65535.
+        :return: Filtered output value from the last filt() call.
 
         :raises ValueError: If `samples` is less than 1.
         :raises IndexError: If index is out of range.
@@ -250,41 +255,22 @@ class Ain:
         Example
         -------
         ```python
-            >>> ain = Ain(27)
-            >>> stable = ain.filtered_u16(8)
+            >>> from ufilter import Alpha, MovingAverage
+            >>> ain = Ain(27, bits=12)
+            >>> stable = ain.filtered(Alpha(0.3), 20)
+            >>> stable = ain.filtered(MovingAverage(8), 8)
         ```
         """
         ...
 
-    def filtered_u12(self, samples: int = 10, *, idx: int = 0, interval_us: int = 100) -> int:
+    def min_max(self, samples: int = 100, *, idx: int = 0, interval_us: int = 100) -> tuple[int, int]:
         """
-        Read one channel repeatedly and return the average 12-bit value.
-
-        :param samples: Number of samples to average.
-        :param idx: Channel index. Defaults to channel 0.
-        :param interval_us: Delay between samples in microseconds.
-        :return: Average ADC value in the range 0..4095.
-
-        :raises ValueError: If `samples` is less than 1.
-        :raises IndexError: If index is out of range.
-
-        Example
-        -------
-        ```python
-            >>> ain = Ain([27, 28])
-            >>> stable = ain.filtered_u12(8, idx=1)
-        ```
-        """
-        ...
-
-    def min_max_u16(self, samples: int = 100, *, idx: int = 0, interval_us: int = 100) -> tuple[int, int]:
-        """
-        Measure the minimum and maximum 16-bit values from one channel.
+        Measure the minimum and maximum values from one channel.
 
         :param samples: Number of samples to inspect.
         :param idx: Channel index. Defaults to channel 0.
         :param interval_us: Delay between samples in microseconds.
-        :return: Tuple of `(minimum, maximum)` raw values.
+        :return: Tuple of (minimum, maximum) values at the configured bit width.
 
         :raises ValueError: If `samples` is less than 1.
         :raises IndexError: If index is out of range.
@@ -292,8 +278,8 @@ class Ain:
         Example
         -------
         ```python
-            >>> ain = Ain(27)
-            >>> lo, hi = ain.min_max_u16(32)
+            >>> ain = Ain(27, bits=12)
+            >>> lo, hi = ain.min_max(32)  # both in 0..4095
         ```
         """
         ...
@@ -423,10 +409,11 @@ class Ain:
         -------
         ```python
             >>> ain = Ain([27, 28])
-            >>> values = ain[:].value_u12.copy()
+            >>> values = ain[:].value.copy()
         ```
         """
         __slots__ = ("_p", "_i", "_cache")
+
         def __len__(self) -> int:
             """
             Return number of channels in this view.
@@ -456,16 +443,16 @@ class Ain:
             -------
             ```python
                 >>> ain = Ain([27, 28])
-                >>> ain[:][0].read_u12()
+                >>> ain[:][0].read()
             ```
             """
             ...
 
-        def read_u16(self) -> int:
+        def read(self) -> int:
             """
-            Read the selected single channel as a raw 16-bit value.
+            Read the selected single channel scaled to the configured bit width.
 
-            :return: Raw ADC value in the range 0..65535.
+            :return: ADC value in the range 0..(2**bits - 1).
 
             :raises ValueError: If the view does not contain exactly one channel.
 
@@ -473,24 +460,7 @@ class Ain:
             -------
             ```python
                 >>> ain = Ain([27, 28])
-                >>> raw = ain[0].read_u16()
-            ```
-            """
-            ...
-
-        def read_u12(self) -> int:
-            """
-            Read the selected single channel as a 12-bit value.
-
-            :return: ADC value in the range 0..4095.
-
-            :raises ValueError: If the view does not contain exactly one channel.
-
-            Example
-            -------
-            ```python
-                >>> ain = Ain([27, 28])
-                >>> raw = ain[0].read_u12()
+                >>> raw = ain[0].read()
             ```
             """
             ...
@@ -499,7 +469,7 @@ class Ain:
             """
             Read the selected single channel as a percentage.
 
-            :return: ADC value scaled to 0.0..100.0.
+            :return: ADC value scaled to 0.0..100.0 based on configured bit width.
 
             :raises ValueError: If the view does not contain exactly one channel.
 
@@ -516,7 +486,7 @@ class Ain:
             """
             Read the selected single channel as voltage.
 
-            :return: ADC value scaled by reference voltage, offset, and scale.
+            :return: ADC value scaled by per-channel reference voltage.
 
             :raises ValueError: If the view does not contain exactly one channel.
 
@@ -529,12 +499,13 @@ class Ain:
             """
             ...
 
-        def read_into(self, buf, *, bits: int = 16):
+        def read_into(self, buf) -> list:
             """
             Read view channels into an existing mutable buffer.
 
+            Values are scaled to the configured bit width.
+
             :param buf: Mutable buffer with at least `len(view)` slots.
-            :param bits: Output resolution. Use 16 for raw u16 or another value for u12.
             :return: The same buffer object passed in `buf`.
 
             :raises ValueError: If `buf` is too short.
@@ -542,47 +513,33 @@ class Ain:
             Example
             -------
             ```python
-                >>> ain = Ain([27, 28])
+                >>> ain = Ain([27, 28], bits=12)
                 >>> buf = [0, 0]
-                >>> ain[:].read_into(buf, bits=12)
+                >>> ain[:].read_into(buf)
             ```
             """
             ...
 
         @property
-        def value_u16(self) -> list[int]:
+        def value(self) -> list[int]:
             """
-            Get selected channels as a reused list of 16-bit values.
+            Get selected channels as a reused list of values.
 
-            :return: Reused list containing raw values in the range 0..65535.
+            Values are scaled to the configured bit width.
+
+            :return: Reused list containing values in the range 0..(2**bits - 1).
 
             Example
             -------
             ```python
                 >>> ain = Ain([27, 28])
-                >>> values = ain[:].value_u16.copy()
+                >>> values = ain[:].value.copy()
             ```
             """
             ...
 
         @property
-        def value_u12(self) -> list[int]:
-            """
-            Get selected channels as a reused list of 12-bit values.
-
-            :return: Reused list containing values in the range 0..4095.
-
-            Example
-            -------
-            ```python
-                >>> ain = Ain([27, 28])
-                >>> values = ain[:].value_u12.copy()
-            ```
-            """
-            ...
-
-        @property
-        def value_percent(self) -> list[float]:
+        def percent(self) -> list[float]:
             """
             Get selected channels as a reused list of percentages.
 
@@ -592,7 +549,7 @@ class Ain:
             -------
             ```python
                 >>> ain = Ain([27, 28])
-                >>> values = ain[:].value_percent.copy()
+                >>> values = ain[:].percent.copy()
             ```
             """
             ...
@@ -602,7 +559,7 @@ class Ain:
             """
             Get selected channels as a reused list of voltages.
 
-            :return: Reused list containing voltage values.
+            :return: Reused list containing voltage values scaled by per-channel vref.
 
             Example
             -------
@@ -613,59 +570,42 @@ class Ain:
             """
             ...
 
-        def filtered_u16(self, samples: int = 10, interval_us: int = 100) -> int:
+        def filtered(self, filt, samples: int = 10, interval_us: int = 100) -> float:
             """
-            Read the selected single channel repeatedly and average raw values.
+            Feed the selected single channel readings into a filter and return the final output.
 
-            :param samples: Number of samples to average.
+            :param filt: Callable accepting a numeric sample and returning a float.
+            :param samples: Number of samples to feed into the filter.
             :param interval_us: Delay between samples in microseconds.
-            :return: Average raw ADC value in the range 0..65535.
+            :return: Filtered output value from the last filt() call.
 
             :raises ValueError: If the view is not a single channel or `samples` is less than 1.
 
             Example
             -------
             ```python
-                >>> ain = Ain(27)
-                >>> stable = ain[0].filtered_u16(8)
+                >>> from ufilter import Alpha
+                >>> ain = Ain(27, bits=12)
+                >>> stable = ain[0].filtered(Alpha(0.3), 20)
             ```
             """
             ...
 
-        def filtered_u12(self, samples: int = 10, interval_us: int = 100) -> int:
-            """
-            Read the selected single channel repeatedly and average 12-bit values.
-
-            :param samples: Number of samples to average.
-            :param interval_us: Delay between samples in microseconds.
-            :return: Average ADC value in the range 0..4095.
-
-            :raises ValueError: If the view is not a single channel or `samples` is less than 1.
-
-            Example
-            -------
-            ```python
-                >>> ain = Ain(27)
-                >>> stable = ain[0].filtered_u12(8)
-            ```
-            """
-            ...
-
-        def min_max_u16(self, samples: int = 100, interval_us: int = 100) -> tuple[int, int]:
+        def min_max(self, samples: int = 100, interval_us: int = 100) -> tuple[int, int]:
             """
             Measure minimum and maximum values from the selected single channel.
 
             :param samples: Number of samples to inspect.
             :param interval_us: Delay between samples in microseconds.
-            :return: Tuple of `(minimum, maximum)` raw 16-bit values.
+            :return: Tuple of (minimum, maximum) values at the configured bit width.
 
             :raises ValueError: If the view is not a single channel or `samples` is less than 1.
 
             Example
             -------
             ```python
-                >>> ain = Ain(27)
-                >>> lo, hi = ain[0].min_max_u16(32)
+                >>> ain = Ain(27, bits=12)
+                >>> lo, hi = ain[0].min_max(32)  # both in 0..4095
             ```
             """
             ...
