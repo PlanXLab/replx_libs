@@ -1,5 +1,5 @@
 # @package: ain
-# @version: 2.0.0
+# @version: 2.1
 # @type: device-specific
 # @category: peripheral
 # @interface: ADC
@@ -14,8 +14,8 @@ import micropython
 from micropython import const
 from rp2 import DMA
 
-# RP2040 ADC register addresses
-_ADC_BASE = const(0x4004c000)
+# RP2350 ADC register addresses
+_ADC_BASE = const(0x400A8000)
 _ADC_CS = const(_ADC_BASE + 0x00)      # Control and status
 _ADC_RESULT = const(_ADC_BASE + 0x04)  # Result
 _ADC_FCS = const(_ADC_BASE + 0x08)     # FIFO control and status
@@ -26,8 +26,8 @@ _ADC_INTE = const(_ADC_BASE + 0x18)    # Interrupt enable
 _ADC_INTF = const(_ADC_BASE + 0x1c)    # Interrupt force
 _ADC_INTS = const(_ADC_BASE + 0x20)    # Interrupt status
 
-# DREQ for ADC
-_DREQ_ADC = const(36)
+# DREQ for ADC (RP2350)
+_DREQ_ADC = const(48)
 
 # ADC clock: 48MHz, max sample rate ~500kHz
 _ADC_CLOCK = const(48_000_000)
@@ -48,10 +48,10 @@ class Ain:
         self._pins = tuple(pins)
         n = len(self._pins)
         
-        # Validate RP2040 ADC pins (26-29 for ADC0-3)
+        # Validate RP2350 ADC pins (26-29 for ADC0-3)
         for pin in self._pins:
             if pin not in (26, 27, 28, 29):
-                raise ValueError(f"Invalid ADC pin {pin}. RP2040 supports pins 26-29")
+                raise ValueError(f"Invalid ADC pin {pin}. RP2350 ADC pins are 26..29")
         
         try:
             self._adc = [machine.ADC(machine.Pin(pin)) for pin in self._pins]
@@ -76,7 +76,7 @@ class Ain:
         if self._dma is not None:
             try:
                 self._dma.close()
-            except:
+            except Exception:
                 pass
             self._dma = None
 
@@ -116,6 +116,11 @@ class Ain:
         return ((raw + self._offset[idx]) * self._scale[idx]) * self._vref[idx] / Ain._FULL_RANGE
 
     def read_into(self, buf, *, bits: int = 16):
+        if len(buf) < len(self._adc):
+            raise ValueError(
+                "buf length (%d) is smaller than channel count (%d)"
+                % (len(buf), len(self._adc))
+            )
         shift = 0 if bits == 16 else Ain._ADC_BITS
         for i in range(len(self._adc)):
             buf[i] = self._adc[i].read_u16() >> shift
@@ -161,8 +166,7 @@ class Ain:
         buffer: array.array,
         *,
         rate: int = 100_000,
-        loop: bool = False,
-        callback: callable = None
+        callback=None
     ) -> None:
         if self._dma_running:
             raise RuntimeError("DMA sampling already running")
@@ -180,12 +184,15 @@ class Ain:
         self._dma_buffer = buffer
         self._dma_callback = callback
         
-        # Calculate clock divider for desired sample rate
-        # div = (48MHz / rate) - 1, stored as 8.4 fixed point (upper 8 bits integer)
+        # Calculate clock divider for desired sample rate.
+        # ADC sample period = (1 + INT + FRAC/16) ADC clock cycles.
+        # With ADC_CLK = 48 MHz: INT = (48MHz / rate) - 1.
+        # ADC_DIV register: bits[23:8] = INT (16-bit), bits[7:4] = FRAC (4-bit).
+        # Setting FRAC=0: div_reg = INT << 8.
         div_int = (_ADC_CLOCK // rate) - 1
         if div_int < 0:
             div_int = 0
-        div_reg = div_int << 8  # 8.4 fixed point, frac=0
+        div_reg = div_int << 8  # INT in bits[23:8], FRAC=0
         
         # Get ADC channel number (pin 26=ADC0, 27=ADC1, etc.)
         adc_channel = self._pins[channel] - 26
@@ -238,10 +245,9 @@ class Ain:
         self._dma.active(1)
         
         # Enable ADC:
-        # - Power on (bit 0)
-        # - Enable (bit 1)  
-        # - Select channel (bits 12-14)
-        # - Start continuous (bit 3)
+        # - Power on / enable (bit 0 = EN)
+        # - Select channel (bits 14:12 = AINSEL)
+        # - Start free-running conversions (bit 3 = START_MANY)
         cs_val = (1 << 0) | (1 << 3) | (adc_channel << 12)
         machine.mem32[_ADC_CS] = cs_val
         
@@ -289,11 +295,11 @@ class Ain:
         rate: int = 100_000
     ) -> array.array:
         buf = array.array('H', (0 for _ in range(count)))
-        self.start_continuous(channel, buf, rate=rate, loop=False)
+        self.start_continuous(channel, buf, rate=rate)
         
-        # Wait for completion
+        # Wait for DMA completion
         while self._dma.active():
-            pass
+            machine.idle()
         
         self.stop_continuous()
         return buf
@@ -309,9 +315,10 @@ class Ain:
         vref = self._vref[channel]
         offset = self._offset[channel]
         scale = self._scale[channel]
-        
+        # FIFO stores raw 12-bit values (bit 15 = ERR flag). Shift to 16-bit
+        # space so offset/scale calibration is consistent with read_voltage().
         return [
-            ((v + offset) * scale) * vref / Ain._FULL_RANGE
+            (((v & 0x0FFF) << 4) + offset) * scale * vref / Ain._FULL_RANGE
             for v in raw
         ]
 
@@ -320,12 +327,17 @@ class Ain:
         
         def __init__(self, parent: "Ain"):
             self._p = parent
-            self._i = None
+            self._i = ()
             self._cache = []
         
         def _set(self, indices) -> "Ain._View":
             self._i = indices
             return self
+
+        def _single(self):
+            if len(self._i) != 1:
+                raise ValueError("single-channel operation requires one channel")
+            return self._i[0]
 
         def __getitem__(self, idx: int | slice) -> "Ain._View":
             if isinstance(idx, slice):
@@ -347,26 +359,23 @@ class Ain:
             return buf
 
         def read_u16(self) -> int:
-            if len(self._i) != 1:
-                raise ValueError("read_u16 only works with single channel")
-            return self._p.read_u16(self._i[0])
+            return self._p.read_u16(self._single())
 
         def read_u12(self) -> int:
-            if len(self._i) != 1:
-                raise ValueError("read_u12 only works with single channel")
-            return self._p.read_u12(self._i[0])
+            return self._p.read_u12(self._single())
 
         def read_percent(self) -> float:
-            if len(self._i) != 1:
-                raise ValueError("read_percent only works with single channel")
-            return self._p.read_percent(self._i[0])
+            return self._p.read_percent(self._single())
 
         def read_voltage(self) -> float:
-            if len(self._i) != 1:
-                raise ValueError("read_voltage only works with single channel")
-            return self._p.read_voltage(self._i[0])
+            return self._p.read_voltage(self._single())
 
         def read_into(self, buf, *, bits: int = 16):
+            if len(buf) < len(self._i):
+                raise ValueError(
+                    "buf length (%d) is smaller than selected channel count (%d)"
+                    % (len(buf), len(self._i))
+                )
             shift = 0 if bits == 16 else Ain._ADC_BITS
             adc = self._p._adc
             for out_i, adc_i in enumerate(self._i):
@@ -402,31 +411,21 @@ class Ain:
             return buf
 
         def filtered_u16(self, samples: int = 10, interval_us: int = 100) -> int:
-            if len(self._i) != 1:
-                raise ValueError("filtered_u16 only works with single channel")
-            return self._p.filtered_u16(samples, idx=self._i[0],
+            return self._p.filtered_u16(samples, idx=self._single(),
                                         interval_us=interval_us)
 
         def filtered_u12(self, samples: int = 10, interval_us: int = 100) -> int:
-            if len(self._i) != 1:
-                raise ValueError("filtered_u12 only works with single channel")
-            return self._p.filtered_u12(samples, idx=self._i[0],
+            return self._p.filtered_u12(samples, idx=self._single(),
                                         interval_us=interval_us)
 
         def min_max_u16(self, samples: int = 100,
-                        interval_us: int = 100) -> tuple[int, int]:
-            if len(self._i) != 1:
-                raise ValueError("min_max_u16 only works with single channel")
-            return self._p.min_max_u16(samples, idx=self._i[0],
+                        interval_us: int = 100) -> tuple:
+            return self._p.min_max_u16(samples, idx=self._single(),
                                        interval_us=interval_us)
 
         # DMA methods for single channel view
         def read_burst(self, count: int, *, rate: int = 100_000) -> array.array:
-            if len(self._i) != 1:
-                raise ValueError("read_burst only works with single channel view")
-            return self._p.read_burst(self._i[0], count, rate=rate)
+            return self._p.read_burst(self._single(), count, rate=rate)
 
-        def read_burst_voltage(self, count: int, *, rate: int = 100_000) -> list[float]:
-            if len(self._i) != 1:
-                raise ValueError("read_burst_voltage only works with single channel view")
-            return self._p.read_burst_voltage(self._i[0], count, rate=rate)
+        def read_burst_voltage(self, count: int, *, rate: int = 100_000) -> list:
+            return self._p.read_burst_voltage(self._single(), count, rate=rate)

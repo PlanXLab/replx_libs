@@ -222,7 +222,7 @@ class Ain:
         :param bits: Output resolution. Use 16 for raw u16 or another value for u12.
         :return: The same buffer object passed in `buf`.
 
-        :raises IndexError: If `buf` is too short.
+        :raises ValueError: If `buf` is too short.
 
         Example
         -------
@@ -298,14 +298,13 @@ class Ain:
         """
         ...
 
-    def start_continuous(self, channel: int, buffer: array.array, *, rate: int = 100_000, loop: bool = False, callback: Callable[[array.array], None] | None = None) -> None:
+    def start_continuous(self, channel: int, buffer: array.array, *, rate: int = 100_000, callback: Callable[[array.array], None] | None = None) -> None:
         """
-        Start RP2 DMA sampling into an existing unsigned-short array buffer.
+        Start RP2350 DMA sampling into an existing unsigned-short array buffer.
 
         :param channel: ADC channel index in this Ain object.
         :param buffer: Destination `array.array('H')` buffer.
         :param rate: Sampling rate in Hz. Valid range is 1..500000.
-        :param loop: Reserved loop flag for continuous-use call sites.
         :param callback: Optional callback scheduled with the filled buffer.
 
         :raises RuntimeError: If DMA sampling is already running.
@@ -538,7 +537,7 @@ class Ain:
             :param bits: Output resolution. Use 16 for raw u16 or another value for u12.
             :return: The same buffer object passed in `buf`.
 
-            :raises IndexError: If `buf` is too short.
+            :raises ValueError: If `buf` is too short.
 
             Example
             -------

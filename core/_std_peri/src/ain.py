@@ -1,5 +1,5 @@
 # @package: ain
-# @version: 2.3
+# @version: 2.4
 # @type: core
 # @category: peripheral
 # @interface: ADC
@@ -82,7 +82,6 @@ class Ain:
             raise ValueError("samples must be positive")
         adc = self._adc[idx]
         shift = self._shift
-        result = 0.0
         if interval_us > 0:
             for _ in range(samples):
                 result = filt(adc.read_u16() >> shift)
@@ -144,9 +143,11 @@ class Ain:
         def _buf(self):
             n = len(self._i)
             buf = self._cache
-            while len(buf) < n:
-                buf.append(0)
-            del buf[n:]
+            if len(buf) != n:
+                if len(buf) < n:
+                    buf.extend([0] * (n - len(buf)))
+                else:
+                    del buf[n:]
             return buf
 
         def read(self):

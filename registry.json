@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-07-03T00:25:26Z",
+  "generated_at": "2026-07-03T03:06:09Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -193,7 +193,7 @@
       "typehint": "core/_std/typehints/utools.pyi"
     },
     "ain": {
-      "version": "2.3",
+      "version": "2.4",
       "type": "core",
       "source": "core/_std_peri/src/ain.py",
       "deploy_path": "ain.py",
@@ -1038,7 +1038,7 @@
       "typehint": "device/_std/typehints/orientation/as5600_async.pyi"
     },
     "ain@_ticle": {
-      "version": "2.0.0",
+      "version": "2.1",
       "type": "device-specific",
       "source": "device/_ticle/src/ain.py",
       "deploy_path": "ain.py",
