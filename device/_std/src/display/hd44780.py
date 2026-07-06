@@ -1,5 +1,5 @@
-# @package: lcd_hd44780
-# @version: 1.0.0
+# @package: hd44780
+# @version: 1.1
 # @type: device-std
 # @category: display
 # @interface: I2C
@@ -49,7 +49,7 @@ _CLEAR_HOME_DELAY_US  = const(1600)
 _ROW_ADDR = (0x00, 0x40, 0x14, 0x54)
 
 
-class HD44780:
+class HD44780_PCF8574:
     MODE_TEXT = 0
     MODE_GFX  = 1
 

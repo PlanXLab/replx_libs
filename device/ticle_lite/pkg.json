@@ -4,7 +4,7 @@
   "description": "TiCLE Lite - Basic sensor and display platform",
   "includes": [
     "_std/actuators/servo*",
-    "_std/display/lcd_hd44780",
+    "_std/display/hd44780",
     "_std/distance/us*",
     "_std/input/button*",
     "_std/motion/mpu6050*",

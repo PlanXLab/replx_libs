@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-07-03T03:06:09Z",
+  "generated_at": "2026-07-06T05:23:20Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -48,7 +48,7 @@
     "ticle_lite": {
       "includes": [
         "_std/actuators/servo*",
-        "_std/display/lcd_hd44780",
+        "_std/display/hd44780",
         "_std/distance/us*",
         "_std/input/button*",
         "_std/motion/mpu6050*",
@@ -69,7 +69,7 @@
       "includes": [
         "_std/actuators/servo*",
         "_std/audio/buzzer*",
-        "_std/display/lcd_hd44780",
+        "_std/display/hd44780",
         "_std/distance/us*",
         "_std/environmental/bme68x*",
         "_std/motion/bno055*",
@@ -610,11 +610,11 @@
       ],
       "typehint": "device/_std/typehints/audio/buzzer_async.pyi"
     },
-    "lcd_hd44780": {
-      "version": "1.0.0",
+    "hd44780": {
+      "version": "1.1",
       "type": "device-std",
-      "source": "device/_std/src/display/lcd_hd44780.py",
-      "deploy_path": "lcd_hd44780.py",
+      "source": "device/_std/src/display/hd44780.py",
+      "deploy_path": "hd44780.py",
       "category": "display",
       "interface": [
         "I2C"
@@ -632,7 +632,7 @@
         "text",
         "graphics"
       ],
-      "typehint": "device/_std/typehints/display/lcd_hd44780.pyi"
+      "typehint": "device/_std/typehints/display/hd44780.pyi"
     },
     "us": {
       "version": "3.5",

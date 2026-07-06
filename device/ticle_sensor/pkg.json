@@ -5,7 +5,7 @@
   "includes": [
     "_std/actuators/servo*",
     "_std/audio/buzzer*",
-    "_std/display/lcd_hd44780",
+    "_std/display/hd44780",
     "_std/distance/us*",
     "_std/environmental/bme68x*",
     "_std/motion/bno055*",

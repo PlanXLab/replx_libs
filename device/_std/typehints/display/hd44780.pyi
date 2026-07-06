@@ -41,7 +41,7 @@ Features:
 from typing import Sequence, ContextManager
 
 
-class HD44780:
+class HD44780_PCF8574:
     """
     HD44780-compatible Character LCD Driver (PCF8574 I2C Backpack).
     
@@ -51,17 +51,17 @@ class HD44780:
     Example
     -------
     ```python
-        >>> from display.lcd_hd44780 import HD44780
+        >>> from ticle.hd44780 import HD44780_PCF8574
         >>> 
         >>> # 16x2 LCD (default)
-        >>> lcd = HD44780(scl=1, sda=0, addr=0x27)
+        >>> lcd = HD44780_PCF8574(scl=1, sda=0, addr=0x27)
         >>> lcd.text("Hello World!", 0, 0)
         >>> 
         >>> # 20x4 LCD
-        >>> lcd = HD44780(scl=1, sda=0, addr=0x3F, cols=20, rows=4)
+        >>> lcd = HD44780_PCF8574(scl=1, sda=0, addr=0x3F, cols=20, rows=4)
         >>> 
         >>> # Auto cleanup with context manager
-        >>> with HD44780(scl=1, sda=0) as lcd:
+        >>> with HD44780_PCF8574(scl=1, sda=0) as lcd:
         ...     lcd.text("Auto cleanup")
     ```
     """
@@ -87,7 +87,7 @@ class HD44780:
         bl_mask: int = 0x08
     ) -> None:
         """
-        Initialize HD44780 LCD driver.
+        Initialize HD44780_PCF8574 LCD driver.
         
         :param scl: I2C SCL pin number
         :param sda: I2C SDA pin number
@@ -113,25 +113,25 @@ class HD44780:
         -------
         ```python
             >>> # Default 16x2 LCD
-            >>> lcd = HD44780(scl=1, sda=0)
+            >>> lcd = HD44780_PCF8574(scl=1, sda=0)
             >>> 
             >>> # 20x4 LCD with different I2C address
-            >>> lcd = HD44780(scl=1, sda=0, addr=0x3F, cols=20, rows=4)
+            >>> lcd = HD44780_PCF8574(scl=1, sda=0, addr=0x3F, cols=20, rows=4)
             >>> 
             >>> # Using I2C1 bus
-            >>> lcd = HD44780(scl=3, sda=2, id=1)
+            >>> lcd = HD44780_PCF8574(scl=3, sda=2, id=1)
         ```
         """
         ...
     
-    def __enter__(self) -> "HD44780":
+    def __enter__(self) -> "HD44780_PCF8574":
         """
         Enter context manager.
         
         Example
         -------
         ```python
-            >>> with HD44780(scl=1, sda=0) as lcd:
+            >>> with HD44780_PCF8574(scl=1, sda=0) as lcd:
             ...     lcd.text("Hello")
         ```
         """
@@ -144,7 +144,7 @@ class HD44780:
         Example
         -------
         ```python
-            >>> with HD44780(scl=1, sda=0) as lcd:
+            >>> with HD44780_PCF8574(scl=1, sda=0) as lcd:
             ...     lcd.text("Auto cleanup")
             >>> # deinit() called automatically
         ```
@@ -160,7 +160,7 @@ class HD44780:
         Example
         -------
         ```python
-            >>> lcd = HD44780(scl=1, sda=0)
+            >>> lcd = HD44780_PCF8574(scl=1, sda=0)
             >>> # ... use lcd ...
             >>> lcd.deinit()
         ```
@@ -266,7 +266,7 @@ class HD44780:
         Example
         -------
         ```python
-            >>> lcd.mode = HD44780.MODE_GFX
+            >>> lcd.mode = HD44780_PCF8574.MODE_GFX
         ```
         """
         ...
@@ -344,7 +344,7 @@ class HD44780:
         """
         Create custom character (CGRAM).
         
-        HD44780 can store up to 8 custom characters.
+        HD44780_PCF8574 can store up to 8 custom characters.
         Each character is 5x8 pixels.
         
         :param slot: Character slot number (0-7)
@@ -489,7 +489,7 @@ class HD44780:
         """
         ...
     
-    def batch(self) -> ContextManager["HD44780"]:
+    def batch(self) -> ContextManager["HD44780_PCF8574"]:
         """
         Batch mode context manager.
         
@@ -675,7 +675,7 @@ class HD44780:
         Example
         -------
         ```python
-            >>> lcd.mode = HD44780.MODE_GFX
+            >>> lcd.mode = HD44780_PCF8574.MODE_GFX
             >>> lcd.g_clear()
             >>> lcd.g_rect(0, 0, 40, 8, fill=True)
             >>> lcd.g_line(0, 0, 79, 15)
