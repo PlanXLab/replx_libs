@@ -1,5 +1,5 @@
 # @package: servo
-# @version: 4.4
+# @version: 4.5
 # @type: device-std
 # @category: actuators
 # @interface: PWM
@@ -25,6 +25,9 @@ _EASE_CUBIC = const(2)
 _AUTO_MS_PER_DEG = 400.0 / 60.0
 _AUTO_MOVE_MARGIN_MS = const(50)
 _MIN_MOVE_MS = const(50)
+
+# Properties on _View that can be set via Servo.__setattr__ in single-servo mode
+_VIEW_SETABLE = frozenset({'angle', 'speed', 'duty_us', 'home_angle', 'calibration'})
 
 def _ease(t, mode):
     if mode == _EASE_LINEAR:
@@ -70,6 +73,7 @@ class Servo:
         center_us: int = 1500,
         home_angle: float = 90.0
     ):
+        self._single = isinstance(pins, int)
         if isinstance(pins, int):
             pins = [pins]
         if not pins:
@@ -141,6 +145,28 @@ class Servo:
         else:
             raise TypeError("Index must be int or slice")
         return Servo._View(self, indices)
+
+    def __getattr__(self, name):
+        """Delegate attribute lookups to _views[0] in single-servo mode."""
+        try:
+            if object.__getattribute__(self, '_single'):
+                return getattr(object.__getattribute__(self, '_views')[0], name)
+        except AttributeError:
+            pass
+        raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        """Delegate settable _View properties to _views[0] in single-servo mode."""
+        if name.startswith('_'):
+            object.__setattr__(self, name, value)
+            return
+        try:
+            if object.__getattribute__(self, '_single') and name in _VIEW_SETABLE:
+                setattr(object.__getattribute__(self, '_views')[0], name, value)
+                return
+        except AttributeError:
+            pass
+        object.__setattr__(self, name, value)
 
     def _angle_to_us(self, deg, i):
         deg = clamp(deg, 0.0, 180.0)
