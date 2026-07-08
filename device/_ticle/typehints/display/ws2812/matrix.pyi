@@ -34,7 +34,7 @@ Performance Optimizations:
 class Matrix:
     DEFAULT_FONT: str = "pixel.bin"
 
-    def __init__(self, pins: list[int], *,
+    def __init__(self, pins: int | list[int] | tuple[int, ...], *,
                  panel_width: int = 16, panel_height: int = 16,
                  grid_width: int = 1, grid_height: int = 1,
                  zigzag: bool = False, origin: str = "top_left",
@@ -46,7 +46,7 @@ class Matrix:
         Creates a high-performance LED matrix controller that manages multiple panels
         with DMA-based updates for smooth animations and precise timing control.
         
-        :param pins: List of GPIO pins for LED data output (one per panel chain)
+        :param pins: GPIO pin or list/tuple of GPIO pins for LED data output (one per panel chain)
             StateMachine(SM) IDs are selected automatically by the runtime.
         :param panel_width: Width of individual panel in pixels (default: 16)
         :param panel_height: Height of individual panel in pixels (default: 16)
@@ -80,7 +80,7 @@ class Matrix:
         -------
         ```python
             >>> # Single panel with 1 data pin (uses 1 SM)
-            >>> matrix = Matrix([18], brightness=0.3)
+            >>> matrix = Matrix(18, brightness=0.3)
             >>> 
             >>> # 2 panel chains (uses 2 SMs)
             >>> matrix = Matrix([18, 19], 
@@ -88,13 +88,13 @@ class Matrix:
             ...                 zigzag=True, brightness=0.5)
             >>> 
             >>> # Large single panel display
-            >>> matrix = Matrix([18], 
+            >>> matrix = Matrix(18, 
             ...                 panel_width=32, panel_height=8,
             ...                 origin="bottom_left")
             >>> 
             >>> # Pre-initialize scroll timer at 50 ms so draw_text_scroll(speed_ms=50)
             >>> # never triggers Timer.init() under memory pressure
-            >>> matrix = Matrix([18], scroll_speed_ms=50)
+            >>> matrix = Matrix(18, scroll_speed_ms=50)
         ```
         """
         
@@ -107,7 +107,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> matrix[5, 5].value = (255, 0, 0)
             >>> r, g, b = matrix[5, 5].value
         ```
@@ -160,7 +160,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Set individual pixels
             >>> matrix[5, 5].value = (255, 0, 0)    # Red pixel
@@ -186,7 +186,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18], panel_width=16, grid_width=2)
+            >>> matrix = Matrix(18, panel_width=16, grid_width=2)
             >>> print(matrix.width)  # Output: 32
         ```
         """
@@ -202,7 +202,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18], panel_height=16, grid_height=2)
+            >>> matrix = Matrix(18, panel_height=16, grid_height=2)
             >>> print(matrix.height)  # Output: 32
         ```
         """
@@ -218,7 +218,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18], brightness=0.5)
+            >>> matrix = Matrix(18, brightness=0.5)
             >>> print(matrix.brightness)  # Output: 0.5
         ```
         """
@@ -236,7 +236,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> matrix.brightness = 0.8  # Bright
             >>> matrix.fill((255, 255, 255))
             >>> matrix.update()
@@ -259,7 +259,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> matrix.fill((255, 0, 0))  # Fill with red
             >>> matrix.update()           # Blocking update
             >>> 
@@ -297,7 +297,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Fill with red using tuple
             >>> matrix.fill((255, 0, 0))
@@ -325,7 +325,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Load font by module path
             >>> matrix.set_font("vga2_bold_16x16")
@@ -349,7 +349,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> # ... use matrix ...
             >>> matrix.deinit()  # Clean shutdown
         ```
@@ -372,7 +372,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Draw diagonal line
             >>> matrix.draw_line(0, 0, 15, 15, (255, 255, 255))
@@ -403,7 +403,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Clock hand pointing up (12 o'clock)
             >>> matrix.draw_line_polar(8, 8, 6, 90, (255, 255, 255))
@@ -441,7 +441,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Outlined rectangle
             >>> matrix.draw_rect(2, 2, 12, 8, (255, 255, 0))
@@ -473,7 +473,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Rotated rectangles
             >>> matrix.draw_rect_polar(8, 8, 10, 6, 0, (255, 0, 0))    # Horizontal
@@ -509,7 +509,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Simple circle
             >>> matrix.draw_ellipse(8, 8, 5, outline=(255, 0, 0))
@@ -546,7 +546,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Simple circle outline
             >>> matrix.draw_circle(8, 8, 6, (0, 255, 255))
@@ -576,7 +576,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Simple 8x8 bitmap (heart shape)
             >>> heart_data = bytes([
@@ -618,7 +618,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Simple 2x2 color bitmap
             >>> color_data = bytes([
@@ -769,7 +769,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Simple text display
             >>> matrix.draw_text("Hello", x=2, y=4, fg=(255, 255, 0))
@@ -823,7 +823,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> 
             >>> # Basic left scroll
             >>> matrix.draw_text_scroll("NEWS FLASH", direction="left", speed_ms=100)
@@ -875,7 +875,7 @@ class Matrix:
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
+            >>> matrix = Matrix(18)
             >>> matrix.draw_text_scroll_blocking(
             ...     "HELLO",
             ...     direction="left",

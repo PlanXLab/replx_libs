@@ -60,7 +60,7 @@ def _ws2812_pio():
 class Matrix:
     DEFAULT_FONT: str = "pixel.bin"
 
-    def __init__(self, pins: list[int], *,
+    def __init__(self, pins: int | list[int] | tuple[int, ...], *,
                  panel_width: int = 16, panel_height: int = 16,
                  grid_width: int = 1, grid_height: int = 1,
                  zigzag: bool = False, origin: str = "top_left",
@@ -68,6 +68,9 @@ class Matrix:
                  scroll_speed_ms: int = 50) -> None:
         if origin not in ("top_left", "top_right", "bottom_left", "bottom_right"):
             raise ValueError("origin must be top_left/top_right/bottom_left/bottom_right")
+        
+        if isinstance(pins, int):
+            pins = [pins]
         
         sm_ids = find_free_sm(len(pins))
  

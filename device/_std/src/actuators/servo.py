@@ -149,10 +149,11 @@ class Servo:
     def __getattr__(self, name):
         """Delegate attribute lookups to _views[0] in single-servo mode."""
         try:
-            if object.__getattribute__(self, '_single'):
-                return getattr(object.__getattribute__(self, '_views')[0], name)
+            single = object.__getattribute__(self, '_single')
         except AttributeError:
-            pass
+            raise AttributeError(name)
+        if single:
+            return getattr(object.__getattribute__(self, '_views')[0], name)
         raise AttributeError(name)
 
     def __setattr__(self, name, value):
@@ -161,12 +162,14 @@ class Servo:
             object.__setattr__(self, name, value)
             return
         try:
-            if object.__getattribute__(self, '_single') and name in _VIEW_SETABLE:
-                setattr(object.__getattribute__(self, '_views')[0], name, value)
-                return
+            single = object.__getattribute__(self, '_single')
         except AttributeError:
-            pass
-        object.__setattr__(self, name, value)
+            object.__setattr__(self, name, value)
+            return
+        if single and name in _VIEW_SETABLE:
+            setattr(object.__getattribute__(self, '_views')[0], name, value)
+        else:
+            object.__setattr__(self, name, value)
 
     def _angle_to_us(self, deg, i):
         deg = clamp(deg, 0.0, 180.0)
