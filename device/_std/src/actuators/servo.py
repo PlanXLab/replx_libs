@@ -1,5 +1,5 @@
 # @package: servo
-# @version: 4.5
+# @version: 4.6
 # @type: device-std
 # @category: actuators
 # @interface: PWM
@@ -25,9 +25,6 @@ _EASE_CUBIC = const(2)
 _AUTO_MS_PER_DEG = 400.0 / 60.0
 _AUTO_MOVE_MARGIN_MS = const(50)
 _MIN_MOVE_MS = const(50)
-
-# Properties on _View that can be set via Servo.__setattr__ in single-servo mode
-_VIEW_SETABLE = frozenset({'angle', 'speed', 'duty_us', 'home_angle', 'calibration'})
 
 def _ease(t, mode):
     if mode == _EASE_LINEAR:
@@ -73,7 +70,6 @@ class Servo:
         center_us: int = 1500,
         home_angle: float = 90.0
     ):
-        self._single = isinstance(pins, int)
         if isinstance(pins, int):
             pins = [pins]
         if not pins:
@@ -146,30 +142,66 @@ class Servo:
             raise TypeError("Index must be int or slice")
         return Servo._View(self, indices)
 
-    def __getattr__(self, name):
-        """Delegate attribute lookups to _views[0] in single-servo mode."""
-        try:
-            single = object.__getattribute__(self, '_single')
-        except AttributeError:
-            raise AttributeError(name)
-        if single:
-            return getattr(object.__getattribute__(self, '_views')[0], name)
-        raise AttributeError(name)
+    # ── Channel-0 proxy methods/properties ──────────────────────────────────
+    # Direct access for single-servo mode: Servo(pin).home() etc.
+    # For multi-servo mode these operate on channel 0;
+    # use s[idx] to target a specific channel.
 
-    def __setattr__(self, name, value):
-        """Delegate settable _View properties to _views[0] in single-servo mode."""
-        if name.startswith('_'):
-            object.__setattr__(self, name, value)
-            return
-        try:
-            single = object.__getattribute__(self, '_single')
-        except AttributeError:
-            object.__setattr__(self, name, value)
-            return
-        if single and name in _VIEW_SETABLE:
-            setattr(object.__getattribute__(self, '_views')[0], name, value)
-        else:
-            object.__setattr__(self, name, value)
+    def move_to(self, deg, ms=None, easing='linear'):
+        return self._views[0].move_to(deg, ms, easing)
+
+    def home(self, ms=None, easing='quad'):
+        return self._views[0].home(ms, easing)
+
+    def wait(self, timeout_ms=10000):
+        return self._views[0].wait(timeout_ms)
+
+    def stop(self):
+        return self._views[0].stop()
+
+    @property
+    def angle(self):
+        return self._views[0].angle
+
+    @angle.setter
+    def angle(self, val):
+        self._views[0].angle = val
+
+    @property
+    def speed(self):
+        return self._views[0].speed
+
+    @speed.setter
+    def speed(self, val):
+        self._views[0].speed = val
+
+    @property
+    def home_angle(self):
+        return self._views[0].home_angle
+
+    @home_angle.setter
+    def home_angle(self, val):
+        self._views[0].home_angle = val
+
+    @property
+    def duty_us(self):
+        return self._views[0].duty_us
+
+    @duty_us.setter
+    def duty_us(self, val):
+        self._views[0].duty_us = val
+
+    @property
+    def is_moving(self):
+        return self._views[0].is_moving
+
+    @property
+    def calibration(self):
+        return self._views[0].calibration
+
+    @calibration.setter
+    def calibration(self, params):
+        self._views[0].calibration = params
 
     def _angle_to_us(self, deg, i):
         deg = clamp(deg, 0.0, 180.0)
