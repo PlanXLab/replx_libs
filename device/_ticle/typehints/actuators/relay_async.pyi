@@ -71,10 +71,38 @@ class RelayAsync:
     ```
     """
 
-    def __init__(self, relay: Relay) -> None: ...
+    def __init__(self, relay: Relay) -> None:
+        """
+        Create an async wrapper around an existing ``Relay`` instance.
+
+        :param relay: An already-initialised ``Relay`` object to wrap.
+
+        Example
+        -------
+        ```python
+            >>> from ticle_lite.relay import Relay
+            >>> from ticle_lite.relay_async import RelayAsync
+            >>> relay = Relay(pins=[16, 17], watchdog_ms=5000)
+            >>> async_relay = RelayAsync(relay)
+        ```
+        """
+        ...
 
     def __len__(self) -> int:
-        """Return number of relay channels."""
+        """
+        Return the number of relay channels.
+
+        :return: Channel count.
+
+        Example
+        -------
+        ```python
+            >>> relay = Relay(pins=[16, 17, 18])
+            >>> async_relay = RelayAsync(relay)
+            >>> len(async_relay)
+            3
+        ```
+        """
         ...
 
     def __getitem__(self, idx: int | slice) -> "_View":
@@ -140,11 +168,33 @@ class RelayAsync:
         """
 
         def __getitem__(self, idx: int | slice) -> "RelayAsync._View":
-            """Sub-select from current view."""
+            """
+            Return a narrower view from this view.
+
+            :param idx: View-local index or slice.
+            :return: A narrower ``_View``.
+
+            Example
+            -------
+            ```python
+                >>> async_relay[0:2][0].state = Relay.ON
+            ```
+            """
             ...
 
         def __len__(self) -> int:
-            """Number of channels in this view."""
+            """
+            Return the number of channels in this view.
+
+            :return: Channel count.
+
+            Example
+            -------
+            ```python
+                >>> len(async_relay[:])
+                3
+            ```
+            """
             ...
 
         @property
@@ -237,9 +287,26 @@ class RelayAsync:
             ...
 
         def all_off(self) -> None:
-            """Turn off all channels in this view (immediate)."""
+            """
+            De-energise all channels in this view (immediate, no await).
+
+            Example
+            -------
+            ```python
+                >>> async_relay[:].all_off()
+            ```
+            """
             ...
 
         def emergency_stop(self) -> None:
-            """Immediately turn off selected relays (PIO direct)."""
+            """
+            Immediately de-energise selected relays via direct PIO writes
+            (no await needed).
+
+            Example
+            -------
+            ```python
+                >>> async_relay[:].emergency_stop()
+            ```
+            """
             ...

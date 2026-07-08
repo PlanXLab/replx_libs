@@ -1,13 +1,46 @@
 """
 WS2812 Matrix Visual Effects
-============================
 
 Timer-driven visual effects for WS2812 LED matrices, running asynchronously
 in the background using hardware timers and micropython.schedule().
 
 Usage
 -----
-::
+
+Instantiate ``Effect`` with a ``Matrix`` object, then call any effect method.
+Only one effect runs at a time; starting a new effect stops the previous one.
+
+Example
+-------
+```python
+    >>> from ticle_lite.ws2812 import Matrix, Effect
+    >>> matrix = Matrix([2], panel_width=8, panel_height=8)
+    >>> fx = Effect(matrix)
+    >>> fx.plasma(kx=4, ky=4)
+    >>> # ... effect runs in background ...
+    >>> fx.stop()
+```
+
+Effect Categories
+-----------------
+
+Ambient: plasma, ripple, neon_checkerboard
+
+Fire/Flame: campfire, fireworks
+
+Particle: sparkle, meteor_rain, spark_stream, comet_horizontal
+
+Pattern: matrix_rain, petal_vortex, horizontal_wave, scrolling_gradient,
+scanner, audio_bars, night_sky
+
+Notes
+-----
+
+- Only one effect runs at a time; starting a new effect stops the previous one.
+- Effects use hardware Timer(-1) (virtual timer on RP2).
+- Frame rate is automatically limited based on LED count.
+- All effects are non-blocking and run in the background.
+"""
 
     from ws2812 import Matrix, Effect
     
@@ -87,14 +120,36 @@ class Effect:
     ```
     """
     
-    def __init__(self, ws) -> None: ...
+    def __init__(self, ws) -> None:
+        """
+        Create an ``Effect`` controller bound to a ``Matrix`` instance.
+
+        :param ws: An initialised ``Matrix`` object to drive.
+
+        Example
+        -------
+        ```python
+            >>> from ticle_lite.ws2812 import Matrix, Effect
+            >>> matrix = Matrix([2], panel_width=8, panel_height=8)
+            >>> fx = Effect(matrix)
+        ```
+        """
+        ...
     
     def stop(self) -> None:
         """
         Stop the current running effect.
-        
-        Deinitializes the timer and clears the effect state.
+
+        Deinitialises the hardware timer and clears the effect state.
         The LED matrix retains its last displayed state.
+
+        Example
+        -------
+        ```python
+            >>> fx.plasma(kx=4, ky=4)
+            >>> time.sleep_ms(3000)
+            >>> fx.stop()
+        ```
         """
         ...
     

@@ -1,7 +1,7 @@
 """
 KY-022 Infrared Receiver Driver
 
-Multi-protocol IR receiver supporting NEC, Samsung, Sony SIRC, Philips RC5/RC6,
+Multi-protocol IR receiver supporting NEC, Samsung, Sony SIRC,
 Panasonic, and various HVAC remote control protocols.
 
 Features:
@@ -9,7 +9,6 @@ Features:
 - NEC 8-bit and 16-bit address formats
 - Samsung modified NEC protocol
 - Sony SIRC 12/15/20-bit formats
-- Philips RC5 and RC6 Manchester encoding
 - Panasonic (Kaseikyo) 48-bit protocol
 - Generic HVAC NEC-series (configurable bit count)
 - Carrier 40/84/128-bit protocols
@@ -122,9 +121,6 @@ class KY022:
             >>> # Sony SIRC 12-bit
             >>> ir = KY022(pin=15, protocol=KY022.PROTOCOL_SIRC12)
             >>> 
-            >>> # Philips RC5 (TV, audio)
-            >>> ir = KY022(pin=15, protocol=KY022.PROTOCOL_RC5)
-            >>> 
             >>> # With repeat suppression
             >>> ir = KY022(pin=15, emit_repeat=False)
             >>> 
@@ -166,8 +162,6 @@ class KY022:
         
         - NEC/Samsung: (command, address, 0)
         - SIRC: (command, address, extended_device)
-        - RC5: (command, address, toggle_bit)
-        - RC6: (command, address, toggle_bit)
         - Panasonic: (command, address, extended_data)
         - HVAC: (byte0, byte1|byte2<<8, byte3|byte4<<8)
         

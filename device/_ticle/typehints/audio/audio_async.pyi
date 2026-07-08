@@ -113,7 +113,22 @@ class AsyncAudio:
         """
         ...
 
-    def __enter__(self) -> "AsyncAudio": ...
+    def __enter__(self) -> "AsyncAudio":
+        """
+        Return ``self`` for use as a context manager.
+
+        :return: This ``AsyncAudio`` instance.
+
+        Example
+        -------
+        ```python
+            >>> audio = Audio(sck=4, ws=5, sd_out=7, sd_in=6)
+            >>> async def main():
+            ...     with AsyncAudio(audio) as aa:
+            ...         await aa.tone(440, 300)
+        ```
+        """
+        ...
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Call deinit() on the underlying Audio when used as context manager."""

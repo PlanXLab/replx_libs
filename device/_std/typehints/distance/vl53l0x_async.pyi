@@ -29,11 +29,11 @@ class VL53L0XAsync:
     ```
     """
 
-    def __init__(self, sensor: "VL53L0X", poll_ms: int = 10) -> None:
+    def __init__(self, device: "VL53L0X", poll_ms: int = 10) -> None:
         """
         Initialize async wrapper.
         
-        :param sensor: VL53L0X sensor instance (must be started).
+        :param device: VL53L0X sensor instance (must be started).
         :param poll_ms: Polling interval in milliseconds (default: 10).
         
         Example
@@ -46,16 +46,16 @@ class VL53L0XAsync:
         ...
 
     @property
-    def sensor(self) -> "VL53L0X":
+    def device(self) -> "VL53L0X":
         """
         Get underlying VL53L0X sensor instance.
         
-        :return: The wrapped VL53L0X sensor.
+        :return: The wrapped VL53L0X sensor instance.
         
         Example
         -------
         ```python
-            >>> async_sensor.sensor
+            >>> async_sensor.device
             <VL53L0X object at ...>
         ```
         """

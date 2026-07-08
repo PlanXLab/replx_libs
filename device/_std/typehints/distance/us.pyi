@@ -169,7 +169,7 @@ class SR04:
         """
         ...
 
-    def result(self, timeout_ms: int = 50) -> float:
+    def result(self, timeout_ms: int | None = None) -> float:
         """
         Get measurement result (single sensor only).
         
@@ -179,7 +179,7 @@ class SR04:
         """
         ...
 
-    def read(self, timeout_ms: int = 50) -> float:
+    def read(self, timeout_ms: int | None = None) -> float:
         """
         Trigger and read distance (single sensor only).
         
@@ -216,7 +216,7 @@ class SR04:
             """Check if measurements are ready."""
             ...
 
-        def result(self, timeout_ms: int = 50) -> list[float]:
+        def result(self, timeout_ms: int | None = None) -> list[float]:
             """
             Wait for and calculate distances.
             
@@ -225,7 +225,7 @@ class SR04:
             """
             ...
 
-        def read(self, timeout_ms: int = 50) -> list[float]:
+        def read(self, timeout_ms: int | None = None) -> list[float]:
             """
             Trigger and read distances.
             

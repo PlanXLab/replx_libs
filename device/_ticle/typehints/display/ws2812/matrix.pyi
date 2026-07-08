@@ -99,24 +99,50 @@ class Matrix:
         """
         
     class _PixelView:
-        def __init__(self, parent, x, y):
-            self._parent = parent
-            self._x = x
-            self._y = y
+        """
+        Pixel accessor returned by ``Matrix.__getitem__``.
+
+        Use ``value`` to read or write a single pixel’s RGB colour.
+
+        Example
+        -------
+        ```python
+            >>> matrix = Matrix([18])
+            >>> matrix[5, 5].value = (255, 0, 0)
+            >>> r, g, b = matrix[5, 5].value
+        ```
+        """
 
         @property
-        def value(self):
-            fb = self._parent._fb
-            w = self._parent._fb_width
-            packed = fb[self._y * w + self._x]
-            g = (packed >> 24) & 0xFF
-            r = (packed >> 16) & 0xFF
-            b = (packed >> 8) & 0xFF
-            return r, g, b
+        def value(self) -> tuple[int, int, int]:
+            """
+            Read the pixel colour as an ``(r, g, b)`` tuple.
+
+            :return: RGB colour tuple.
+
+            Example
+            -------
+            ```python
+                >>> r, g, b = matrix[4, 4].value
+            ```
+            """
+            ...
 
         @value.setter
-        def value(self, color):
-            self._parent._set_pixel(self._x, self._y, color)
+        def value(self, color: tuple[int, int, int] | int) -> None:
+            """
+            Set the pixel colour.
+
+            :param color: RGB colour as ``(r, g, b)`` tuple or 24-bit integer.
+
+            Example
+            -------
+            ```python
+                >>> matrix[4, 4].value = (0, 255, 0)
+                >>> matrix.update()
+            ```
+            """
+            ...
 
     def __getitem__(self, pos: tuple[int, int]) -> "_PixelView":
         """
@@ -148,6 +174,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     @property
     def width(self) -> int: 
@@ -163,6 +190,7 @@ class Matrix:
             >>> print(matrix.width)  # Output: 32
         ```
         """
+        ...
 
     @property
     def height(self) -> int: 
@@ -178,6 +206,7 @@ class Matrix:
             >>> print(matrix.height)  # Output: 32
         ```
         """
+        ...
 
     @property
     def brightness(self) -> float: 
@@ -216,6 +245,7 @@ class Matrix:
             >>> matrix.update()  # Same colors, different brightness
         ```
         """
+        ...
 
     def update(self, wait: bool = True) -> None:
         """
@@ -238,26 +268,22 @@ class Matrix:
             >>> matrix.update(wait=False)  # Continue immediately
         ```
         """
+        ...
 
     def clear(self) -> None:
         """
-        Clear the matrix display and turn off all LEDs.
-        
-        Sets all pixels to black and immediately updates the display
-        for instant clearing effect.
-        
+        Fill all pixels with black and immediately push to the matrix.
+
         Example
         -------
         ```python
-            >>> matrix = Matrix([18])
-            >>> matrix.fill((255, 0, 0))  # Fill with red
+            >>> matrix.fill((255, 255, 255))
             >>> matrix.update()
-            >>> utime.sleep_ms(1000)
-            >>> matrix.clear()            # Instant clear
+            >>> time.sleep_ms(500)
+            >>> matrix.clear()
         ```
         """
-        self.fill(0)
-        self.update(True)
+        ...
     
     def fill(self, color: int | tuple[int, int, int]) -> None:
         """
@@ -282,6 +308,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def set_font(self, font_src: str | object) -> None:
         """
@@ -310,6 +337,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def deinit(self) -> None:
         """
@@ -326,6 +354,7 @@ class Matrix:
             >>> matrix.deinit()  # Clean shutdown
         ```
         """
+        ...
 
     def draw_line(self, x0:int, y0:int, x1:int, y1:int, color):
         """
@@ -356,6 +385,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def draw_line_polar(self, cx:int, cy:int, length:int, angle_deg:int, color):
         """
@@ -390,6 +420,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def draw_rect(self, x: int, y: int, w: int, h: int, outline: int | tuple[int, int, int], 
                   *, 
@@ -420,6 +451,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def draw_rect_polar(self, cx: int, cy: int, w: int, h: int, angle_deg: float, outline, 
                         *, 
@@ -454,6 +486,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def draw_ellipse(self, cx: int, cy: int, rx: int, ry: int | None = None, outline=(255, 255, 255), 
                      *, 
@@ -493,6 +526,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def draw_circle(self, cx: int, cy: int, r: int, color: int | tuple[int, int, int], 
                     *, 
@@ -522,6 +556,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def draw_bitmap_1bit(self, data:bytes|bytearray|memoryview, 
                          width:int, height:int, x:int=0, y:int=0, outline=(255,255,255)):
@@ -564,6 +599,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def draw_bitmap_color(self, data: bytes | bytearray | memoryview, 
                           width: int, height: int, x: int = 0, y: int = 0) -> None:
@@ -600,30 +636,111 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def shader_split_lr(self, c_left: int | tuple[int, int, int],
                         c_right: int | tuple[int, int, int],
                         ratio_num: int = 1, ratio_den: int = 2) -> tuple:
-        """Return a left/right split shader for use as fg in draw_text / draw_text_scroll."""
+        """
+        Return a left/right split colour shader for ``draw_text`` / ``draw_text_scroll``.
+
+        :param c_left: Colour for the left portion.
+        :param c_right: Colour for the right portion.
+        :param ratio_num: Numerator of the split position (default: 1).
+        :param ratio_den: Denominator of the split position (default: 2).
+        :return: Shader tuple to pass as ``fg``.
+
+        Example
+        -------
+        ```python
+            >>> sh = matrix.shader_split_lr((255, 0, 0), (0, 0, 255))
+            >>> matrix.draw_text("AB", fg=sh)
+            >>> matrix.update()
+        ```
+        """
+        ...
 
     def shader_split_tb(self, c_top: int | tuple[int, int, int],
                         c_bottom: int | tuple[int, int, int],
                         ratio_num: int = 1, ratio_den: int = 2) -> tuple:
-        """Return a top/bottom split shader for use as fg in draw_text / draw_text_scroll."""
+        """
+        Return a top/bottom split colour shader for ``draw_text`` / ``draw_text_scroll``.
+
+        :param c_top: Colour for the top portion.
+        :param c_bottom: Colour for the bottom portion.
+        :param ratio_num: Numerator of the split position (default: 1).
+        :param ratio_den: Denominator of the split position (default: 2).
+        :return: Shader tuple to pass as ``fg``.
+
+        Example
+        -------
+        ```python
+            >>> sh = matrix.shader_split_tb((255, 200, 0), (255, 80, 0))
+            >>> matrix.draw_text_scroll("HELLO", fg=sh)
+        ```
+        """
+        ...
 
     def shader_checker(self, c1: int | tuple[int, int, int],
                        c2: int | tuple[int, int, int],
                        cell_w: int = 2, cell_h: int = 2) -> tuple:
-        """Return a checkerboard shader for use as fg in draw_text / draw_text_scroll."""
+        """
+        Return a checkerboard colour shader for ``draw_text`` / ``draw_text_scroll``.
+
+        :param c1: First tile colour.
+        :param c2: Second tile colour.
+        :param cell_w: Tile width in pixels (default: 2).
+        :param cell_h: Tile height in pixels (default: 2).
+        :return: Shader tuple to pass as ``fg``.
+
+        Example
+        -------
+        ```python
+            >>> sh = matrix.shader_checker((255, 255, 0), (255, 0, 255))
+            >>> matrix.draw_text("HI", fg=sh)
+            >>> matrix.update()
+        ```
+        """
+        ...
 
     def shader_snowflake(self, c1: int | tuple[int, int, int],
                          c2: int | tuple[int, int, int],
                          arm: int = 1) -> tuple:
-        """Return a snowflake shader for use as fg in draw_text / draw_text_scroll."""
+        """
+        Return a snowflake/star colour shader for ``draw_text`` / ``draw_text_scroll``.
+
+        :param c1: Primary colour.
+        :param c2: Secondary colour.
+        :param arm: Arm count parameter controlling the flake symmetry.
+        :return: Shader tuple to pass as ``fg``.
+
+        Example
+        -------
+        ```python
+            >>> sh = matrix.shader_snowflake((200, 220, 255), (100, 150, 255))
+            >>> matrix.draw_text_scroll("SNOW", fg=sh)
+        ```
+        """
+        ...
 
     def shader_rainbow(self, c_start: int | tuple[int, int, int],
                        c_end: int | tuple[int, int, int]) -> tuple:
-        """Return a rainbow (gradient) shader for use as fg in draw_text / draw_text_scroll."""
+        """
+        Return a rainbow (horizontal gradient) colour shader for
+        ``draw_text`` / ``draw_text_scroll``.
+
+        :param c_start: Start colour (left side).
+        :param c_end: End colour (right side).
+        :return: Shader tuple to pass as ``fg``.
+
+        Example
+        -------
+        ```python
+            >>> sh = matrix.shader_rainbow((255, 0, 0), (0, 0, 255))
+            >>> matrix.draw_text_scroll("RAINBOW", fg=sh)
+        ```
+        """
+        ...
 
     def draw_text(self, text: str, 
                   *, 
@@ -665,6 +782,7 @@ class Matrix:
             >>> matrix.update()
         ```
         """
+        ...
 
     def draw_text_scroll(self, text: str, 
                          *, 
@@ -719,6 +837,7 @@ class Matrix:
             ...                        step_px=1, speed_ms=150)
         ```
         """
+        ...
 
     def draw_text_scroll_blocking(self, text: str,
                                   *,
@@ -732,50 +851,112 @@ class Matrix:
                                   update_flag: bool = False,
                                   right_mirrored: bool = False) -> None:
         """
-        Blocking version of draw_text_scroll — runs scroll to completion before returning.
+        Scroll text to completion before returning (blocking variant).
 
-        :param text: Text to scroll
-        :param direction: Scroll direction: "left", "right", "up", "down" (default: "left")
-        :param x: Starting X coordinate for vertical scroll (default: 0)
-        :param y: Starting Y coordinate for vertical scroll (default: 0)
-        :param fg: Text color, or a shader tuple from a shader_* method (default: white)
-        :param bg: Background color (default: black)
-        :param step_px: Pixels per scroll step (default: 1)
-        :param space_scale: Space character width scaling (default: 0.3)
-        :param right_margin: Character right margin (default: 1)
-        :param left_margin: Character left margin (default: 0)
-        :param up_margin: Vertical scroll top margin (default: 1)
-        :param down_margin: Vertical scroll bottom margin (default: 0)
-        :param speed_ms: Delay between scroll steps in milliseconds (default: 0)
-        :param update_flag: Call update() each step (default: False)
-        :param right_mirrored: Mirror right side (default: False)
+        :param text: Text to scroll.
+        :param direction: Scroll direction: ``"left"``, ``"right"``, ``"up"``,
+            ``"down"`` (default: ``"left"``).
+        :param x: Starting X coordinate (default: 0).
+        :param y: Starting Y coordinate (default: 0).
+        :param fg: Text colour, or a shader tuple (default: white).
+        :param bg: Background colour (default: black).
+        :param step_px: Pixels per scroll step (default: 1).
+        :param space_scale: Space character width scaling (default: 0.3).
+        :param right_margin: Character right margin (default: 1).
+        :param left_margin: Character left margin (default: 0).
+        :param up_margin: Vertical scroll top margin (default: 1).
+        :param down_margin: Vertical scroll bottom margin (default: 0).
+        :param speed_ms: Delay between scroll steps in milliseconds (default: 0).
+        :param update_flag: Call ``update()`` each step (default: ``False``).
+        :param right_mirrored: Mirror right side (default: ``False``).
 
-        :raises ValueError: If direction is not valid
+        :raises ValueError: If *direction* is not valid.
+
+        Example
+        -------
+        ```python
+            >>> matrix = Matrix([18])
+            >>> matrix.draw_text_scroll_blocking(
+            ...     "HELLO",
+            ...     direction="left",
+            ...     fg=(0, 200, 255),
+            ...     speed_ms=40,
+            ... )
+        ```
         """
+        ...
 
     def is_scrolling(self) -> bool:
-        """Return True if a non-blocking scroll is currently active."""
+        """
+        Return ``True`` if a non-blocking scroll is currently active.
+
+        Example
+        -------
+        ```python
+            >>> matrix.draw_text_scroll("HELLO", speed_ms=50)
+            >>> while matrix.is_scrolling():
+            ...     time.sleep_ms(10)
+        ```
+        """
+        ...
 
     def pause_scroll(self) -> bool:
-        """Pause non-blocking scroll timer. Returns True if successful."""
+        """
+        Pause the non-blocking scroll timer.
+
+        :return: ``True`` if paused, ``False`` if not active.
+
+        Example
+        -------
+        ```python
+            >>> matrix.draw_text_scroll("HELLO", speed_ms=50)
+            >>> matrix.pause_scroll()
+        ```
+        """
+        ...
 
     def resume_scroll(self) -> bool:
-        """Resume a paused non-blocking scroll. Returns True if successful."""
+        """
+        Resume a paused non-blocking scroll.
+
+        :return: ``True`` if resumed, ``False`` otherwise.
+
+        Example
+        -------
+        ```python
+            >>> matrix.pause_scroll()
+            >>> time.sleep_ms(1000)
+            >>> matrix.resume_scroll()
+        ```
+        """
+        ...
 
     def stop_scroll(self) -> None:
-        """Stop and clean up the non-blocking scroll."""
+        """
+        Stop and clean up the non-blocking scroll timer and state.
+
+        Example
+        -------
+        ```python
+            >>> matrix.draw_text_scroll("HELLO", speed_ms=50)
+            >>> time.sleep_ms(500)
+            >>> matrix.stop_scroll()
+        ```
+        """
+        ...
 
     def reserve_scroll_timer(self, speed_ms: int = 30) -> None:
         """
-        Initialize and keep the non-blocking scroll timer ready for later use.
+        Initialise and keep the non-blocking scroll timer ready for later use.
 
-        Use this before starting memory-sensitive work such as a second-core
-        thread, so the first real draw_text_scroll call can reuse the timer
-        instead of allocating it under tighter memory pressure.
+        Use this before starting memory-sensitive work (e.g. launching a
+        second-core thread) so the first ``draw_text_scroll`` call can reuse
+        the timer instead of allocating it under tighter memory pressure.
 
-        :param speed_ms: Timer period to reserve, in milliseconds. Values less
-            than 1 are treated as 1.
-        :raises OSError: If the timer cannot be initialized.
+        :param speed_ms: Timer period to reserve in milliseconds (default: 30).
+            Values less than 1 are treated as 1.
+
+        :raises OSError: If the timer cannot be initialised.
 
         Example
         -------
@@ -785,7 +966,21 @@ class Matrix:
             >>> matrix.draw_text_scroll("READY", speed_ms=30)
         ```
         """
+        ...
 
     def set_scroll_speed(self, speed_ms: int) -> bool:
-        """Change scroll speed while scrolling. Returns True if successful."""
+        """
+        Change the scroll step interval while a non-blocking scroll is active.
+
+        :param speed_ms: New scroll step interval in milliseconds.
+        :return: ``True`` if updated, ``False`` if not scrolling.
+
+        Example
+        -------
+        ```python
+            >>> matrix.draw_text_scroll("HELLO", speed_ms=100)
+            >>> matrix.set_scroll_speed(30)
+        ```
+        """
+        ...
 

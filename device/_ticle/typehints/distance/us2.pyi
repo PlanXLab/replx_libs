@@ -103,35 +103,37 @@ class SR04:
     def __getitem__(self, idx: int | slice) -> "_View":
         """
         Access sensor(s) by index or slice.
-        
-        :param idx: Integer index or slice
-        :return: _View for accessing sensor properties
-        
-        :raises IndexError: If index out of range
-        :raises TypeError: If idx is not int or slice
-        
+
+        :param idx: Integer index or slice.
+        :return: ``_View`` for the selected sensor(s).
+
+        :raises IndexError: If index is out of range.
+        :raises TypeError: If *idx* is not int or slice.
+
         Example
         -------
         ```python
             >>> sensors = SR04([(2, 3), (4, 5), (6, 7)])
-            >>> 
-            >>> # Single sensor access
-            >>> sensors[0].value
-            >>> 
-            >>> # Slice access
-            >>> sensors[1:].temperature = 22.0
-            >>> 
-            >>> # All sensors
-            >>> sensors[:].nonblocking = True
+            >>> sensors[0].value              # single sensor
+            >>> sensors[1:].temperature = 22.0  # last two sensors
+            >>> sensors[:].measurement = True   # all sensors
         ```
         """
         ...
 
     def __len__(self) -> int:
         """
-        Get number of sensors.
-        
-        :return: Number of configured sensors
+        Return the number of configured sensors.
+
+        :return: Sensor count.
+
+        Example
+        -------
+        ```python
+            >>> sensors = SR04([(2, 3), (4, 5)])
+            >>> len(sensors)
+            2
+        ```
         """
         ...
 
@@ -172,18 +174,33 @@ class _View:
 
     def __getitem__(self, idx: int | slice) -> "_View":
         """
-        Further slice the view.
-        
-        :param idx: Integer index or slice
-        :return: New _View with selected sensors
+        Further narrow the view by index or slice.
+
+        :param idx: Integer index or slice (relative to this view).
+        :return: New ``_View`` containing the selected sensors.
+
+        Example
+        -------
+        ```python
+            >>> sensors = SR04([(2, 3), (4, 5), (6, 7)])
+            >>> sensors[:][0].value     # first sensor via nested view
+        ```
         """
         ...
 
     def __len__(self) -> int:
         """
-        Get number of sensors in this view.
-        
-        :return: Number of sensors
+        Return the number of sensors in this view.
+
+        :return: Sensor count.
+
+        Example
+        -------
+        ```python
+            >>> sensors = SR04([(2, 3), (4, 5)])
+            >>> len(sensors[:])
+            2
+        ```
         """
         ...
 
@@ -227,23 +244,23 @@ class _View:
     @measurement.setter
     def measurement(self, enable: bool | list[bool]) -> None:
         """
-        Enable/disable timer-based non-blocking measurement.
-        
-        When enabled, measurements are taken automatically at period_ms intervals.
-        Results are delivered via callback if set.
-        
-        :param enable: Single bool for all, or list per sensor
-        
-        :raises ValueError: If list length doesn't match sensor count
-        
+        Enable or disable timer-based non-blocking measurement.
+
+        When enabled, measurements are taken automatically via an internal
+        timer.  Results are delivered to the registered callback if set.
+
+        :param enable: Single bool applied to all selected sensors, or a list
+            with one value per sensor.
+
+        :raises ValueError: If list length does not match sensor count.
+
         Example
         -------
         ```python
             >>> sensors = SR04([(2, 3), (4, 5)])
             >>> sensors[:].callback = my_callback
-            >>> sensors[:].nonblocking = True
-            >>> sensors[:].measurement = True   # Start timer
-            >>> sensors[:].measurement = False  # Stop timer
+            >>> sensors[:].measurement = True    # start timer
+            >>> sensors[:].measurement = False   # stop timer
         ```
         """
         ...
@@ -296,9 +313,17 @@ class _View:
     @property
     def temperature(self) -> list[float]:
         """
-        Get temperature setting in Celsius.
-        
-        :return: List of temperatures
+        Get the temperature setting for selected sensors in Celsius.
+
+        :return: List of temperatures.
+
+        Example
+        -------
+        ```python
+            >>> sensors = SR04([(2, 3), (4, 5)])
+            >>> print(sensors[:].temperature)
+            [20.0, 20.0]
+        ```
         """
         ...
 
@@ -387,9 +412,17 @@ class _View:
     @property
     def callback(self) -> list[Callable | None]:
         """
-        Get registered measurement callbacks.
-        
-        :return: List of callbacks or None
+        Get the registered measurement callbacks for selected sensors.
+
+        :return: List of callables or ``None`` for each sensor.
+
+        Example
+        -------
+        ```python
+            >>> sensors = SR04([(2, 3)])
+            >>> print(sensors[0].callback)
+            [None]
+        ```
         """
         ...
 

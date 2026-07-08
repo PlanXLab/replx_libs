@@ -41,20 +41,63 @@ class BME68x:
     ```
     """
     
-    gas_update_hint_ms: int
-    """Gas measurement update hint period in milliseconds (min 200ms)."""
-    
-    gas_update_hint_maybe_too_short: bool
-    """True if current period may be too short for reliable gas measurements."""
-    
-    require_heat_stab: bool
-    """If True, require heater stabilization for valid gas readings."""
-    
-    gas_baseline: int
-    """Gas baseline resistance in ohms for IAQ calculation (80k-320k)."""
-    
-    gas_baseline_auto_update_ms: int
-    """Auto-update interval for gas baseline in milliseconds (min 60000ms)."""
+    @property
+    def gas_update_hint_ms(self) -> int:
+        """Gas measurement update hint period in milliseconds (min 200 ms)."""
+        ...
+
+    @gas_update_hint_ms.setter
+    def gas_update_hint_ms(self, value: int) -> None:
+        """Set gas measurement update hint period.
+
+        :param value: Period in milliseconds (min 200 ms).
+        :raises ValueError: If value is too small for the current oversampling configuration.
+        """
+        ...
+
+    @property
+    def gas_update_hint_maybe_too_short(self) -> bool:
+        """``True`` if the current update period may be too short for reliable gas readings."""
+        ...
+
+    @property
+    def require_heat_stab(self) -> bool:
+        """If ``True``, require heater stabilisation before accepting a gas reading."""
+        ...
+
+    @require_heat_stab.setter
+    def require_heat_stab(self, v: bool) -> None:
+        """Enable or disable heater stabilisation requirement.
+
+        :param v: ``True`` to require stabilisation.
+        """
+        ...
+
+    @property
+    def gas_baseline(self) -> int:
+        """Gas baseline resistance in ohms for IAQ calculation (80\u202fk–320\u202fk\u202f\u03a9)."""
+        ...
+
+    @gas_baseline.setter
+    def gas_baseline(self, value: int) -> None:
+        """Set gas baseline resistance (clamped to 80\u202fk–320\u202fk\u202f\u03a9).
+
+        :param value: Baseline resistance in ohms.
+        """
+        ...
+
+    @property
+    def gas_baseline_auto_update_ms(self) -> int:
+        """Auto-update interval for the gas baseline in milliseconds (min 60\u202f000\u202fms)."""
+        ...
+
+    @gas_baseline_auto_update_ms.setter
+    def gas_baseline_auto_update_ms(self, update_ms: int) -> None:
+        """Set the gas baseline auto-update interval.
+
+        :param update_ms: Interval in milliseconds (min 60\u202f000\u202fms).
+        """
+        ...
     
     def __init__(
         self,
@@ -415,30 +458,35 @@ class BME68x:
     def iaq_heuristics(
         self,
         *,
-        temp_weighting: float = 0.08,
-        pressure_weighting: float = 0.02,
+        temp_weighting: float = 0.10,
+        pressure_weighting: float = 0.05,
         humi_weighting: float = 0.15,
-        gas_weighting: float = 0.75,
-        gas_ema_alpha: float = 0.02,
-        temp_baseline: float = 25.0,
+        gas_weighting: float = 0.70,
+        gas_ema_alpha: float = 0.05,
+        temp_opt_low: float = 18.0,
+        temp_opt_high: float = 26.0,
+        humi_opt_low: float = 40.0,
+        humi_opt_high: float = 60.0,
         pressure_baseline: float = 1013.25,
-        humi_baseline: float = 50.0,
     ) -> tuple[int, float, float, float, float] | None:
         """
         Calculate heuristic Indoor Air Quality (IAQ) index.
-        
-        :param temp_weighting: Temperature weight in IAQ calculation.
-        :param pressure_weighting: Pressure weight in IAQ calculation.
-        :param humi_weighting: Humidity weight in IAQ calculation.
-        :param gas_weighting: Gas resistance weight in IAQ calculation.
-        :param gas_ema_alpha: EMA alpha for gas baseline auto-update.
-        :param temp_baseline: Reference temperature in °C.
-        :param pressure_baseline: Reference pressure in hPa.
-        :param humi_baseline: Reference humidity in %RH.
-        :return: (iaq_index, temp, pressure, humidity, gas_resistance) or None if gas invalid.
-                 IAQ index: 0-50 (good), 51-100 (moderate), 101-150 (poor), 
-                           151-200 (unhealthy), 201-300 (very unhealthy), 301-500 (hazardous).
-        
+
+        :param temp_weighting: Temperature weight in IAQ calculation (default: 0.10).
+        :param pressure_weighting: Pressure weight in IAQ calculation (default: 0.05).
+        :param humi_weighting: Humidity weight in IAQ calculation (default: 0.15).
+        :param gas_weighting: Gas resistance weight in IAQ calculation (default: 0.70).
+        :param gas_ema_alpha: EMA alpha for gas baseline auto-update (default: 0.05).
+        :param temp_opt_low: Lower bound of the optimal temperature range in °C (default: 18.0).
+        :param temp_opt_high: Upper bound of the optimal temperature range in °C (default: 26.0).
+        :param humi_opt_low: Lower bound of the optimal humidity range in %RH (default: 40.0).
+        :param humi_opt_high: Upper bound of the optimal humidity range in %RH (default: 60.0).
+        :param pressure_baseline: Reference sea-level pressure in hPa (default: 1013.25).
+        :return: ``(iaq_index, temp, pressure, humidity, gas_resistance)`` tuple, or ``None``
+            if a gas reading is not yet available.
+            IAQ index ranges: 0–50 good, 51–100 moderate, 101–150 poor,
+            151–200 unhealthy, 201–300 very unhealthy, 301–500 hazardous.
+
         Example
         -------
         ```python

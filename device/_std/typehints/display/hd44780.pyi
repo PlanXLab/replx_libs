@@ -74,8 +74,8 @@ class HD44780_PCF8574:
     
     def __init__(
         self,
-        scl: int,
         sda: int,
+        scl: int,
         *,
         addr: int = 0x27,
         id: int = 0,
@@ -89,8 +89,8 @@ class HD44780_PCF8574:
         """
         Initialize HD44780_PCF8574 LCD driver.
         
-        :param scl: I2C SCL pin number
         :param sda: I2C SDA pin number
+        :param scl: I2C SCL pin number
         :param addr: PCF8574 I2C address (default: 0x27)
 
             - PCF8574: 0x20 ~ 0x27 (set by A0-A2)
@@ -113,13 +113,13 @@ class HD44780_PCF8574:
         -------
         ```python
             >>> # Default 16x2 LCD
-            >>> lcd = HD44780_PCF8574(scl=1, sda=0)
+            >>> lcd = HD44780_PCF8574(sda=0, scl=1)
             >>> 
             >>> # 20x4 LCD with different I2C address
-            >>> lcd = HD44780_PCF8574(scl=1, sda=0, addr=0x3F, cols=20, rows=4)
+            >>> lcd = HD44780_PCF8574(sda=0, scl=1, addr=0x3F, cols=20, rows=4)
             >>> 
             >>> # Using I2C1 bus
-            >>> lcd = HD44780_PCF8574(scl=3, sda=2, id=1)
+            >>> lcd = HD44780_PCF8574(sda=2, scl=3, id=1)
         ```
         """
         ...
@@ -160,13 +160,63 @@ class HD44780_PCF8574:
         Example
         -------
         ```python
-            >>> lcd = HD44780_PCF8574(scl=1, sda=0)
+            >>> lcd = HD44780_PCF8574(sda=0, scl=1)
             >>> # ... use lcd ...
             >>> lcd.deinit()
         ```
         """
         ...
-    
+
+    def __len__(self) -> int:
+        """
+        Return the number of LCD rows.
+
+        :return: Row count.
+
+        Example
+        -------
+        ```python
+            >>> lcd = HD44780_PCF8574(sda=0, scl=1, rows=4)
+            >>> len(lcd)
+            4
+        ```
+        """
+        ...
+
+    @property
+    def cols(self) -> int:
+        """
+        Number of LCD columns.
+
+        :return: Column count.
+
+        Example
+        -------
+        ```python
+            >>> lcd = HD44780_PCF8574(sda=0, scl=1, cols=20)
+            >>> lcd.cols
+            20
+        ```
+        """
+        ...
+
+    @property
+    def rows(self) -> int:
+        """
+        Number of LCD rows.
+
+        :return: Row count.
+
+        Example
+        -------
+        ```python
+            >>> lcd = HD44780_PCF8574(sda=0, scl=1, rows=4)
+            >>> lcd.rows
+            4
+        ```
+        """
+        ...
+
     # ===== Backlight =====
     
     def backlight(self, on: bool = True) -> None:
