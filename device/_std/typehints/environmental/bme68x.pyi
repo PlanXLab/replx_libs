@@ -6,6 +6,7 @@ and gas resistance measurements. Type A polling sensor pattern.
 """
 
 from typing import Generator, Literal
+from i2c import I2CController
 
 class BME68x:
     """
@@ -21,10 +22,13 @@ class BME68x:
     Example
     -------
     ```python
+    from i2c import I2CController
     from bme68x import BME68x
     
+    i2c = I2CController(sda=0, scl=1)
+    
     # Basic usage
-    sensor = BME68x(scl=1, sda=0)
+    sensor = BME68x(i2c)
     print(f"Temp: {sensor.temperature():.1f}°C")
     print(f"Pressure: {sensor.pressure():.1f} hPa")
     print(f"Humidity: {sensor.humidity():.1f}%")
@@ -101,8 +105,7 @@ class BME68x:
     
     def __init__(
         self,
-        sda: int,
-        scl: int,
+        i2c: I2CController,
         *,
         addr: int = 0x77,
         profile_preset: Literal["eco", "standard", "precision"] = "standard",
@@ -110,8 +113,7 @@ class BME68x:
         """
         Initialize BME68x sensor.
         
-        :param scl: I2C SCL pin number.
-        :param sda: I2C SDA pin number.
+        :param i2c: Shared I2CController instance
         :param addr: I2C address (0x76 or 0x77).
         :param profile_preset: Measurement profile preset.
         :raises OSError: If sensor not detected.

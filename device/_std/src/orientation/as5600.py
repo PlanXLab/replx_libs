@@ -62,7 +62,7 @@ class AS5600:
 
     DEFAULT_CAL_FILE = "lib/ticle/as5600_zero.cal"
 
-    def __init__(self, sda: int, scl: int, *, addr=0x36,
+    def __init__(self, i2c, *, addr=0x36,
                  ema_alpha=0.25,
                  vel_tau_s=0.02,
                  vel_slew_rise=1e9,
@@ -75,7 +75,7 @@ class AS5600:
                  watchdog: int = 0,
                  cache_window_us=500  # Lazy cache window (recommended: 200~2000us)
                  ):
-        self._i2c = I2CController(sda=sda, scl=scl)
+        self._i2c = i2c
         self._addr = int(addr)
         
         self._b1 = bytearray(1)

@@ -17,6 +17,7 @@ Features:
 """
 
 from typing import Tuple
+from i2c import I2CController
 
 
 def to_deg(rad: float) -> float:
@@ -65,10 +66,12 @@ class AS5600:
     Example
     -------
     ```python
+        >>> from i2c import I2CController
         >>> from as5600 import AS5600
         >>> 
+        >>> i2c = I2CController(sda=4, scl=5)
         >>> # Basic usage
-        >>> encoder = AS5600(sda=4, scl=5)
+        >>> encoder = AS5600(i2c)
         >>> angle = encoder.angle()  # 0 to 2π radians
         >>> print(f"Angle: {angle:.3f} rad")
         >>> 
@@ -100,8 +103,7 @@ class AS5600:
 
     def __init__(
         self,
-        sda: int,
-        scl: int,
+        i2c: I2CController,
         *,
         addr: int = 0x36,
         ema_alpha: float = 0.25,
@@ -119,8 +121,7 @@ class AS5600:
         """
         Initialize AS5600 encoder.
         
-        :param sda: I2C SDA pin number
-        :param scl: I2C SCL pin number
+        :param i2c: Shared I2CController instance
         :param addr: I2C address (default: 0x36)
         :param ema_alpha: EMA filter alpha for angle (0-1, default: 0.25)
         :param vel_tau_s: Velocity low-pass filter time constant in seconds (default: 0.02)
@@ -137,14 +138,18 @@ class AS5600:
         Example
         -------
         ```python
+            >>> from i2c import I2CController
+            >>> from as5600 import AS5600
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> 
             >>> # Basic initialization
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> 
             >>> # With custom filtering
-            >>> encoder = AS5600(sda=4, scl=5, ema_alpha=0.1, vel_tau_s=0.05)
+            >>> encoder = AS5600(i2c, ema_alpha=0.1, vel_tau_s=0.05)
             >>> 
             >>> # With custom I2C address
-            >>> encoder = AS5600(sda=4, scl=5, addr=0x36)
+            >>> encoder = AS5600(i2c, addr=0x36)
         ```
         """
         ...
@@ -171,7 +176,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> status = encoder.status()
             >>> if status == AS5600.STATUS_NORMAL:
             ...     print("Magnet OK")
@@ -190,7 +196,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> if encoder.health_ok():
             ...     angle = encoder.angle()
         ```
@@ -226,7 +233,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> agc = encoder.agc()
             >>> print(f"AGC: {agc}")  # ~128 is optimal
         ```
@@ -242,7 +250,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> mag = encoder.magnitude()
             >>> print(f"Magnitude: {mag}")
         ```
@@ -259,7 +268,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> # Manually position to zero
             >>> encoder.set_soft_zero_now()
             >>> print(encoder.angle())  # Should be ~0
@@ -304,7 +314,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> # Hold encoder still at zero position
             >>> success = encoder.calibrate_soft_zero(verbose=True)
             >>> if success:
@@ -324,7 +335,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> 
             >>> # Raw angle
             >>> raw = encoder.angle(soft_zero=False)
@@ -351,7 +363,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> deg = encoder.angle_deg()
             >>> print(f"Angle: {deg:.1f}°")
         ```
@@ -370,7 +383,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> rpm = encoder.velocity_rpm(filtered=True)
             >>> print(f"Speed: {rpm:.1f} RPM")
         ```
@@ -401,7 +415,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> 
             >>> while True:
             ...     vel = encoder.velocity(filtered=True)
@@ -421,7 +436,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> encoder.reset_velocity()
             >>> # Start fresh velocity tracking
         ```
@@ -437,7 +453,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> encoder.reset_turn()
             >>> # Start tracking from zero
         ```
@@ -468,7 +485,8 @@ class AS5600:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> encoder.reset_turn()
             >>> 
             >>> while True:

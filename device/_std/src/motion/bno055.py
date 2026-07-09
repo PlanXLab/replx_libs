@@ -89,7 +89,7 @@ class BNO055:
     CAL_FILE_NAME = "lib/ticle/bno055.cal"
 
     @staticmethod
-    def run_calibration_wizard(sda, scl, *, addr=0x28, accel_samples=200, settle_ms=500, savefile=CAL_FILE_NAME):
+    def run_calibration_wizard(i2c, *, addr=0x28, accel_samples=200, settle_ms=500, savefile=CAL_FILE_NAME):
         def _wait_fusion_running(i2c, timeout_ms=3000):
             t0 = time.ticks_ms()
             while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:
@@ -119,7 +119,6 @@ class BNO055:
                     hinted = True
                 time.sleep_ms(150)
 
-        i2c = I2CController(sda=sda, scl=scl)
         i2c.writeto_mem(addr, _REG_PAGE_ID, _B_PAGE0)
 
         def _read_cal():
@@ -187,8 +186,8 @@ class BNO055:
         print("[BNO055] Final calibration status: sys=%d, gyro=%d, accel=%d, mag=%d" % (sys_, gyr, acc, mag))
         print("[BNO055] Calibration done.")
 
-    def __init__(self, sda, scl, *, addr=0x28, calfile=CAL_FILE_NAME):
-        self._i2c  = I2CController(sda=sda, scl=scl)
+    def __init__(self, i2c, *, addr=0x28, calfile=CAL_FILE_NAME):
+        self._i2c  = i2c
         self._addr = int(addr)
 
         self._buf6 = bytearray(6)

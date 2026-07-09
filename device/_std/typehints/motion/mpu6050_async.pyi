@@ -16,6 +16,7 @@ DMP packet, ensuring temporal consistency for orientation calculations.
 """
 
 from typing import AsyncIterator
+from i2c import I2CController
 from .mpu6050 import MPU6050
 
 
@@ -34,7 +35,8 @@ class MPU6050Async:
     from mpu6050_async import MPU6050Async
 
     async def main():
-        imu = MPU6050(sda=0, scl=1, mode=MPU6050.Mode.DMP_STABLE,
+        i2c = I2CController(sda=0, scl=1)
+        imu = MPU6050(i2c, mode=MPU6050.Mode.DMP_STABLE,
                       coord='flu', remap='x-zy')
         async_imu = MPU6050Async(imu)
 

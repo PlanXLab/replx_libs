@@ -18,6 +18,7 @@ Features:
 Sensor Type: D (Immediate) - Property-based data access
 Interface: I2C (400kHz)
 """
+from i2c import I2CController
 
 class MPU6050:
     """
@@ -68,9 +69,11 @@ class MPU6050:
     ```python
         >>> import math
         >>> import time
+        >>> from i2c import I2CController
         >>> from mpu6050 import MPU6050
 
-        >>> imu = MPU6050(sda=12, scl=13,
+        >>> i2c = I2CController(sda=12, scl=13)
+        >>> imu = MPU6050(i2c,
         ...               mode=MPU6050.Mode.DMP_STABLE,
         ...               coord='flu',
         ...               remap='x-zy')
@@ -82,7 +85,7 @@ class MPU6050:
         >>> print(math.degrees(roll), math.degrees(pitch))
         >>> imu.deinit()
 
-        >>> raw = MPU6050(sda=12, scl=13, mode=MPU6050.Mode.RAW_FAST,
+        >>> raw = MPU6050(i2c, mode=MPU6050.Mode.RAW_FAST,
         ...               coord='raw', remap='xyz')
         >>> ax, ay, az = raw.accel
         >>> pcb_ax, pcb_ay, pcb_az = raw.raw_accel
@@ -106,20 +109,17 @@ class MPU6050:
 
     def __init__(
         self,
-        sda: int,
-        scl: int,
+        i2c: I2CController,
         *,
         addr: int = 0x68,
         mode: str = Mode.RAW_BALANCED,
         coord: str = 'raw',
         remap: str = 'xyz',
-        freq: int = 400_000
     ) -> None:
         """
         Initialize the MPU6050 IMU.
 
-        :param sda: I2C SDA pin number.
-        :param scl: I2C SCL pin number.
+        :param i2c: Shared I2CController instance.
         :param addr: I2C address (0x68 default, 0x69 if AD0 high).
         :param mode: Operating mode preset.
         :param coord: Output coordinate convention: 'raw', 'enu', 'flu', or 'ned'.
@@ -132,8 +132,6 @@ class MPU6050:
         :param remap: Signed axis permutation from IMU PCB frame to the mounted
             base frame. It must use x, y, and z exactly once and must preserve
             a right-handed frame. Examples: 'xyz', 'x-zy', 'yx-z'.
-        :param freq: I2C bus frequency in Hz. Default is 400000. Try 100000 if
-            the sensor is visible in scans but register reads or writes fail.
         :raises RuntimeError: If I2C scan fails, the MPU6050 address is not
             found, the WHO_AM_I value is not valid, or DMP mode cannot locate
             responsive accelerometer offset registers.
@@ -143,8 +141,10 @@ class MPU6050:
         -------
         ```python
             >>> import time
+            >>> from i2c import I2CController
             >>> from mpu6050 import MPU6050
-            >>> imu = MPU6050(sda=12, scl=13,
+            >>> i2c = I2CController(sda=12, scl=13)
+            >>> imu = MPU6050(i2c,
             ...               mode=MPU6050.Mode.DMP_STABLE,
             ...               coord='flu', remap='x-zy')
             >>> t0 = time.ticks_ms()
@@ -272,11 +272,11 @@ class MPU6050:
         Example
         -------
         ```python
-            >>> import math
-            >>> import time
+            >>> from i2c import I2CController
             >>> from mpu6050 import MPU6050
 
-            >>> imu = MPU6050(sda=12, scl=13,
+            >>> i2c = I2CController(sda=12, scl=13)
+            >>> imu = MPU6050(i2c,
             ...               mode=MPU6050.Mode.DMP_STABLE,
             ...               coord='flu', remap='x-zy')
             >>> for _ in range(20):

@@ -21,7 +21,8 @@ from bno055 import BNO055
 from bno055_async import BNO055Async
 
 async def main():
-    imu = BNO055(sda=4, scl=5)
+    i2c = I2CController(sda=4, scl=5)
+    imu = BNO055(i2c)
     async_imu = BNO055Async(imu)
     
     # Non-blocking calibration wait
@@ -40,6 +41,7 @@ asyncio.run(main())
 ```
 """
 from typing import AsyncGenerator, AsyncIterator, Tuple
+from i2c import I2CController
 from .bno055 import BNO055
 
 
@@ -60,7 +62,8 @@ class BNO055Async:
         Example
         -------
         ```python
-        imu = BNO055(sda=4, scl=5)
+        i2c = I2CController(sda=4, scl=5)
+        imu = BNO055(i2c)
         async_imu = BNO055Async(imu)
         ```
         """
@@ -98,7 +101,8 @@ class BNO055Async:
         -------
         ```python
         async def setup():
-            imu = BNO055(sda=4, scl=5)
+            i2c = I2CController(sda=4, scl=5)
+            imu = BNO055(i2c)
             async_imu = BNO055Async(imu)
             
             # Other tasks can run while waiting
@@ -135,7 +139,8 @@ class BNO055Async:
         -------
         ```python
         async def monitor_orientation():
-            imu = BNO055(sda=4, scl=5)
+            i2c = I2CController(sda=4, scl=5)
+            imu = BNO055(i2c)
             async_imu = BNO055Async(imu)
             
             # Stream 100 readings

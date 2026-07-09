@@ -6,6 +6,7 @@ humidity, and gas measurements.
 """
 
 from typing import AsyncGenerator, AsyncIterator
+from i2c import I2CController
 from .bme68x import BME68x
 
 class BME68xAsync:
@@ -23,7 +24,8 @@ class BME68xAsync:
     from bme68x_async import BME68xAsync
     
     async def main():
-        sensor = BME68x(scl=1, sda=0)
+        i2c = I2CController(sda=0, scl=1)
+        sensor = BME68x(i2c)
         async_sensor = BME68xAsync(sensor)
         
         # Single read

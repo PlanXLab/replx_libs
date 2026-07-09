@@ -9,7 +9,10 @@
 # @author: PlanXLab Development Team
 
 import machine
-from i2c import I2CController as _I2CControllerBase, i2cdetect
+from i2c import I2CController as _I2CControllerBase
+from i2c import I2CTarget as I2CTarget
+from i2c import i2cdetect as i2cdetect
+
 from .bus_lock import SpinLock, I2C0_SPINLOCK_ID, I2C1_SPINLOCK_ID
 
 _I2C_PIN_MAP = {

@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-07-06T05:23:20Z",
+  "generated_at": "2026-07-09T01:15:51Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -49,12 +49,11 @@
       "includes": [
         "_std/actuators/servo*",
         "_std/display/hd44780",
-        "_std/distance/us*",
         "_std/input/button*",
         "_std/motion/mpu6050*",
         "_ticle/audio/*",
         "_ticle/display/ws2812",
-        "_ticle/distance/us2",
+        "_ticle/distance/us*",
         "_ticle/ain",
         "_ticle/basic",
         "_ticle/bus_lock",
@@ -70,12 +69,11 @@
         "_std/actuators/servo*",
         "_std/audio/buzzer*",
         "_std/display/hd44780",
-        "_std/distance/us*",
         "_std/environmental/bme68x*",
         "_std/motion/bno055*",
         "_std/orientation/as5600*",
         "_ticle/ws2812",
-        "_ticle/distance/us2",
+        "_ticle/distance/us*",
         "_ticle/ain",
         "_ticle/basic",
         "_ticle/bus_lock",
@@ -514,7 +512,7 @@
       "typehint": "device/_std/typehints/actuators/relay_async.pyi"
     },
     "servo": {
-      "version": "4.4",
+      "version": "4.6",
       "type": "device-std",
       "source": "device/_std/src/actuators/servo.py",
       "deploy_path": "servo.py",
@@ -1037,7 +1035,7 @@
       ],
       "typehint": "device/_std/typehints/orientation/as5600_async.pyi"
     },
-    "ain@_ticle": {
+    "ain_rp2@_ticle": {
       "version": "2.3",
       "type": "device-specific",
       "source": "device/_ticle/src/ain.py",
@@ -1076,7 +1074,8 @@
         "bootsel",
         "onboard",
         "pico2w"
-      ]
+      ],
+      "typehint": "device/_ticle/typehints/basic.pyi"
     },
     "bus_lock@_ticle": {
       "version": "1.1.0",
@@ -1094,7 +1093,8 @@
         "spi",
         "multicore",
         "thread-safe"
-      ]
+      ],
+      "typehint": "device/_ticle/typehints/bus_lock.pyi"
     },
     "i2c@_ticle": {
       "version": "1.0.0",
@@ -1298,11 +1298,11 @@
       ],
       "typehint": "device/_ticle/typehints/audio/audio_async.pyi"
     },
-    "us2@_ticle": {
+    "us@_ticle": {
       "version": "3.2.0",
       "type": "device-specific",
-      "source": "device/_ticle/src/distance/us2.py",
-      "deploy_path": "us2.py",
+      "source": "device/_ticle/src/distance/us.py",
+      "deploy_path": "us.py",
       "category": "distance",
       "sensor_type": "B",
       "interface": [
@@ -1321,7 +1321,32 @@
         "multi-sensor",
         "kalman"
       ],
-      "typehint": "device/_ticle/typehints/distance/us2.pyi"
+      "typehint": "device/_ticle/typehints/distance/us.pyi"
+    },
+    "us_async@_ticle": {
+      "version": "1.0",
+      "type": "device-specific",
+      "source": "device/_ticle/src/distance/us_async.py",
+      "deploy_path": "us_async.py",
+      "category": "distance",
+      "sensor_type": "B",
+      "interface": [
+        "GPIO"
+      ],
+      "depends": [
+        "us"
+      ],
+      "platforms": "rp2",
+      "tags": [
+        "ultrasonic",
+        "distance",
+        "sr04",
+        "pio",
+        "async",
+        "asyncio",
+        "multi-sensor"
+      ],
+      "typehint": "device/_ticle/typehints/distance/us_async.pyi"
     },
     "ws2812@_ticle": {
       "version": "1.4",

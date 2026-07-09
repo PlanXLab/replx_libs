@@ -53,11 +53,11 @@ class HD44780_PCF8574:
     MODE_TEXT = 0
     MODE_GFX  = 1
 
-    def __init__(self, sda: int, scl: int, *, addr: int = 0x27, id: int = 0, freq: int = 400_000,
+    def __init__(self, i2c, *, addr: int = 0x27,
                  cols: int = 16, rows: int = 2,
                  backlight_on: bool = True, bl_active_high: bool = True, bl_mask: int = _BL):
 
-        self._i2c = I2CController(sda=sda, scl=scl, id=id, freq=freq)
+        self._i2c = i2c
         self._addr = addr  # PCF8574 I2C address
 
         self._cols = int(cols)

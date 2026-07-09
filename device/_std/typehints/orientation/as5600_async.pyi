@@ -15,6 +15,7 @@ Features:
 """
 
 from typing import AsyncGenerator, AsyncIterator, Dict, Tuple
+from i2c import I2CController
 from .as5600 import AS5600
 
 
@@ -33,7 +34,8 @@ class AS5600Async:
         >>> from as5600 import AS5600
         >>> from as5600_async import AS5600Async
         >>> 
-        >>> encoder = AS5600(sda=4, scl=5)
+        >>> i2c = I2CController(sda=4, scl=5)
+        >>> encoder = AS5600(i2c)
         >>> async_enc = AS5600Async(encoder)
         >>> 
         >>> async def monitor():
@@ -54,7 +56,8 @@ class AS5600Async:
         Example
         -------
         ```python
-            >>> encoder = AS5600(sda=4, scl=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> encoder = AS5600(i2c)
             >>> async_enc = AS5600Async(encoder)
         ```
         """

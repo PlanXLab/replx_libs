@@ -39,6 +39,7 @@ Features:
 
 
 from typing import Sequence, ContextManager
+from i2c import I2CController
 
 
 class HD44780_PCF8574:
@@ -51,17 +52,20 @@ class HD44780_PCF8574:
     Example
     -------
     ```python
+        >>> from i2c import I2CController
         >>> from ticle.hd44780 import HD44780_PCF8574
         >>> 
+        >>> i2c = I2CController(sda=0, scl=1)
+        >>> 
         >>> # 16x2 LCD (default)
-        >>> lcd = HD44780_PCF8574(scl=1, sda=0, addr=0x27)
+        >>> lcd = HD44780_PCF8574(i2c, addr=0x27)
         >>> lcd.text("Hello World!", 0, 0)
         >>> 
         >>> # 20x4 LCD
-        >>> lcd = HD44780_PCF8574(scl=1, sda=0, addr=0x3F, cols=20, rows=4)
+        >>> lcd = HD44780_PCF8574(i2c, addr=0x3F, cols=20, rows=4)
         >>> 
         >>> # Auto cleanup with context manager
-        >>> with HD44780_PCF8574(scl=1, sda=0) as lcd:
+        >>> with HD44780_PCF8574(i2c) as lcd:
         ...     lcd.text("Auto cleanup")
     ```
     """
@@ -74,12 +78,9 @@ class HD44780_PCF8574:
     
     def __init__(
         self,
-        sda: int,
-        scl: int,
+        i2c: I2CController,
         *,
         addr: int = 0x27,
-        id: int = 0,
-        freq: int = 400_000,
         cols: int = 16,
         rows: int = 2,
         backlight_on: bool = True,
@@ -89,16 +90,13 @@ class HD44780_PCF8574:
         """
         Initialize HD44780_PCF8574 LCD driver.
         
-        :param sda: I2C SDA pin number
-        :param scl: I2C SCL pin number
+        :param i2c: Shared I2CController instance
         :param addr: PCF8574 I2C address (default: 0x27)
 
             - PCF8574: 0x20 ~ 0x27 (set by A0-A2)
             - PCF8574A: 0x38 ~ 0x3F (set by A0-A2)
             - Common LCD modules: 0x27 or 0x3F
 
-        :param id: I2C bus ID (default: 0)
-        :param freq: I2C clock frequency in Hz (default: 400000)
         :param cols: Number of LCD columns (default: 16). Typically 16 or 20
         :param rows: Number of LCD rows (default: 2). Typically 1, 2, or 4
         :param backlight_on: Initial backlight state (default: True)
@@ -112,14 +110,15 @@ class HD44780_PCF8574:
         Example
         -------
         ```python
+            >>> from i2c import I2CController
+            >>> from hd44780 import HD44780_PCF8574
+            >>> i2c = I2CController(sda=0, scl=1)
+            >>> 
             >>> # Default 16x2 LCD
-            >>> lcd = HD44780_PCF8574(sda=0, scl=1)
+            >>> lcd = HD44780_PCF8574(i2c)
             >>> 
             >>> # 20x4 LCD with different I2C address
-            >>> lcd = HD44780_PCF8574(sda=0, scl=1, addr=0x3F, cols=20, rows=4)
-            >>> 
-            >>> # Using I2C1 bus
-            >>> lcd = HD44780_PCF8574(sda=2, scl=3, id=1)
+            >>> lcd = HD44780_PCF8574(i2c, addr=0x3F, cols=20, rows=4)
         ```
         """
         ...
@@ -131,7 +130,8 @@ class HD44780_PCF8574:
         Example
         -------
         ```python
-            >>> with HD44780_PCF8574(scl=1, sda=0) as lcd:
+            >>> i2c = I2CController(sda=0, scl=1)
+            >>> with HD44780_PCF8574(i2c) as lcd:
             ...     lcd.text("Hello")
         ```
         """
@@ -144,7 +144,8 @@ class HD44780_PCF8574:
         Example
         -------
         ```python
-            >>> with HD44780_PCF8574(scl=1, sda=0) as lcd:
+            >>> i2c = I2CController(sda=0, scl=1)
+            >>> with HD44780_PCF8574(i2c) as lcd:
             ...     lcd.text("Auto cleanup")
             >>> # deinit() called automatically
         ```
@@ -160,7 +161,8 @@ class HD44780_PCF8574:
         Example
         -------
         ```python
-            >>> lcd = HD44780_PCF8574(sda=0, scl=1)
+            >>> i2c = I2CController(sda=0, scl=1)
+            >>> lcd = HD44780_PCF8574(i2c)
             >>> # ... use lcd ...
             >>> lcd.deinit()
         ```
@@ -176,7 +178,8 @@ class HD44780_PCF8574:
         Example
         -------
         ```python
-            >>> lcd = HD44780_PCF8574(sda=0, scl=1, rows=4)
+            >>> i2c = I2CController(sda=0, scl=1)
+            >>> lcd = HD44780_PCF8574(i2c, rows=4)
             >>> len(lcd)
             4
         ```
@@ -193,7 +196,8 @@ class HD44780_PCF8574:
         Example
         -------
         ```python
-            >>> lcd = HD44780_PCF8574(sda=0, scl=1, cols=20)
+            >>> i2c = I2CController(sda=0, scl=1)
+            >>> lcd = HD44780_PCF8574(i2c, cols=20)
             >>> lcd.cols
             20
         ```
@@ -210,7 +214,8 @@ class HD44780_PCF8574:
         Example
         -------
         ```python
-            >>> lcd = HD44780_PCF8574(sda=0, scl=1, rows=4)
+            >>> i2c = I2CController(sda=0, scl=1)
+            >>> lcd = HD44780_PCF8574(i2c, rows=4)
             >>> lcd.rows
             4
         ```

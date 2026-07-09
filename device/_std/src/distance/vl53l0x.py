@@ -41,7 +41,7 @@ class VL53L0X:
     MODE_PRESET_HIGH_ACCURACY            = 3
     MODE_PRESET_HIGH_SPEED               = 4
 
-    def __init__(self, sda: int, scl: int, *, addr: int = 0x29,
+    def __init__(self, i2c, *, addr: int = 0x29,
                  preset: int = MODE_PRESET_DEFAULT,
                  period_ms: int = 0,
                  timeout_ms: int = 250,
@@ -49,7 +49,7 @@ class VL53L0X:
                  max_valid_m: float | None = 1.2,
                  median: int | None = 5,
                  lpf: float | None = None):
-        self._i2c  = I2CController(sda=sda, scl=scl)
+        self._i2c  = i2c
         self._addr = int(addr)
 
         self._timeout_ms = int(timeout_ms)

@@ -9,19 +9,23 @@ Features:
 - Hardware SpinLock synchronization for multi-core safety
 - Automatic I2C bus ID detection from pin numbers
 - Auto-scanning for I2C devices across all valid pin combinations
-- Re-exports I2CController and i2cdetect from base module
+- Re-exports I2CTarget and i2cdetect from core i2c module
 
 Classes:
 
 - I2CController: I2CController with SpinLock for RP2350 (extends core I2CController) multi-core
+- I2CTarget: I2C target device (re-exported from core i2c)
 
 Functions:
 
+- i2cdetect: Linux-style I2C bus scanner (re-exported from core i2c)
 - i2cdetect_auto: Auto-detect I2C devices by scanning all pin combinations
 
 """
 
-from i2c import I2CController as _I2CControllerBase, i2cdetect
+from i2c import I2CController as _I2CControllerBase
+from i2c import I2CTarget as I2CTarget
+from i2c import i2cdetect as i2cdetect
 
 
 class I2CController(_I2CControllerBase):

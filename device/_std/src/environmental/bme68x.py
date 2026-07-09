@@ -52,10 +52,10 @@ _GAS_LUT2 = (
 
 class BME68x:
 
-    def __init__(self, sda: int, scl: int, *, addr: int = 0x77,
+    def __init__(self, i2c, *, addr: int = 0x77,
                  profile_preset: str = "standard",
                  ):
-        self._i2c  = I2CController(sda=sda, scl=scl)
+        self._i2c  = i2c
         self._addr = int(addr)
 
         chip_id = self._i2c.readfrom_mem(self._addr, 0xD0, 1)[0]

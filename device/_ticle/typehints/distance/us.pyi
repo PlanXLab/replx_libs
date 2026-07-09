@@ -13,6 +13,9 @@ Features:
 - Timer-based non-blocking measurement with callbacks
 - Temperature-compensated sound speed calculation
 - Configurable filter parameters (R: measurement noise, Q: process noise)
+- _std-compatible single-sensor API: read(), trigger(), ready(), result(), last
+
+Distance unit: metres (float)
 
 """
 
@@ -29,73 +32,81 @@ class SR04:
     Example
     -------
     ```python
-        >>> from ticle.us2 import SR04
+        >>> from ticle_lite.us import SR04 as UltraSonic
         >>> 
-        >>> # Initialize with two sensors
+        >>> # _std-compatible single-sensor usage
+        >>> sonic = UltraSonic(trig=10, echo=11)
+        >>> dist_m = sonic.read()  # blocking read, returns float (metres)
+        >>> 
+        >>> # Non-blocking
+        >>> sonic.trigger()
+        >>> while not sonic.ready():
+        ...     pass
+        >>> dist_m = sonic.result()
+        >>> 
+        >>> # Multi-sensor (original API)
         >>> sensors = SR04([(2, 3), (4, 5)])  # [(trig, echo), ...]
-        >>> 
-        >>> # Set temperature for all sensors
         >>> sensors[:].temperature = 25.0
+        >>> distances = sensors[:].value  # list[float | None] in metres
         >>> 
-        >>> # Blocking read from first sensor
-        >>> print(sensors[0].value)  # Returns [distance_cm] or [None]
-        >>> 
-        >>> # Non-blocking with callback
-        >>> def on_distance(trig_pin, distance):
-        ...     if distance is not None:
-        ...         print(f"Sensor {trig_pin}: {distance} cm")
-        >>> 
+        >>> # Continuous non-blocking
+        >>> def on_distance(args):
+        ...     trig_pin, dist = args
+        ...     if dist is not None:
+        ...         print(f"{dist:.3f} m")
         >>> sensors[:].callback = on_distance
-        >>> sensors[:].nonblocking = True
         >>> sensors[:].measurement = True
-        >>> 
         >>> # ... measurements arrive via callback ...
-        >>> 
         >>> sensors[:].measurement = False
         >>> sensors.deinit()
     ```
     """
 
     def __init__(
-        self, 
-        sensor_configs: list[tuple[int, int]], 
-        *, 
-        temp_c: float = 20.0, 
-        R: float = 25.0, 
-        Q: float = 4.0
+        self,
+        sensor_configs: list[tuple[int, int]] | None = None,
+        *,
+        trig: int | list[int] | None = None,
+        echo: int | list[int] | None = None,
+        temp_c: float = 20.0,
+        R: float = 0.0025,
+        Q: float = 4e-4
     ) -> None:
         """
         Initialize multi-channel SR04 driver with PIO State Machines.
-        
-        :param sensor_configs: List of (trig_pin, echo_pin) tuples
+
+        Accepts either the multi-sensor list form or the single-sensor
+        keyword form compatible with the _std SR04 API.
+
+        :param sensor_configs: List of (trig_pin, echo_pin) tuples. If omitted,
+            use ``trig`` and ``echo`` keyword arguments instead.
+        :param trig: Trigger pin(s) — used when sensor_configs is None
+        :param echo: Echo pin(s) — used when sensor_configs is None
         :param temp_c: Initial ambient temperature in Celsius (default: 20.0)
-        :param R: Kalman measurement noise covariance (default: 25.0)
-        :param Q: Kalman process noise covariance (default: 4.0)
-        
-        :raises ValueError: If sensor_configs is empty or temperature out of range
+        :param R: Kalman measurement noise variance in m² (default: 0.0025)
+        :param Q: Kalman process noise variance in m² (default: 4e-4)
+
+        :raises ValueError: If neither sensor_configs nor trig/echo provided,
+            or sensor_configs is empty, or temperature out of range
         :raises RuntimeError: If no free state machines available
         :raises OSError: If PIO initialization fails
-        
+
         Note
         ----
         Uses len(sensor_configs) PIO State Machines (1 per sensor). Call deinit() to release.
-        
+
         Example
         -------
         ```python
-            >>> # Single sensor (uses 1 SM)
-            >>> sensor = SR04([(14, 15)])
+            >>> # Single sensor, _std-compatible
+            >>> sonic = SR04(trig=10, echo=11)
+            >>> dist_m = sonic.read()
             >>> 
-            >>> # 3 sensors (uses 3 SMs)
-            >>> sensors = SR04([(2, 3), (4, 5), (6, 7)])
+            >>> # Multi-sensor list form
+            >>> sensors = SR04([(2, 3), (4, 5)])
             >>> 
             >>> # With custom Kalman parameters
-            >>> sensors = SR04(
-            ...     [(2, 3), (4, 5)],
-            ...     temp_c=25.0,
-            ...     R=16.0,  # Lower = trust measurements more
-            ...     Q=1.0    # Lower = smoother, slower response
-            ... )
+            >>> sonic = SR04(trig=10, echo=11, R=0.001, Q=1e-4)
         ```
         """
         ...
@@ -147,9 +158,110 @@ class SR04:
         Example
         -------
         ```python
-            >>> sensors = SR04([(2, 3), (4, 5)])
-            >>> # ... use sensors ...
-            >>> sensors.deinit()
+            >>> sonic = SR04(trig=10, echo=11)
+            >>> sonic.deinit()
+        ```
+        """
+        ...
+
+    # ---- _std-compatible single-sensor API ----
+
+    def read(self, timeout_us: int | None = None) -> float:
+        """
+        Blocking read for sensor 0. Returns distance in metres, or nan.
+
+        :param timeout_us: Echo timeout in microseconds (default: _TIMEOUT_US).
+        :return: Distance in metres, or ``float('nan')`` on timeout/invalid.
+
+        Example
+        -------
+        ```python
+            >>> sonic = SR04(trig=10, echo=11)
+            >>> dist_m = sonic.read()
+            >>> if dist_m == dist_m:  # nan check
+            ...     print(f"{dist_m:.3f} m")
+        ```
+        """
+        ...
+
+    @property
+    def last(self) -> float:
+        """
+        Last valid distance in metres for sensor 0.
+
+        :return: Last measurement in metres, or -1.0 if none yet.
+
+        Example
+        -------
+        ```python
+            >>> sonic = SR04(trig=10, echo=11)
+            >>> sonic.read()
+            >>> print(sonic.last)
+        ```
+        """
+        ...
+
+    def trigger(self) -> None:
+        """
+        Fire trigger pulse for sensor 0 (non-blocking).
+
+        Follow with ``ready()`` polling and ``result()`` to retrieve value.
+
+        Example
+        -------
+        ```python
+            >>> sonic = SR04(trig=10, echo=11)
+            >>> sonic.trigger()
+            >>> while not sonic.ready():
+            ...     pass
+            >>> dist_m = sonic.result()
+        ```
+        """
+        ...
+
+    def ready(self) -> bool:
+        """
+        True if echo result is waiting in the FIFO for sensor 0.
+
+        :return: ``True`` when ``result()`` can be called without blocking.
+
+        Example
+        -------
+        ```python
+            >>> sonic.trigger()
+            >>> while not sonic.ready():
+            ...     pass  # or do other work
+            >>> dist_m = sonic.result()
+        ```
+        """
+        ...
+
+    def result(self) -> float:
+        """
+        Read pending echo result for sensor 0.
+
+        :return: Distance in metres, or ``float('nan')`` if not ready or invalid.
+
+        Example
+        -------
+        ```python
+            >>> sonic.trigger()
+            >>> while not sonic.ready():
+            ...     pass
+            >>> print(f"{sonic.result():.3f} m")
+        ```
+        """
+        ...
+
+    def reset_filter(self) -> None:
+        """
+        Reset Kalman filter state for all sensors.
+
+        Example
+        -------
+        ```python
+            >>> sonic = SR04(trig=10, echo=11)
+            >>> sonic.reset_filter()
         ```
         """
         ...
@@ -266,26 +378,24 @@ class _View:
         ...
 
     @property
-    def value(self) -> list[int | None]:
+    def value(self) -> list[float | None]:
         """
-        Read distance values.
+        Read distance values in metres.
         
         In blocking mode: triggers measurement and waits for result.
-        In nonblocking mode: returns last pending result from timer callback.
-        Returns distance in centimeters, rounded to integer.
+        In continuous mode: returns latest result from IRQ.
         Returns None for invalid readings or timeout.
         
-        :return: List of distances in cm, or None for each sensor
+        :return: List of distances in metres (float), or None per sensor.
         
         Example
         -------
         ```python
             >>> sensors = SR04([(2, 3), (4, 5)])
-            >>> # Blocking read
             >>> distances = sensors[:].value
             >>> for i, d in enumerate(distances):
             ...     if d is not None:
-            ...         print(f"Sensor {i}: {d} cm")
+            ...         print(f"Sensor {i}: {d:.3f} m")
         ```
         """
         ...
@@ -293,19 +403,19 @@ class _View:
     @property
     def last(self) -> list[float]:
         """
-        Get last measured distance values.
+        Get last measured distance values in metres.
         
         Returns the most recent valid measurement for each sensor.
         Returns -1.0 if no valid measurement has been taken yet.
         
-        :return: List of last measured distances in cm
+        :return: List of last measured distances in metres.
         
         Example
         -------
         ```python
             >>> sensors = SR04([(2, 3), (4, 5)])
-            >>> sensors[:].value  # Take measurement
-            >>> print(sensors[:].last)  # Get last values
+            >>> sensors[:].value
+            >>> print(sensors[:].last)  # e.g. [0.235, 1.048]
         ```
         """
         ...
@@ -360,7 +470,7 @@ class _View:
         -------
         ```python
             >>> sensors = SR04([(2, 3)])
-            >>> print(sensors[0].filter)  # [{'R': 25.0, 'Q': 4.0}]
+            >>> print(sensors[0].filter)  # [{'R': 0.0025, 'Q': 0.0004}]
         ```
         """
         ...
@@ -403,8 +513,8 @@ class _View:
         ```python
             >>> sensors = SR04([(2, 3)])
             >>> state = sensors[0].filter_states[0]
-            >>> print(f"Position: {state['position']:.1f} cm")
-            >>> print(f"Velocity: {state['velocity']:.1f} cm/s")
+            >>> print(f"Position: {state['position']:.3f} m")
+            >>> print(f"Velocity: {state['velocity']:.3f} m/s")
         ```
         """
         ...
@@ -445,13 +555,12 @@ class _View:
             >>> def on_distance(args):
             ...     trig_pin, distance = args
             ...     if distance is not None:
-            ...         print(f"Pin {trig_pin}: {distance} cm")
+            ...         print(f"Pin {trig_pin}: {distance:.3f} m")
             ...     else:
             ...         print(f"Pin {trig_pin}: timeout")
             >>> 
             >>> sensors = SR04([(2, 3), (4, 5)])
             >>> sensors[:].callback = on_distance
-            >>> sensors[:].nonblocking = True
             >>> sensors[:].measurement = True
         ```
         """

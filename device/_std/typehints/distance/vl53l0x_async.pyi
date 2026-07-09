@@ -6,6 +6,7 @@ in cooperative multitasking environments (MQTT, web servers, multi-sensor).
 """
 
 from typing import AsyncGenerator, AsyncIterator, TYPE_CHECKING
+from i2c import I2CController
 
 if TYPE_CHECKING:
     from .vl53l0x import VL53L0X
@@ -39,7 +40,8 @@ class VL53L0XAsync:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> async_sensor = VL53L0XAsync(sensor, poll_ms=20)
         ```
         """

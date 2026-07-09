@@ -293,11 +293,8 @@ class MPU6050:
         'ned': ((0, 1, 0), (1, 0, 0), (0, 0, -1)),
     }
 
-    def __init__(self, sda, scl, *, addr=0x68, mode=Mode.RAW_BALANCED, coord='raw', remap='xyz', freq=400_000):
-        self._sda = int(sda)
-        self._scl = int(scl)
-        self._freq = int(freq)
-        self._i2c  = I2CController(sda=self._sda, scl=self._scl, freq=self._freq)
+    def __init__(self, i2c, *, addr=0x68, mode=Mode.RAW_BALANCED, coord='raw', remap='xyz'):
+        self._i2c  = i2c
         self._i2c.set_retry_policy(retries=3, delay_us=1000)
         self._addr = int(addr)
         self._pkt_size = _DMP_PACKET_SIZE

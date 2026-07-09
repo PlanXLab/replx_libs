@@ -1,4 +1,4 @@
-# @package: us2
+# @package: us
 # @version: 3.2.0
 # @type: device-specific
 # @category: distance
@@ -20,12 +20,12 @@ from .utools import find_free_sm
 
 @rp2.asm_pio(set_init=rp2.PIO.OUT_LOW, autopush=False, push_thresh=32)
 def _sr04_pio_prog():
-    pull(block)
+    pull(block)           # OSR = wait_echo timeout count from host
     
     set(pins, 1)            [9]
     set(pins, 0)
     
-    mov(x, invert(null))
+    mov(x, osr)           # X = timeout count for wait_echo (loaded via FIFO)
     label("wait_echo")
     jmp(pin, "measure")
     jmp(x_dec, "wait_echo")
@@ -53,12 +53,22 @@ def _sr04_pio_prog():
 class SR04:
     _PIO_FREQ = 1_000_000
     _TIMEOUT_US = 38000
-    _MIN_CM = 2.0
-    _MAX_CM = 400.0
+    _MIN_M = 0.02
+    _MAX_M = 4.0
     _MIN_INTERVAL_US = 60000
 
-    def __init__(self, sensor_configs: list[tuple[int, int]], *,
-                 temp_c: float = 20.0, R: float = 25.0, Q: float = 4.0):
+    def __init__(self, sensor_configs: list[tuple[int, int]] | None = None, *,
+                 trig: int | list[int] | None = None,
+                 echo: int | list[int] | None = None,
+                 temp_c: float = 20.0, R: float = 0.0025, Q: float = 4e-4):
+        if sensor_configs is None:
+            if trig is None or echo is None:
+                raise ValueError("Provide sensor_configs or both trig and echo")
+            if isinstance(trig, int):
+                trig = [trig]
+            if isinstance(echo, int):
+                echo = [echo]
+            sensor_configs = [(t, e) for t, e in zip(trig, echo)]
         if not sensor_configs:
             raise ValueError("At least one sensor configuration must be provided")
         
@@ -110,7 +120,7 @@ class SR04:
         self._filters = [Kalman1D(R=float(R), Q=float(Q)) for _ in range(n)]
         
         self._temp_c = array.array('f', [float(temp_c)] * n)
-        self._last_cm = array.array('f', [-1.0] * n)
+        self._last_m = array.array('f', [-1.0] * n)
         self._last_time = array.array('L', [0] * n)
         
         self._user_callbacks = [None] * n
@@ -161,13 +171,13 @@ class SR04:
                         dt = 0.06
                     self._last_time[idx] = now
                     
-                    speed_factor = self._cm_per_us(self._temp_c[idx])
-                    raw_cm = count * speed_factor
+                    speed_factor = self._m_per_count(self._temp_c[idx])
+                    raw_m = count * speed_factor
                     
-                    if self._MIN_CM <= raw_cm <= self._MAX_CM:
-                        filtered_cm = self._filters[idx].update(raw_cm, dt)
-                        result = max(self._MIN_CM, min(filtered_cm, self._MAX_CM))
-                        self._last_cm[idx] = result
+                    if self._MIN_M <= raw_m <= self._MAX_M:
+                        filtered_m = self._filters[idx].update(raw_m, dt)
+                        result = max(self._MIN_M, min(filtered_m, self._MAX_M))
+                        self._last_m[idx] = result
             
             self._pending_results[idx] = result
             
@@ -204,7 +214,7 @@ class SR04:
         while sm_obj.rx_fifo() > 0:
             sm_obj.get()
         sm_obj.active(1)
-        sm_obj.put(0)
+        sm_obj.put(self._TIMEOUT_US // 2)  # counts at 2µs/count for wait_echo timeout
 
     def __getitem__(self, idx: int | slice) -> "_View":
         if isinstance(idx, slice):
@@ -236,10 +246,64 @@ class SR04:
                 pass
         self._sms.clear()
 
-    def _cm_per_us(self, temp: float) -> float:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.deinit()
+
+    # ---- _std-compatible single-sensor API ----
+
+    def read(self, timeout_us: int | None = None) -> float:
+        """Blocking read for sensor 0. Returns distance in metres, or nan."""
+        result = self._measure_single(0, timeout_us or self._TIMEOUT_US)
+        return result if result is not None else float('nan')
+
+    @property
+    def last(self) -> float:
+        """Last valid distance in metres for sensor 0 (-1.0 if none yet)."""
+        return self._last_m[0]
+
+    def trigger(self) -> None:
+        """Fire trigger pulse for sensor 0 (non-blocking)."""
+        sm = self._sms[0]
+        while sm.rx_fifo() > 0:
+            sm.get()
+        sm.active(1)
+        sm.put(self._TIMEOUT_US // 2)
+
+    def ready(self) -> bool:
+        """True if echo result is waiting in the FIFO for sensor 0."""
+        return self._sms[0].rx_fifo() > 0
+
+    def result(self) -> float:
+        """Read and return pending result for sensor 0. Returns nan if not ready."""
+        sm = self._sms[0]
+        if sm.rx_fifo() == 0:
+            return float('nan')
+        count = sm.get()
+        sm.active(0)
+        if 0 < count < self._TIMEOUT_US:
+            raw_m = count * self._m_per_count(self._temp_c[0])
+            if self._MIN_M <= raw_m <= self._MAX_M:
+                filtered_m = self._filters[0].update(raw_m, 0.06)
+                r = max(self._MIN_M, min(filtered_m, self._MAX_M))
+                self._last_m[0] = r
+                return r
+        return float('nan')
+
+    def reset_filter(self) -> None:
+        """Reset Kalman filter state for all sensors."""
+        for f in self._filters:
+            f.reset()
+
+    def _m_per_count(self, temp: float) -> float:
+        # Each PIO counting loop = 2 cycles at 1 MHz = 2 µs/count.
+        # distance = count * speed_m_per_us
+        # The round-trip /2 and the 2µs/count cancel, so:
+        # distance_m = count * (speed_m_s / 1_000_000)
         speed_ms = 331.3 + 0.606 * temp
-        speed_cm_us = (speed_ms * 100.0) / 1_000_000
-        return speed_cm_us / 2.0
+        return speed_ms / 1_000_000
 
     def _trigger_all(self):
         for i in range(self._n):
@@ -257,13 +321,13 @@ class SR04:
                     self._sms[i].active(0)
                     
                     if 0 < count < self._TIMEOUT_US:
-                        speed_factor = self._cm_per_us(self._temp_c[i])
-                        raw_cm = count * speed_factor
+                        speed_factor = self._m_per_count(self._temp_c[i])
+                        raw_m = count * speed_factor
                         
-                        if self._MIN_CM <= raw_cm <= self._MAX_CM:
-                            filtered_cm = self._filters[i].update(raw_cm)
-                            results[i] = max(self._MIN_CM, min(filtered_cm, self._MAX_CM))
-                            self._last_cm[i] = results[i]
+                        if self._MIN_M <= raw_m <= self._MAX_M:
+                            filtered_m = self._filters[i].update(raw_m, 0.06)
+                            results[i] = max(self._MIN_M, min(filtered_m, self._MAX_M))
+                            self._last_m[i] = results[i]
                     
                     pending.discard(i)
             
@@ -281,7 +345,7 @@ class SR04:
             sm_obj.get()
         
         sm_obj.active(1)
-        sm_obj.put(0)
+        sm_obj.put(self._TIMEOUT_US // 2)  # wait_echo timeout count
         
         deadline = time.ticks_add(time.ticks_us(), timeout_us + 1000)
         
@@ -291,13 +355,13 @@ class SR04:
                 sm_obj.active(0)
                 
                 if 0 < count < self._TIMEOUT_US:
-                    speed_factor = self._cm_per_us(self._temp_c[idx])
-                    raw_cm = count * speed_factor
+                    speed_factor = self._m_per_count(self._temp_c[idx])
+                    raw_m = count * speed_factor
                     
-                    if self._MIN_CM <= raw_cm <= self._MAX_CM:
-                        filtered_cm = self._filters[idx].update(raw_cm)
-                        result = max(self._MIN_CM, min(filtered_cm, self._MAX_CM))
-                        self._last_cm[idx] = result
+                    if self._MIN_M <= raw_m <= self._MAX_M:
+                        filtered_m = self._filters[idx].update(raw_m, 0.06)
+                        result = max(self._MIN_M, min(filtered_m, self._MAX_M))
+                        self._last_m[idx] = result
                         return result
                 
                 return None
@@ -356,30 +420,22 @@ class SR04:
                     self._p._sms[i].active(0)
 
         @property
-        def value(self) -> list[int | None]:
+        def value(self) -> list[float | None]:
             any_continuous = any(self._p._measurement_enabled[i] for i in self._i)
             
             if any_continuous:
-                return [
-                    int(round(self._p._pending_results[i])) 
-                    if self._p._pending_results[i] is not None else None
-                    for i in self._i
-                ]
+                return [self._p._pending_results[i] for i in self._i]
             
             if len(self._i) == 1:
-                result = self._p._measure_single(self._i[0])
-                return [int(round(result)) if result is not None else None]
+                return [self._p._measure_single(self._i[0])]
             else:
                 self._p._trigger_all()
                 results = self._p._read_all()
-                return [
-                    int(round(results[i])) if results[i] is not None else None
-                    for i in self._i
-                ]
+                return [results[i] for i in self._i]
 
         @property
         def last(self) -> list[float]:
-            return [self._p._last_cm[i] for i in self._i]
+            return [self._p._last_m[i] for i in self._i]
 
         @property
         def temperature(self) -> list[float]:

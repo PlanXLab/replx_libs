@@ -38,10 +38,13 @@ offsets to a file for automatic restoration on startup.
 Example
 -------
 ```python
+from i2c import I2CController
 from bno055 import BNO055
 
-# Initialize with I2C pins
-imu = BNO055(sda=4, scl=5)
+i2c = I2CController(sda=4, scl=5)
+
+# Initialize with shared I2C
+imu = BNO055(i2c)
 
 # Wait for full calibration
 if imu.wait_ready(timeout_s=30):
@@ -66,6 +69,7 @@ imu.deinit()
 ```
 """
 from typing import Tuple
+from i2c import I2CController
 
 READ_TYPE_ACCEL: int
 READ_TYPE_GYRO: int
@@ -99,8 +103,7 @@ class BNO055:
 
     @staticmethod
     def run_calibration_wizard(
-        sda: int,
-        scl: int,
+        i2c: I2CController,
         *,
         addr: int = 0x28,
         accel_samples: int = 200,
@@ -114,8 +117,7 @@ class BNO055:
         gyroscope, 6-face accelerometer, and magnetometer calibration.
         Results are saved to a file for automatic restoration.
 
-        :param sda: I2C SDA pin number
-        :param scl: I2C SCL pin number
+        :param i2c: Shared I2CController instance
         :param addr: I2C address (default 0x28)
         :param accel_samples: Number of samples for accelerometer calibration
         :param settle_ms: Settling time in ms before sampling
@@ -126,18 +128,21 @@ class BNO055:
         Example
         -------
         ```python
+        from i2c import I2CController
+        from bno055 import BNO055
+        i2c = I2CController(sda=4, scl=5)
+
         # Run calibration (follow on-screen instructions)
-        BNO055.run_calibration_wizard(sda=4, scl=5)
+        BNO055.run_calibration_wizard(i2c)
 
         # Then create instance (will auto-load calibration)
-        imu = BNO055(sda=4, scl=5)
+        imu = BNO055(i2c)
         ```
         """
 
     def __init__(
         self,
-        sda: int,
-        scl: int,
+        i2c: I2CController,
         *,
         addr: int = 0x28,
         calfile: str = ...,
@@ -148,8 +153,7 @@ class BNO055:
         Resets the sensor, configures it for NDOF (Nine Degrees of Freedom)
         fusion mode with SI units, and loads calibration data if available.
 
-        :param sda: I2C SDA pin number
-        :param scl: I2C SCL pin number
+        :param i2c: Shared I2CController instance
         :param addr: I2C address (default 0x28, alternate 0x29)
         :param calfile: Path to calibration file to load
 
@@ -158,14 +162,18 @@ class BNO055:
         Example
         -------
         ```python
+        from i2c import I2CController
+        from bno055 import BNO055
+        i2c = I2CController(sda=4, scl=5)
+
         # Basic initialization
-        imu = BNO055(sda=4, scl=5)
+        imu = BNO055(i2c)
 
         # With alternate address
-        imu = BNO055(sda=4, scl=5, addr=0x29)
+        imu = BNO055(i2c, addr=0x29)
 
         # Without loading calibration
-        imu = BNO055(sda=4, scl=5, calfile=None)
+        imu = BNO055(i2c, calfile=None)
         ```
         """
 
@@ -225,7 +233,10 @@ class BNO055:
         Example
         -------
         ```python
-        imu = BNO055(sda=4, scl=5)
+        from i2c import I2CController
+        from bno055 import BNO055
+        i2c = I2CController(sda=4, scl=5)
+        imu = BNO055(i2c)
         if imu.wait_ready(timeout_s=30):
             print("Ready for use")
         else:

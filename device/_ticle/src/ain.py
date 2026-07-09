@@ -1,4 +1,4 @@
-# @package: ain
+# @package: ain_rp2
 # @version: 2.3
 # @type: device-specific
 # @category: peripheral

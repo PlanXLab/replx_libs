@@ -15,6 +15,7 @@ Features:
 - Valid range checking (default: 5cm - 1.2m)
 
 """
+from i2c import I2CController
 
 
 class VL53L0X:
@@ -34,15 +35,18 @@ class VL53L0X:
     Example
     -------
     ```python
+        >>> from i2c import I2CController
         >>> from vl53l0x import VL53L0X
         >>> 
+        >>> i2c = I2CController(sda=4, scl=5)
+        >>> 
         >>> # Basic usage (continuous mode, auto-started)
-        >>> sensor = VL53L0X(scl=5, sda=4)
+        >>> sensor = VL53L0X(i2c)
         >>> distance = sensor.read()
         >>> print(f"Distance: {distance:.3f} m")
         >>> 
         >>> # Non-blocking polling
-        >>> sensor = VL53L0X(scl=5, sda=4)
+        >>> sensor = VL53L0X(i2c)
         >>> while True:
         ...     if sensor.ready():
         ...         d = sensor.result()
@@ -52,7 +56,7 @@ class VL53L0X:
         >>> 
         >>> # High accuracy mode with filtering
         >>> sensor = VL53L0X(
-        ...     scl=5, sda=4,
+        ...     i2c,
         ...     preset=VL53L0X.MODE_PRESET_HIGH_ACCURACY,
         ...     median=7, lpf=0.2
         ... )
@@ -66,8 +70,7 @@ class VL53L0X:
 
     def __init__(
         self,
-        sda: int,
-        scl: int,
+        i2c: I2CController,
         *,
         addr: int = 0x29,
         preset: int = ...,
@@ -83,8 +86,7 @@ class VL53L0X:
         
         Automatically starts continuous measurement after initialization.
         
-        :param scl: GPIO pin number for I2C SCL
-        :param sda: GPIO pin number for I2C SDA
+        :param i2c: Shared I2CController instance
         :param addr: I2C address (default: 0x29)
         :param preset: Measurement preset mode (default: MODE_PRESET_DEFAULT)
         :param period_ms: Measurement period in ms. 0 for back-to-back continuous (default: 0)
@@ -100,27 +102,31 @@ class VL53L0X:
         Example
         -------
         ```python
+            >>> from i2c import I2CController
+            >>> from vl53l0x import VL53L0X
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> 
             >>> # Default mode (33ms timing budget)
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> sensor = VL53L0X(i2c)
             >>> 
             >>> # Long range mode (up to 2m, 200ms timing)
             >>> sensor = VL53L0X(
-            ...     scl=5, sda=4,
+            ...     i2c,
             ...     preset=VL53L0X.MODE_PRESET_LONG_RANGE,
             ...     max_valid_m=2.0
             ... )
             >>> 
             >>> # High speed mode (20ms timing, less accurate)
             >>> sensor = VL53L0X(
-            ...     scl=5, sda=4,
+            ...     i2c,
             ...     preset=VL53L0X.MODE_PRESET_HIGH_SPEED
             ... )
             >>> 
             >>> # Timed measurement at 100ms intervals
-            >>> sensor = VL53L0X(scl=5, sda=4, period_ms=100)
+            >>> sensor = VL53L0X(i2c, period_ms=100)
             >>> 
             >>> # With filtering (median -> low-pass chain)
-            >>> sensor = VL53L0X(scl=5, sda=4, median=7, lpf=0.1)
+            >>> sensor = VL53L0X(i2c, median=7, lpf=0.1)
         ```
         """
         ...
@@ -135,7 +141,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> # ... use sensor ...
             >>> sensor.deinit()
         ```
@@ -152,7 +159,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> sensor.read()
             >>> print(f"Last: {sensor.last:.3f} m")
         ```
@@ -171,7 +179,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> sensor.stop()
             >>> # ... pause ...
             >>> sensor.start()  # Resume back-to-back
@@ -189,7 +198,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> # ... use sensor ...
             >>> sensor.stop()
             >>> # Sensor is now idle, lower power consumption
@@ -208,7 +218,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> while True:
             ...     if sensor.ready():
             ...         d = sensor.result()
@@ -232,7 +243,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> if sensor.ready():
             ...     d = sensor.result()
             ...     if d is not None:
@@ -258,7 +270,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> 
             >>> # Single reading
             >>> distance = sensor.read()
@@ -280,7 +293,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4, median=5)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c, median=5)
             >>> for _ in range(10):
             ...     sensor.read()
             >>> 
@@ -302,7 +316,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> sensor.set_signal_rate_limit_mcps(0.1)  # Extended range
         ```
         """
@@ -317,7 +332,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> budget = sensor.get_measurement_timing_budget_us()
             >>> print(f"Budget: {budget} us")
         ```
@@ -338,7 +354,8 @@ class VL53L0X:
         Example
         -------
         ```python
-            >>> sensor = VL53L0X(scl=5, sda=4)
+            >>> i2c = I2CController(sda=4, scl=5)
+            >>> sensor = VL53L0X(i2c)
             >>> sensor.set_measurement_timing_budget_us(50000)  # 50ms for better accuracy
         ```
         """
