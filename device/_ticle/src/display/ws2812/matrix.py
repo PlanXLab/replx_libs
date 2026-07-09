@@ -1,5 +1,5 @@
 # @package: ws2812
-# @version: 1.5
+# @version: 1.6
 # @type: device-specific
 # @category: display
 # @interface: GPIO
@@ -86,7 +86,28 @@ class Matrix:
         self._row_cache = {}
         self._row_cache_max = _ROW_CACHE_MAX
         
-        self._load_font(font)
+        # Defer the font file read until the first text-drawing call so that
+        # Matrix() can be constructed even when heap is fragmented (e.g. after
+        # Audio has claimed large contiguous buffers).  The font is loaded
+        # transparently by _ensure_font_loaded().
+        self._pending_font = font
+        self._font_loaded = False
+        # Initialise font attributes to safe sentinel values so that any code
+        # that reads them before the font is loaded gets a predictable result.
+        self.font = None
+        self.font_width = 0
+        self.font_height = 0
+        self._glyph_bpr = 0
+        self._glyph_span = 0
+        self._fallback_cp = ord('?')
+        self._codes = None
+        self._offsets = None
+        self._blank_l = None
+        self._blank_r = None
+        self._font_buf = None
+        self._font_name = None
+        self._font_modname = None
+        self._is_bin_font = 0
 
         self._zigzag = zigzag
         self._origin: str = origin
@@ -328,6 +349,16 @@ class Matrix:
 
     def set_font(self, font_src: str | object) -> None:
         self._load_font(font_src)
+        self._font_loaded = True
+        self._pending_font = None
+
+    def _ensure_font_loaded(self) -> None:
+        if self._font_loaded:
+            return
+        gc.collect()
+        self._load_font(self._pending_font)
+        self._font_loaded = True
+        self._pending_font = None
         
     def deinit(self) -> None:
         self._sc_stop(True)
@@ -974,6 +1005,7 @@ class Matrix:
                   space_scale: float = 0.3,
                   right_margin: int = 1, 
                   left_margin: int = 0) -> None:
+        self._ensure_font_loaded()
         fw, fh = self.font_width, self.font_height
         fb_w, fb_h = self._fb_width, self._fb_height
         fb = self._fb
@@ -1176,7 +1208,6 @@ class Matrix:
         self._sc_stop(False)
 
     def set_scroll_speed(self, speed_ms: int) -> bool:
-        """Change scroll speed while scrolling. Returns True if successful."""
         if not self._sc_active or speed_ms < 1:
             return False
         old_period = self._sc_period
@@ -1200,6 +1231,7 @@ class Matrix:
                          speed_ms: int = 0,
                          update_flag: bool = False, 
                          right_mirrored: bool = False) -> None:
+        self._ensure_font_loaded()
         actual_speed = speed_ms if speed_ms > 0 else self._sc_period
         chars = list(text)
         mode, _, _, fg_shader = self._fg_mode(fg, text, chars)
@@ -1229,6 +1261,7 @@ class Matrix:
                          on_done:callable = None) -> None:
 
         stage = "stop"
+        self._ensure_font_loaded()
         self._sc_stop(False)
 
         try:
