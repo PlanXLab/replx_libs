@@ -1,5 +1,5 @@
 # @package: us
-# @version: 3.2
+# @version: 3.3
 # @type: device-specific
 # @category: distance
 # @sensor_type: B
@@ -88,7 +88,7 @@ class SR04:
         self._sm_ids = sm_list
         self._trig_pins = [cfg[0] for cfg in sensor_configs]
         self._echo_pins = [cfg[1] for cfg in sensor_configs]
-        self._echo_pin_objs = []  # machine.Pin objects for echo idle check
+        self._echo_pin_objs = []
         
         self._sms: list[StateMachine] = []
         self._sm_to_idx = {}
@@ -118,7 +118,6 @@ class SR04:
                     pass
             raise OSError(f"Failed to initialize PIO: {e}")
         
-        # Kalman filters (one per sensor)
         self._filters = [Kalman1D(R=float(R), Q=float(Q)) for _ in range(n)]
         
         self._temp_c = array.array('f', [float(temp_c)] * n)
@@ -212,21 +211,15 @@ class SR04:
             )
 
     def _trigger_single(self, idx: int):
-        # Skip if echo still high: residual scatter would cause immediate
-        # jmp(pin, "measure") in the PIO wait_echo loop, producing garbage counts.
-        # In continuous mode _schedule_next will retry; in manual mode the
-        # caller detects NaN and may retry.
         if self._echo_pin_objs[idx].value() == 1:
             return
         sm_obj = self._sms[idx]
         while sm_obj.rx_fifo() > 0:
             sm_obj.get()
-        # restart() resets PC to 0, clears FIFOs and internal registers,
-        # preventing stale X values from a previously interrupted count loop.
+
         sm_obj.active(0)
-        sm_obj.restart()
         sm_obj.active(1)
-        sm_obj.put(self._TIMEOUT_US // 2)  # wait_echo timeout (2µs/count)
+        sm_obj.put(self._TIMEOUT_US // 2)
 
     def __getitem__(self, idx: int | slice) -> "_View":
         if isinstance(idx, slice):
@@ -264,36 +257,28 @@ class SR04:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.deinit()
 
-    # ---- _std-compatible single-sensor API ----
-
     def read(self, timeout_us: int | None = None) -> float:
-        """Blocking read for sensor 0. Returns distance in metres, or nan."""
         result = self._measure_single(0, timeout_us or self._TIMEOUT_US)
         return result if result is not None else float('nan')
 
     @property
     def last(self) -> float:
-        """Last valid distance in metres for sensor 0 (-1.0 if none yet)."""
         return self._last_m[0]
 
     def trigger(self) -> None:
-        """Fire trigger pulse for sensor 0 (non-blocking)."""
         if self._echo_pin_objs[0].value() == 1:
-            return  # echo still high, skip
+            return 
         sm = self._sms[0]
         while sm.rx_fifo() > 0:
             sm.get()
         sm.active(0)
-        sm.restart()
         sm.active(1)
         sm.put(self._TIMEOUT_US // 2)
 
     def ready(self) -> bool:
-        """True if echo result is waiting in the FIFO for sensor 0."""
         return self._sms[0].rx_fifo() > 0
 
     def result(self) -> float:
-        """Read and return pending result for sensor 0. Returns nan if not ready."""
         sm = self._sms[0]
         if sm.rx_fifo() == 0:
             return float('nan')
@@ -367,21 +352,14 @@ class SR04:
         return results
 
     def _measure_single(self, idx: int, timeout_us: int = 38000) -> float | None:
-        # Wait for echo pin to be LOW before triggering.
-        # Scatter/multipath echoes (especially from humans) can leave the pin
-        # HIGH for several ms after the SM returns; triggering on a HIGH pin
-        # causes wait_echo to skip immediately to measure.
         if not self._wait_echo_idle(idx, timeout_ms=10):
             return None
         sm_obj = self._sms[idx]
         while sm_obj.rx_fifo() > 0:
             sm_obj.get()
-        # Full SM reset: ensures PC=0 and X register are clean even if the
-        # previous measurement was stopped mid-way through the count loop.
         sm_obj.active(0)
-        sm_obj.restart()
         sm_obj.active(1)
-        sm_obj.put(self._TIMEOUT_US // 2)  # wait_echo timeout count
+        sm_obj.put(self._TIMEOUT_US // 2) 
         
         deadline = time.ticks_add(time.ticks_us(), timeout_us + 1000)
         

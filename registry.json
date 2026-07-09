@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-07-09T06:14:53Z",
+  "generated_at": "2026-07-09T07:22:44Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -1299,7 +1299,7 @@
       "typehint": "device/_ticle/typehints/audio/audio_async.pyi"
     },
     "us@_ticle": {
-      "version": "3.2",
+      "version": "3.3",
       "type": "device-specific",
       "source": "device/_ticle/src/distance/us.py",
       "deploy_path": "us.py",
