@@ -86,14 +86,9 @@ class Matrix:
         self._row_cache = {}
         self._row_cache_max = _ROW_CACHE_MAX
         
-        # Defer the font file read until the first text-drawing call so that
-        # Matrix() can be constructed even when heap is fragmented (e.g. after
-        # Audio has claimed large contiguous buffers).  The font is loaded
-        # transparently by _ensure_font_loaded().
         self._pending_font = font
         self._font_loaded = False
-        # Initialise font attributes to safe sentinel values so that any code
-        # that reads them before the font is loaded gets a predictable result.
+
         self.font = None
         self.font_width = 0
         self.font_height = 0
@@ -161,9 +156,7 @@ class Matrix:
         self._sc_period = max(1, int(scroll_speed_ms))
         self._sc_timer = machine.Timer(-1)
         self._sc_step_cb = self._sc_step_sched
-        # Do NOT start the timer here — start it only when scrolling begins.
-        # An always-running 50ms periodic timer adds unnecessary IRQ overhead
-        # that interferes with asyncio and other DMA peripherals.
+
         self._sc_active = False
         self._sc_timer_running = False
         self._sc_timer_period = 0
@@ -362,15 +355,45 @@ class Matrix:
         
     def deinit(self) -> None:
         self._sc_stop(True)
-        self.clear()
+
+        _TIMEOUT_MS = 200
+        for dma in (self._dmas or []):
+            t = time.ticks_ms()
+            while dma.active():
+                if time.ticks_diff(time.ticks_ms(), t) > _TIMEOUT_MS:
+                    break
+
+        # Send all-black pixels to clear the LEDs.
+        if self._fb is not None and self._tx_bufs and self._dmas and self._sms:
+            self.fill(0)
+            self._flush_fb_to_txb()
+            dma = self._dmas[0]
+            sm_id = self._sm_ids[0]
+            ctrl = dma.pack_ctrl(size=2, inc_write=False,
+                                  treq_sel=self._pio_dreq(sm_id), bswap=False)
+            dma.config(read=self._tx_bufs[0], write=self._sms[0],
+                       count=len(self._tx_bufs[0]), ctrl=ctrl, trigger=True)
+            t = time.ticks_ms()
+            while dma.active():
+                if time.ticks_diff(time.ticks_ms(), t) > _TIMEOUT_MS:
+                    break
+
         time.sleep_ms(50)
-        for sm in self._sms:
-            sm.active(0)
+
+        for sm in (self._sms or []):
+            try: sm.active(0)
+            except: pass
+
+        for dma in (self._dmas or []):
+            try: dma.close()
+            except: pass
 
         self._rb = None
         self._vb = None
         self._fb = None
         self._tx_bufs = None
+        self._dmas = None
+        self._sms = None
         self._pix_map_sm = None
         self._pix_map_idx = None
         self._unload_font()
@@ -1169,8 +1192,9 @@ class Matrix:
         self._sc_posted = 0
         self._sc_token = (self._sc_token + 1) & _MASK_16
         if release_timer:
-            try: self._sc_timer.deinit()
-            except: pass
+            if self._sc_timer_running:
+                try: self._sc_timer.deinit()
+                except: pass
             self._sc_timer_running = False
             self._sc_timer_period = 0
         try: gc.enable()
@@ -1996,7 +2020,6 @@ class Matrix:
         dh = self._fb_height
         n = dw * dh
 
-        # Use generator to avoid intermediate list allocation
         sm_t = array.array("B", (0 for _ in range(n)))
         idx_t = array.array("H", (0 for _ in range(n)))
         for y in range(dh):
@@ -2105,21 +2128,18 @@ class Matrix:
         vb_h = self._fb_height + vb_gh_cap
         vb_n = vb_w * vb_h
 
-        # Release both buffers first to maximize available contiguous memory
         old_rb = getattr(self, "_rb", None)
         old_vb = getattr(self, "_vb", None)
         need_rb = (old_rb is None) or (len(old_rb) < rb_n)
         need_vb = (old_vb is None) or (len(old_vb) < vb_n)
         
         if need_rb or need_vb:
-            # Release old buffers before allocating new ones
             if need_rb:
                 self._rb = None
             if need_vb:
                 self._vb = None
             gc.collect()
         
-        # Allocate rb
         if need_rb:
             self._rb_w, self._rb_h = rb_w, rb_h
             self._rb_size = rb_n
@@ -2131,7 +2151,6 @@ class Matrix:
         self._rb_head_px  = 0
         self._rb_write_px = self._fb_width
 
-        # Allocate vb
         if need_vb:
             self._vb_w = vb_w
             self._vb_h = vb_h
@@ -2237,7 +2256,6 @@ class Matrix:
             self._blank_l = memoryview(buf)[blank_l_start:blank_l_start + blank_size]
             self._blank_r = memoryview(buf)[blank_r_start:blank_r_start + blank_size]
         else:
-            # Use generator to avoid intermediate list
             self._blank_l = array.array('B', (0 for _ in range(glyph_count)))
             self._blank_r = array.array('B', (0 for _ in range(glyph_count)))
         
@@ -2288,7 +2306,7 @@ class Matrix:
             blank_L, blank_R = self._glyph_lr(gi)
             ink_w = fw - blank_L - blank_R
             bw = left_margin + ink_w + right_margin
-            # Check cache size BEFORE adding new entry
+
             if len(self._ink_width_cache) >= _INK_CACHE_MAX:
                 self._ink_width_cache.clear()
                 gc.collect()
@@ -2305,7 +2323,6 @@ class Matrix:
                 return 'shader', None, 0, fg
             
         if isinstance(fg, (list, tuple)) and fg and isinstance(fg[0], (list, tuple)):
-            # Use generator expression to create array directly
             fg_tbl = array.array('I', (self._pack_grb(*c) for c in fg))
             return 'per_char', fg_tbl, 0, None
         
@@ -2313,7 +2330,6 @@ class Matrix:
             try:
                 test = fg(0, text)
                 _ = self._pack_grb(*self._normalize_color(test))
-                # Use generator expression to create array directly
                 fg_tbl = array.array('I', (self._pack_grb(*self._normalize_color(fg(i, text))) for i in range(len(chars))))
                 return 'per_char', fg_tbl, 0, None
             except TypeError:
