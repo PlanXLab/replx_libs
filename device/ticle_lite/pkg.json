@@ -5,11 +5,11 @@
   "includes": [
     "_std/actuators/servo*",
     "_std/display/hd44780",
+    "_std/distance/us*",
     "_std/input/button*",
     "_std/motion/mpu6050*",
     "_ticle/audio/*",
     "_ticle/display/ws2812",
-    "_ticle/distance/us*",
     "_ticle/ain",
     "_ticle/basic",
     "_ticle/bus_lock",
