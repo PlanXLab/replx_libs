@@ -1,5 +1,5 @@
 # @package: us
-# @version: 3.3
+# @version: 3.4
 # @type: device-specific
 # @category: distance
 # @sensor_type: B
@@ -20,12 +20,12 @@ from .utools import find_free_sm
 
 @rp2.asm_pio(set_init=rp2.PIO.OUT_LOW, autopush=False, push_thresh=32)
 def _sr04_pio_prog():
-    pull(block)           # OSR = wait_echo timeout count from host
+    pull(block)          
     
     set(pins, 1)            [9]
     set(pins, 0)
     
-    mov(x, osr)           # X = timeout count for wait_echo (loaded via FIFO)
+    mov(x, osr)           
     label("wait_echo")
     jmp(pin, "measure")
     jmp(x_dec, "wait_echo")
@@ -130,6 +130,7 @@ class SR04:
         self._callback_pending = [False] * n
         self._callback_dispatchers = [self._make_callback_dispatcher(i) for i in range(n)]
         self._timers = [machine.Timer(-1) for _ in range(n)]
+        self._timer_running = [False] * n   # True only after timer.init() is called
         self._timer_callbacks = [self._make_timer_callback(i) for i in range(n)]
         
         self._view = SR04._View(self)
@@ -204,6 +205,7 @@ class SR04:
             self._trigger_single(idx)
         else:
             delay_us = self._MIN_INTERVAL_US - elapsed
+            self._timer_running[idx] = True
             self._timers[idx].init(
                 mode=machine.Timer.ONE_SHOT,
                 period=max(1, delay_us // 1000),
@@ -216,8 +218,8 @@ class SR04:
         sm_obj = self._sms[idx]
         while sm_obj.rx_fifo() > 0:
             sm_obj.get()
-
         sm_obj.active(0)
+        sm_obj.restart()  
         sm_obj.active(1)
         sm_obj.put(self._TIMEOUT_US // 2)
 
@@ -238,11 +240,13 @@ class SR04:
     def deinit(self) -> None:
         for i in range(self._n):
             self._measurement_enabled[i] = False
-        for timer in self._timers:
-            try:
-                timer.deinit()
-            except Exception:
-                pass
+        for i, timer in enumerate(self._timers):
+            if self._timer_running[i]:
+                try:
+                    timer.deinit()
+                except Exception:
+                    pass
+                self._timer_running[i] = False
         for sm_obj in self._sms:
             try:
                 sm_obj.irq(None)
@@ -272,6 +276,7 @@ class SR04:
         while sm.rx_fifo() > 0:
             sm.get()
         sm.active(0)
+        sm.restart()
         sm.active(1)
         sm.put(self._TIMEOUT_US // 2)
 
@@ -311,10 +316,6 @@ class SR04:
         return True
 
     def _m_per_count(self, temp: float) -> float:
-        # Each PIO counting loop = 2 cycles at 1 MHz = 2 µs/count.
-        # distance = count * speed_m_per_us
-        # The round-trip /2 and the 2µs/count cancel, so:
-        # distance_m = count * (speed_m_s / 1_000_000)
         speed_ms = 331.3 + 0.606 * temp
         return speed_ms / 1_000_000
 
@@ -358,6 +359,7 @@ class SR04:
         while sm_obj.rx_fifo() > 0:
             sm_obj.get()
         sm_obj.active(0)
+        sm_obj.restart() 
         sm_obj.active(1)
         sm_obj.put(self._TIMEOUT_US // 2) 
         
