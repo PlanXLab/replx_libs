@@ -1,5 +1,5 @@
 # @package: us_async
-# @version: 2.2.0
+# @version: 2.3
 # @type: device-std
 # @category: distance
 # @sensor_type: B
@@ -12,7 +12,7 @@
 from micropython import const
 import time
 import asyncio
-from io_async import AsyncDin
+from dio_async import AsyncDin
 from .us import SR04
 
 _ECHO_TIMEOUT_US = const(30000)

@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-07-09T08:41:36Z",
+  "generated_at": "2026-07-09T08:52:05Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -658,7 +658,7 @@
       "typehint": "device/_std/typehints/distance/us.pyi"
     },
     "us_async": {
-      "version": "2.2.0",
+      "version": "2.3",
       "type": "device-std",
       "source": "device/_std/src/distance/us_async.py",
       "deploy_path": "us_async.py",
