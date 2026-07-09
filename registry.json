@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-07-09T08:25:18Z",
+  "generated_at": "2026-07-09T08:41:36Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -49,11 +49,11 @@
       "includes": [
         "_std/actuators/servo*",
         "_std/display/hd44780",
+        "_std/distance/us*",
         "_std/input/button*",
         "_std/motion/mpu6050*",
         "_ticle/audio/*",
         "_ticle/display/ws2812",
-        "_ticle/distance/us*",
         "_ticle/ain",
         "_ticle/basic",
         "_ticle/bus_lock",
@@ -69,11 +69,11 @@
         "_std/actuators/servo*",
         "_std/audio/buzzer*",
         "_std/display/hd44780",
+        "_std/distance/us*",
         "_std/environmental/bme68x*",
         "_std/motion/bno055*",
         "_std/orientation/as5600*",
         "_ticle/ws2812",
-        "_ticle/distance/us*",
         "_ticle/ain",
         "_ticle/basic",
         "_ticle/bus_lock",
