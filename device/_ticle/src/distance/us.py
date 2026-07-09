@@ -16,7 +16,6 @@ import micropython
 import rp2
 from rp2 import PIO, StateMachine
 from ufilter import Kalman1D
-from .utools import find_free_sm
 
 @rp2.asm_pio(set_init=rp2.PIO.OUT_LOW, autopush=False, push_thresh=32)
 def _sr04_pio_prog():
@@ -50,6 +49,28 @@ def _sr04_pio_prog():
     push()
     irq(rel(0))
 
+def find_free_sm_pio2(count: int) -> list[int]:
+    @rp2.asm_pio()
+    def _nop():
+        nop()
+    
+    available = []
+
+    for i in (8, 9, 10, 11):
+        try:
+            sm = rp2.StateMachine(i, _nop)
+            sm.active(0)
+            available.append(i)
+            if len(available) >= count:
+                return available
+        except:
+            pass
+
+    if len(available) < count:
+        raise RuntimeError(f"Need {count} SM on PIO2, only {len(available)} available")
+    return available
+
+
 class SR04:
     _PIO_FREQ = 1_000_000
     _TIMEOUT_US = 38000
@@ -77,7 +98,7 @@ class SR04:
         
         n = len(sensor_configs)
         
-        sm_list = find_free_sm(n)
+        sm_list = find_free_sm_pio2(n)
         
         max_sm = 12
         for s in sm_list:
