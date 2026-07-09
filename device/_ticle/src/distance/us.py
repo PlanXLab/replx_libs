@@ -1,5 +1,5 @@
 # @package: us
-# @version: 3.2.0
+# @version: 3.2
 # @type: device-specific
 # @category: distance
 # @sensor_type: B
@@ -88,6 +88,7 @@ class SR04:
         self._sm_ids = sm_list
         self._trig_pins = [cfg[0] for cfg in sensor_configs]
         self._echo_pins = [cfg[1] for cfg in sensor_configs]
+        self._echo_pin_objs = []  # machine.Pin objects for echo idle check
         
         self._sms: list[StateMachine] = []
         self._sm_to_idx = {}
@@ -97,6 +98,7 @@ class SR04:
                 sm_id = sm_list[i]
                 trig_pin = machine.Pin(trig, machine.Pin.OUT, value=0)
                 echo_pin = machine.Pin(echo, machine.Pin.IN)
+                self._echo_pin_objs.append(echo_pin)
                 
                 sm_obj = StateMachine(
                     sm_id,
@@ -210,11 +212,21 @@ class SR04:
             )
 
     def _trigger_single(self, idx: int):
+        # Skip if echo still high: residual scatter would cause immediate
+        # jmp(pin, "measure") in the PIO wait_echo loop, producing garbage counts.
+        # In continuous mode _schedule_next will retry; in manual mode the
+        # caller detects NaN and may retry.
+        if self._echo_pin_objs[idx].value() == 1:
+            return
         sm_obj = self._sms[idx]
         while sm_obj.rx_fifo() > 0:
             sm_obj.get()
+        # restart() resets PC to 0, clears FIFOs and internal registers,
+        # preventing stale X values from a previously interrupted count loop.
+        sm_obj.active(0)
+        sm_obj.restart()
         sm_obj.active(1)
-        sm_obj.put(self._TIMEOUT_US // 2)  # counts at 2µs/count for wait_echo timeout
+        sm_obj.put(self._TIMEOUT_US // 2)  # wait_echo timeout (2µs/count)
 
     def __getitem__(self, idx: int | slice) -> "_View":
         if isinstance(idx, slice):
@@ -266,9 +278,13 @@ class SR04:
 
     def trigger(self) -> None:
         """Fire trigger pulse for sensor 0 (non-blocking)."""
+        if self._echo_pin_objs[0].value() == 1:
+            return  # echo still high, skip
         sm = self._sms[0]
         while sm.rx_fifo() > 0:
             sm.get()
+        sm.active(0)
+        sm.restart()
         sm.active(1)
         sm.put(self._TIMEOUT_US // 2)
 
@@ -296,6 +312,18 @@ class SR04:
         """Reset Kalman filter state for all sensors."""
         for f in self._filters:
             f.reset()
+
+    def _wait_echo_idle(self, idx: int, timeout_ms: int = 10) -> bool:
+        """Block until echo pin is LOW. Returns False on timeout."""
+        pin = self._echo_pin_objs[idx]
+        if pin.value() == 0:
+            return True
+        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)
+        while pin.value() == 1:
+            if time.ticks_diff(time.ticks_ms(), deadline) >= 0:
+                return False
+            time.sleep_us(50)
+        return True
 
     def _m_per_count(self, temp: float) -> float:
         # Each PIO counting loop = 2 cycles at 1 MHz = 2 µs/count.
@@ -339,11 +367,19 @@ class SR04:
         return results
 
     def _measure_single(self, idx: int, timeout_us: int = 38000) -> float | None:
+        # Wait for echo pin to be LOW before triggering.
+        # Scatter/multipath echoes (especially from humans) can leave the pin
+        # HIGH for several ms after the SM returns; triggering on a HIGH pin
+        # causes wait_echo to skip immediately to measure.
+        if not self._wait_echo_idle(idx, timeout_ms=10):
+            return None
         sm_obj = self._sms[idx]
-        
         while sm_obj.rx_fifo() > 0:
             sm_obj.get()
-        
+        # Full SM reset: ensures PC=0 and X register are clean even if the
+        # previous measurement was stopped mid-way through the count loop.
+        sm_obj.active(0)
+        sm_obj.restart()
         sm_obj.active(1)
         sm_obj.put(self._TIMEOUT_US // 2)  # wait_echo timeout count
         
