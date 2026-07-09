@@ -69,8 +69,8 @@ class SR04:
         trig: int | list[int] | None = None,
         echo: int | list[int] | None = None,
         temp_c: float = 20.0,
-        R: float = 0.0025,
-        Q: float = 4e-4
+        R: int = 25,
+        Q: int = 4
     ) -> None:
         """
         Initialize multi-channel SR04 driver with PIO State Machines.
@@ -83,8 +83,8 @@ class SR04:
         :param trig: Trigger pin(s) — used when sensor_configs is None
         :param echo: Echo pin(s) — used when sensor_configs is None
         :param temp_c: Initial ambient temperature in Celsius (default: 20.0)
-        :param R: Kalman measurement noise variance in m² (default: 0.0025)
-        :param Q: Kalman process noise variance in m² (default: 4e-4)
+        :param R: Kalman measurement noise covariance in cm² (default: 25, range 10-100)
+        :param Q: Kalman process noise covariance in cm² (default: 4, range 1-10)
 
         :raises ValueError: If neither sensor_configs nor trig/echo provided,
             or sensor_configs is empty, or temperature out of range
@@ -106,7 +106,7 @@ class SR04:
             >>> sensors = SR04([(2, 3), (4, 5)])
             >>> 
             >>> # With custom Kalman parameters
-            >>> sonic = SR04(trig=10, echo=11, R=0.001, Q=1e-4)
+            >>> sonic = SR04(trig=10, echo=11, R=16, Q=1)
         ```
         """
         ...
@@ -462,7 +462,7 @@ class _View:
     @property
     def filter(self) -> list[dict]:
         """
-        Get Kalman filter parameters.
+        Get Kalman filter parameters in cm² scale.
         
         :return: List of dicts with keys: R (measurement noise), Q (process noise)
         
@@ -470,7 +470,7 @@ class _View:
         -------
         ```python
             >>> sensors = SR04([(2, 3)])
-            >>> print(sensors[0].filter)  # [{'R': 0.0025, 'Q': 0.0004}]
+            >>> print(sensors[0].filter)  # [{'R': 25, 'Q': 4}]
         ```
         """
         ...
@@ -478,24 +478,24 @@ class _View:
     @filter.setter
     def filter(self, params: dict) -> None:
         """
-        Set Kalman filter parameters.
+        Set Kalman filter parameters in cm² scale.
         
-        R: Measurement noise covariance (higher = trust predictions more)
-        Q: Process noise covariance (higher = faster response, more noise)
+        R: Measurement noise covariance (higher = trust predictions more, range 10-100)
+        Q: Process noise covariance (higher = faster response, more noise, range 1-10)
         
         :param params: Dict with optional keys 'R' and 'Q'
         
         :raises TypeError: If params is not a dict
-        :raises ValueError: If R or Q <= 0
+        :raises ValueError: If R is not in range 10-100 or Q is not in range 1-10
         
         Example
         -------
         ```python
             >>> sensors = SR04([(2, 3)])
             >>> # Smoother tracking
-            >>> sensors[:].filter = {'R': 16.0, 'Q': 1.0}
+            >>> sensors[:].filter = {'R': 40, 'Q': 1}
             >>> # Faster response
-            >>> sensors[:].filter = {'R': 4.0, 'Q': 9.0}
+            >>> sensors[:].filter = {'R': 15, 'Q': 9}
         ```
         """
         ...
@@ -506,7 +506,7 @@ class _View:
         Get Kalman filter internal states.
         
         :return: List of dicts with keys: position, velocity, covariance,
-                 measurement_noise, process_noise
+                 measurement_noise (in cm²), process_noise (in cm²)
         
         Example
         -------

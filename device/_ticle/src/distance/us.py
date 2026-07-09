@@ -81,7 +81,7 @@ class SR04:
     def __init__(self, sensor_configs: list[tuple[int, int]] | None = None, *,
                  trig: int | list[int] | None = None,
                  echo: int | list[int] | None = None,
-                 temp_c: float = 20.0, R: float = 0.0025, Q: float = 4e-4):
+                 temp_c: float = 20.0, R: int = 25, Q: int = 4):
         if sensor_configs is None:
             if trig is None or echo is None:
                 raise ValueError("Provide sensor_configs or both trig and echo")
@@ -139,7 +139,7 @@ class SR04:
                     pass
             raise OSError(f"Failed to initialize PIO: {e}")
         
-        self._filters = [Kalman1D(R=float(R), Q=float(Q)) for _ in range(n)]
+        self._filters = [Kalman1D(R=float(R)/10000.0, Q=float(Q)/10000.0) for _ in range(n)]
         
         self._temp_c = array.array('f', [float(temp_c)] * n)
         self._last_m = array.array('f', [-1.0] * n)
@@ -496,7 +496,10 @@ class SR04:
         @property
         def filter(self) -> list[dict]:
             return [
-                {'R': self._p._filters[i]._R, 'Q': self._p._filters[i]._Q}
+                {
+                    'R': int(round(self._p._filters[i]._R * 10000.0)),
+                    'Q': int(round(self._p._filters[i]._Q * 10000.0))
+                }
                 for i in self._i
             ]
 
@@ -508,13 +511,13 @@ class SR04:
             Q = params.get('Q')
             for i in self._i:
                 if R is not None:
-                    if R <= 0:
-                        raise ValueError("R (measurement noise) must be positive")
-                    self._p._filters[i]._R = float(R)
+                    if not (10 <= R <= 100):
+                        raise ValueError("R (measurement noise) must be in range 10-100")
+                    self._p._filters[i]._R = float(R) / 10000.0
                 if Q is not None:
-                    if Q < 0:
-                        raise ValueError("Q (process noise) must be non-negative")
-                    self._p._filters[i]._Q = float(Q)
+                    if not (1 <= Q <= 10):
+                        raise ValueError("Q (process noise) must be in range 1-10")
+                    self._p._filters[i]._Q = float(Q) / 10000.0
 
         @property
         def filter_states(self) -> list[dict]:
@@ -523,8 +526,8 @@ class SR04:
                     'position': self._p._filters[i]._x,
                     'velocity': self._p._filters[i]._v,
                     'covariance': [row[:] for row in self._p._filters[i]._P],
-                    'measurement_noise': self._p._filters[i]._R,
-                    'process_noise': self._p._filters[i]._Q
+                    'measurement_noise': int(round(self._p._filters[i]._R * 10000.0)),
+                    'process_noise': int(round(self._p._filters[i]._Q * 10000.0))
                 }
                 for i in self._i
             ]
