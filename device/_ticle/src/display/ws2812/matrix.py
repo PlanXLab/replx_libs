@@ -1,5 +1,5 @@
 # @package: ws2812
-# @version: 1.4
+# @version: 1.5
 # @type: device-specific
 # @category: display
 # @interface: GPIO
@@ -24,8 +24,6 @@ _PIO_FREQ           = const(8_000_000)
 _GC_THRESHOLD       = const(20480)
 _INK_CACHE_MAX      = const(128)
 _ROW_CACHE_MAX      = const(32)
-
-gc.threshold(_GC_THRESHOLD)
 
 _MASK_8             = const(0xFF)
 _MASK_16            = const(0xFFFF)
@@ -142,10 +140,12 @@ class Matrix:
         self._sc_period = max(1, int(scroll_speed_ms))
         self._sc_timer = machine.Timer(-1)
         self._sc_step_cb = self._sc_step_sched
-        self._sc_timer.init(period=self._sc_period, mode=machine.Timer.PERIODIC, callback=self._sc_tick_irq)
+        # Do NOT start the timer here — start it only when scrolling begins.
+        # An always-running 50ms periodic timer adds unnecessary IRQ overhead
+        # that interferes with asyncio and other DMA peripherals.
         self._sc_active = False
-        self._sc_timer_running = True
-        self._sc_timer_period = self._sc_period
+        self._sc_timer_running = False
+        self._sc_timer_period = 0
         self._sc_posted = 0
         self._sc_token = 0
         self._sc_on_done = None
@@ -251,26 +251,69 @@ class Matrix:
 
     @micropython.native
     def update(self, wait: bool = True) -> None:
-        dma_busy = any(dma.active() for dma in self._dmas)
-        if dma_busy and not wait:
-            return
-        
-        if dma_busy and wait:
-            while any(dma.active() for dma in self._dmas):
+        dmas = self._dmas
+        n_dma = len(dmas)
+        dma0 = dmas[0]
+
+        if n_dma == 1:
+            if not wait and dma0.active():
+                return
+            while dma0.active():
                 pass
 
-        if self._fb_dirty:
-            self._flush_fb_to_txb()
-            self._fb_dirty = False
+            if self._fb_dirty:
+                self._flush_fb_to_txb()
+                self._fb_dirty = False
 
-        for sm_id, sm, src, dma in zip(self._sm_ids, self._sms, self._tx_bufs, self._dmas):
-            if not dma.active():
-                ctrl = dma.pack_ctrl(size=2, inc_write=False, treq_sel=self._pio_dreq(sm_id), bswap=False)
-                dma.config(read=src, write=sm, count=len(src), ctrl=ctrl, trigger=True)
+            if not dma0.active():
+                sm_id = self._sm_ids[0]
+                ctrl = dma0.pack_ctrl(size=2, inc_write=False,
+                                      treq_sel=self._pio_dreq(sm_id), bswap=False)
+                dma0.config(read=self._tx_bufs[0], write=self._sms[0],
+                            count=len(self._tx_bufs[0]), ctrl=ctrl, trigger=True)
 
-        if wait:
-            while any(dma.active() for dma in self._dmas):
-                pass
+            if wait:
+                while dma0.active():
+                    pass
+
+        else:
+            if not wait:
+                for i in range(n_dma):
+                    if dmas[i].active():
+                        return
+            else:
+                busy = True
+                while busy:
+                    busy = False
+                    for i in range(n_dma):
+                        if dmas[i].active():
+                            busy = True
+                            break
+
+            if self._fb_dirty:
+                self._flush_fb_to_txb()
+                self._fb_dirty = False
+
+            sm_ids = self._sm_ids
+            sms = self._sms
+            bufs = self._tx_bufs
+            for i in range(n_dma):
+                dma = dmas[i]
+                if not dma.active():
+                    sm_id = sm_ids[i]
+                    ctrl = dma.pack_ctrl(size=2, inc_write=False,
+                                        treq_sel=self._pio_dreq(sm_id), bswap=False)
+                    dma.config(read=bufs[i], write=sms[i],
+                               count=len(bufs[i]), ctrl=ctrl, trigger=True)
+
+            if wait:
+                busy = True
+                while busy:
+                    busy = False
+                    for i in range(n_dma):
+                        if dmas[i].active():
+                            busy = True
+                            break
 
     def clear(self) -> None:
         self.fill(0)
