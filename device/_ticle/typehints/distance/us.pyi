@@ -70,7 +70,8 @@ class SR04:
         echo: int | list[int] | None = None,
         temp_c: float = 20.0,
         R: int = 25,
-        Q: int = 4
+        Q: int = 4,
+        pio: int | list[int] | tuple[int, ...] | None = 2
     ) -> None:
         """
         Initialize multi-channel SR04 driver with PIO State Machines.
@@ -85,6 +86,10 @@ class SR04:
         :param temp_c: Initial ambient temperature in Celsius (default: 20.0)
         :param R: Kalman measurement noise covariance in cm² (default: 25, range 10-100)
         :param Q: Kalman process noise covariance in cm² (default: 4, range 1-10)
+        :param pio: PIO block selection (default: 2). Can be:
+            - int (e.g., 2): single PIO block
+            - list/tuple (e.g., [0, 2]): search free SMs within specified PIO blocks
+            - None or [0, 1, 2]: search across all PIO blocks using default preferred order
 
         :raises ValueError: If neither sensor_configs nor trig/echo provided,
             or sensor_configs is empty, or temperature out of range
@@ -105,8 +110,8 @@ class SR04:
             >>> # Multi-sensor list form
             >>> sensors = SR04([(2, 3), (4, 5)])
             >>> 
-            >>> # With custom Kalman parameters
-            >>> sonic = SR04(trig=10, echo=11, R=16, Q=1)
+            >>> # With custom Kalman and specific PIO block
+            >>> sonic = SR04(trig=10, echo=11, R=16, Q=1, pio=1)
         ```
         """
         ...

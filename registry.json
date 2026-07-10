@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-07-09T23:21:43Z",
+  "generated_at": "2026-07-10T01:42:02Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -1190,7 +1190,7 @@
       "typehint": "device/_ticle/typehints/spi.pyi"
     },
     "utools@_ticle": {
-      "version": "1.2",
+      "version": "1.3",
       "type": "device-specific",
       "source": "device/_ticle/src/utools.py",
       "deploy_path": "utools.py",
@@ -1299,7 +1299,7 @@
       "typehint": "device/_ticle/typehints/audio/audio_async.pyi"
     },
     "us@_ticle": {
-      "version": "3.4",
+      "version": "3.5",
       "type": "device-specific",
       "source": "device/_ticle/src/distance/us.py",
       "deploy_path": "us.py",

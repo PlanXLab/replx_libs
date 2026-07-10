@@ -1,5 +1,5 @@
 # @package: us
-# @version: 3.4
+# @version: 3.5
 # @type: device-specific
 # @category: distance
 # @sensor_type: B
@@ -16,6 +16,7 @@ import micropython
 import rp2
 from rp2 import PIO, StateMachine
 from ufilter import Kalman1D
+from .utools import find_free_sm
 
 @rp2.asm_pio(set_init=rp2.PIO.OUT_LOW, autopush=False, push_thresh=32)
 def _sr04_pio_prog():
@@ -49,27 +50,6 @@ def _sr04_pio_prog():
     push()
     irq(rel(0))
 
-def find_free_sm_pio2(count: int) -> list[int]:
-    @rp2.asm_pio()
-    def _nop():
-        nop()
-    
-    available = []
-
-    for i in (8, 9, 10, 11):
-        try:
-            sm = rp2.StateMachine(i, _nop)
-            sm.active(0)
-            available.append(i)
-            if len(available) >= count:
-                return available
-        except:
-            pass
-
-    if len(available) < count:
-        raise RuntimeError(f"Need {count} SM on PIO2, only {len(available)} available")
-    return available
-
 
 class SR04:
     _PIO_FREQ = 1_000_000
@@ -81,7 +61,7 @@ class SR04:
     def __init__(self, sensor_configs: list[tuple[int, int]] | None = None, *,
                  trig: int | list[int] | None = None,
                  echo: int | list[int] | None = None,
-                 temp_c: float = 20.0, R: int = 25, Q: int = 4):
+                 temp_c: float = 20.0, R: int = 25, Q: int = 4, pio=2):
         if sensor_configs is None:
             if trig is None or echo is None:
                 raise ValueError("Provide sensor_configs or both trig and echo")
@@ -98,7 +78,7 @@ class SR04:
         
         n = len(sensor_configs)
         
-        sm_list = find_free_sm_pio2(n)
+        sm_list = find_free_sm(n, pio=pio)
         
         max_sm = 12
         for s in sm_list:
@@ -320,12 +300,10 @@ class SR04:
         return float('nan')
 
     def reset_filter(self) -> None:
-        """Reset Kalman filter state for all sensors."""
         for f in self._filters:
             f.reset()
 
     def _wait_echo_idle(self, idx: int, timeout_ms: int = 10) -> bool:
-        """Block until echo pin is LOW. Returns False on timeout."""
         pin = self._echo_pin_objs[idx]
         if pin.value() == 0:
             return True
