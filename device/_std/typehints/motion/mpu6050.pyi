@@ -42,22 +42,19 @@ class MPU6050:
 
     Coordinate Model
     ----------------
-    The MPU6050 chip/PCB frame is the fixed physical sensor frame: +X points
-    right, +Y points upward on the chip, and +Z points upward from the chip
-    surface when the chip is lying flat. ``remap`` first maps that PCB frame
-    into the mounted local frame using a signed permutation. The mapping is
-    written as output X, output Y, output Z.
+    The MPU6050 chip/PCB frame is the fixed physical sensor frame. ``remap``
+    maps that PCB frame directly into the selected output frame using a signed
+    permutation. The mapping is written as output X, output Y, output Z.
 
-    For a board mounted by rotating the chip/PCB 90 degrees counterclockwise
-    around the +X axis, the mounted local frame is right/up/sky = +X/-Z/+Y,
-    so ``remap='x-zy'`` means output X = PCB X, output Y = -PCB Z, and output
-    Z = PCB Y.
+    For TiCLE Lite's Basic-board orientation, ``coord='flu', remap='x-zy'``
+    means output X = PCB X, output Y = -PCB Z, and output Z = PCB Y. Accel,
+    gyro, DMP quaternion, tilt, Euler, and linear acceleration all use this
+    same final output-frame transform.
 
-    ``coord`` is applied after remap:
-    - ``'raw'``: remap only
-    - ``'enu'``: ENU world-style output, numerically the same base frame as raw
-    - ``'flu'``: ROS robot body frame, converted as (x, y, z) -> (y, -x, z)
-    - ``'ned'``: NED output converted from ENU as (x, y, z) -> (y, x, -z)
+    If ``remap`` is omitted, ``coord`` selects a conventional default mapping:
+    ``'raw'`` and ``'enu'`` use ``'xyz'``, ``'flu'`` uses ``'y-xz'``, and
+    ``'ned'`` uses ``'yx-z'``. When ``remap`` is supplied explicitly, it is
+    already the final output-frame mapping and is not transformed a second time.
 
     ``remap`` must use x, y, and z exactly once and preserve a right-handed
     coordinate frame. DMP quaternion, tilt, linear acceleration, accel,
@@ -114,7 +111,7 @@ class MPU6050:
         addr: int = 0x68,
         mode: str = Mode.RAW_BALANCED,
         coord: str = 'raw',
-        remap: str = 'xyz',
+        remap: str | None = None,
     ) -> None:
         """
         Initialize the MPU6050 IMU.
@@ -129,9 +126,10 @@ class MPU6050:
             (Forward-Left-Up) using (x, y, z) -> (y, -x, z). 'ned' converts
             the remapped ENU-style base frame to NED using (x, y, z) ->
             (y, x, -z).
-        :param remap: Signed axis permutation from IMU PCB frame to the mounted
-            base frame. It must use x, y, and z exactly once and must preserve
-            a right-handed frame. Examples: 'xyz', 'x-zy', 'yx-z'.
+        :param remap: Signed axis permutation from IMU PCB frame directly to
+            the selected output frame. It must use x, y, and z exactly once and
+            must preserve a right-handed frame. Examples: 'xyz', 'x-zy',
+            'yx-z'. If omitted, coord selects a conventional default remap.
         :raises RuntimeError: If I2C scan fails, the MPU6050 address is not
             found, the WHO_AM_I value is not valid, or DMP mode cannot locate
             responsive accelerometer offset registers.
@@ -238,9 +236,9 @@ class MPU6050:
         Read two-axis tilt from the gravity vector.
 
         Returns roll and pitch tilt angles computed from acceleration after the
-        configured coord/remap transform, strictly maintaining the standard Right-Hand Rule (RHR):
-        - Roll: rotation about longitudinal body X-axis (positive for tilt left, i.e. left side down)
-        - Pitch: rotation about lateral body Y-axis (positive for tilt up, i.e. front raised)
+        configured coord/remap transform, using Right-Hand Rule (RHR) signs:
+        - Roll: positive rotation about body +X, left side rises and right side lowers in FLU
+        - Pitch: positive rotation about body +Y, front lowers in FLU
 
         In DMP mode, the frame-synchronized DMP packet acceleration is used with the
         DMP packet scale; in RAW mode, a fresh accelerometer register read is used.
@@ -259,9 +257,8 @@ class MPU6050:
         Read DMP-derived Euler angles in radians.
 
         Roll and pitch are computed from the frame-synchronized DMP packet
-        acceleration after coord/remap correction adhering strictly to the
-        standard Right-Hand Rule (RHR, positive roll is tilt left, positive pitch
-        is tilt up), so they are usable immediately after startup and are not 
+        acceleration after coord/remap correction using Right-Hand Rule signs
+        (positive roll about body +X, positive pitch about body +Y), so they are usable immediately after startup and are not 
         affected by the slow DMP quaternion gravity-axis convergence on rotated mounts.
         Yaw is reported as a relative heading from bias-corrected body-frame gyroscope
         integration with a small stationary deadband, and may drift because

@@ -1,5 +1,5 @@
 # @package: mpu6050
-# @version: 2.23
+# @version: 2.24
 # @type: device-std
 # @category: motion
 # @sensor_type: D
@@ -286,14 +286,14 @@ class MPU6050:
     }
 
     _IDENTITY_MATRIX = ((1, 0, 0), (0, 1, 0), (0, 0, 1))
-    _COORD_MATRICES = {
-        'raw': _IDENTITY_MATRIX,
-        'enu': _IDENTITY_MATRIX,
-        'flu': ((0, 1, 0), (-1, 0, 0), (0, 0, 1)),
-        'ned': ((0, 1, 0), (1, 0, 0), (0, 0, -1)),
+    _DEFAULT_REMAPS = {
+        'raw': 'xyz',
+        'enu': 'xyz',
+        'flu': 'y-xz',
+        'ned': 'yx-z',
     }
 
-    def __init__(self, i2c, *, addr=0x68, mode=Mode.RAW_BALANCED, coord='raw', remap='xyz'):
+    def __init__(self, i2c, *, addr=0x68, mode=Mode.RAW_BALANCED, coord='raw', remap=None):
         self._i2c  = i2c
         self._i2c.set_retry_policy(retries=3, delay_us=1000)
         self._addr = int(addr)
@@ -301,15 +301,16 @@ class MPU6050:
         self._yaw = 0.0
         self._yaw_last_us = time.ticks_us()
         coord = coord.lower()
-        if coord not in self._COORD_MATRICES:
+        if coord not in self._DEFAULT_REMAPS:
             raise ValueError("coord must be 'raw', 'enu', 'flu', or 'ned'")
+        if remap is None:
+            remap = self._DEFAULT_REMAPS[coord]
         self._coord = coord
         self._remap = remap
-        self._coord_matrix = self._COORD_MATRICES[coord]
         self._remap_matrix = self._parse_axis_remap(remap)
-        self._body_matrix = self._mat_mul(self._coord_matrix, self._remap_matrix)
+        self._body_matrix = self._remap_matrix
         self._body_matrix_t = self._mat_transpose(self._body_matrix)
-        self._gravity_world = self._apply_matrix(self._coord_matrix, 0.0, 0.0, _G0)
+        self._gravity_world = (0.0, 0.0, -_G0 if coord == 'ned' else _G0)
 
         self._ensure_i2c_device()
 
