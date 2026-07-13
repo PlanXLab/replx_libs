@@ -561,13 +561,14 @@ class MPU6050:
     def _linear_from_quat(self, q, accel):
         w, x, y, z = q
         ax, ay, az = self._apply_body_transform(accel[0], accel[1], accel[2])
-        # Inline rotation matrix multiplication (body->world)
+        # Inline transpose rotation matrix multiplication (body->world) to rotate
+        # body acceleration back to world frame coordinates before subtracting gravity.
         xx, yy, zz = x*x, y*y, z*z
         wx, wy, wz = w*x, w*y, w*z
         xy, xz, yz = x*y, x*z, y*z
-        axw = (1-2*(yy+zz))*ax + 2*(xy-wz)*ay + 2*(xz+wy)*az
-        ayw = 2*(xy+wz)*ax + (1-2*(xx+zz))*ay + 2*(yz-wx)*az
-        azw = 2*(xz-wy)*ax + 2*(yz+wx)*ay + (1-2*(xx+yy))*az
+        axw = (1-2*(yy+zz))*ax + 2*(xy+wz)*ay + 2*(xz-wy)*az
+        ayw = 2*(xy-wz)*ax + (1-2*(xx+zz))*ay + 2*(yz+wx)*az
+        azw = 2*(xz+wy)*ax + 2*(yz-wx)*ay + (1-2*(xx+yy))*az
         gxw, gyw, gzw = self._gravity_world
         return (axw - gxw, ayw - gyw, azw - gzw)
 
