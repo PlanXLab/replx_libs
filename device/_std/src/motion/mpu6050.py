@@ -690,9 +690,10 @@ class MPU6050:
         mag = math.sqrt(x*x + y*y + z*z)
         if mag < _TILT_ACCEL_MIN or mag > _TILT_ACCEL_MAX:
             return self._last_tilt
+
         self._last_tilt = (
             self._clean_angle(math.atan2(y, z)),
-            self._clean_angle(math.atan2(x, z)),
+            self._clean_angle(math.atan2(-x, z)),
         )
         return self._last_tilt
 

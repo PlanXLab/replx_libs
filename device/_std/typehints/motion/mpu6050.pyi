@@ -237,17 +237,19 @@ class MPU6050:
         """
         Read two-axis tilt from the gravity vector.
 
-        Returns roll-like and pitch-like tilt angles computed from acceleration
-        after the configured coord/remap transform. In DMP mode, the
-        frame-synchronized DMP packet acceleration is used with the DMP packet
-        scale; in RAW mode, a fresh accelerometer register read is used. This
-        output is suitable for tilt
-        detection and small-angle control, but it is not a full 3D Euler
-        orientation and it does not include yaw.
+        Returns roll and pitch tilt angles computed from acceleration after the
+        configured coord/remap transform, strictly maintaining the standard Right-Hand Rule (RHR):
+        - Roll: rotation about longitudinal body X-axis (positive for tilt left, i.e. left side down)
+        - Pitch: rotation about lateral body Y-axis (positive for tilt up, i.e. front raised)
+
+        In DMP mode, the frame-synchronized DMP packet acceleration is used with the
+        DMP packet scale; in RAW mode, a fresh accelerometer register read is used.
+        This output is suitable for tilt detection and small-angle control, but it
+        is not a full 3D Euler orientation and it does not include yaw.
 
         Near-zero angles are normalized to 0.0 to avoid signed zero output.
 
-        :return: Tuple of (roll, pitch) in radians.
+        :return: Tuple of (roll, pitch) in radians adhering to the standard Right-Hand Rule.
         """
         ...
 
@@ -257,10 +259,11 @@ class MPU6050:
         Read DMP-derived Euler angles in radians.
 
         Roll and pitch are computed from the frame-synchronized DMP packet
-        acceleration after coord/remap correction, so they are usable
-        immediately after startup and are not affected by the slow DMP
-        quaternion gravity-axis convergence on rotated mounts. Yaw is reported
-        as a relative heading from bias-corrected body-frame gyroscope
+        acceleration after coord/remap correction adhering strictly to the
+        standard Right-Hand Rule (RHR, positive roll is tilt left, positive pitch
+        is tilt up), so they are usable immediately after startup and are not 
+        affected by the slow DMP quaternion gravity-axis convergence on rotated mounts.
+        Yaw is reported as a relative heading from bias-corrected body-frame gyroscope
         integration with a small stationary deadband, and may drift because
         MPU6050 has no magnetometer. Call ``zero_heading()`` to reset the yaw
         reference.
