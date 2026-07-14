@@ -283,7 +283,12 @@ class MPU6050:
         'ned': 'yx-z',
     }
 
-    def __init__(self, i2c, *, addr=0x68, mode=Mode.RAW_BALANCED):
+    def __init__(self, i2c, *, 
+        addr = 0x68,
+        mode: str = Mode.RAW_FAST,
+        coord: str = 'flu',
+        remap: str | None = '-z-xy'
+        ):
         self._i2c  = i2c
         self._i2c.set_retry_policy(retries=3, delay_us=1000)
         self._addr = int(addr)

@@ -119,7 +119,7 @@ class MPU6050:
         i2c: I2CController,
         *,
         addr: int = 0x68,
-        mode: str = Mode.RAW_BALANCED,
+        mode: str = Mode.RAW_FAST,
         coord: str = 'flu',
         remap: str | None = '-z-xy',
     ) -> None:
