@@ -303,12 +303,15 @@ class MPU6050:
         coord = coord.lower()
         if coord not in self._DEFAULT_REMAPS:
             raise ValueError("coord must be 'raw', 'enu', 'flu', or 'ned'")
-        if remap is None:
-            remap = self._DEFAULT_REMAPS[coord]
         self._coord = coord
         self._remap = remap
-        self._remap_matrix = self._parse_axis_remap(remap)
-        self._body_matrix = self._remap_matrix
+        # remap: chip/PCB-frame mounting correction only (independent of coord).
+        # coord: fixed canonical(ENU-style)-to-target-body conversion, applied
+        # after remap. body_matrix = coord_matrix @ remap_matrix, so a single
+        # remap value stays valid for whichever coord (raw/enu/flu/ned) is chosen.
+        coord_matrix = self._parse_axis_remap(self._DEFAULT_REMAPS[coord])
+        self._remap_matrix = self._IDENTITY_MATRIX if remap is None else self._parse_axis_remap(remap)
+        self._body_matrix = self._mat_mul(coord_matrix, self._remap_matrix)
         self._body_matrix_t = self._mat_transpose(self._body_matrix)
         self._gravity_world = (0.0, 0.0, -_G0 if coord == 'ned' else _G0)
 
