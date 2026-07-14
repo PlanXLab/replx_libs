@@ -18,6 +18,7 @@ Features:
 Sensor Type: D (Immediate) - Property-based data access
 Interface: I2C (400kHz)
 """
+
 from i2c import I2CController
 
 class MPU6050:
@@ -82,9 +83,7 @@ class MPU6050:
 
         >>> i2c = I2CController(sda=12, scl=13)
         >>> imu = MPU6050(i2c,
-        ...               mode=MPU6050.Mode.DMP_STABLE,
-        ...               coord='flu',
-        ...               remap='x-zy')
+        ...               mode=MPU6050.Mode.DMP_STABLE)
         >>> t0 = time.ticks_ms()
         >>> while time.ticks_diff(time.ticks_ms(), t0) < 1_000:
         ...     roll, pitch = imu.tilt
@@ -121,8 +120,8 @@ class MPU6050:
         *,
         addr: int = 0x68,
         mode: str = Mode.RAW_BALANCED,
-        coord: str = 'raw',
-        remap: str | None = None,
+        coord: str = 'flu',
+        remap: str | None = '-z-xy',
     ) -> None:
         """
         Initialize the MPU6050 IMU.
@@ -157,8 +156,7 @@ class MPU6050:
             >>> from mpu6050 import MPU6050
             >>> i2c = I2CController(sda=12, scl=13)
             >>> imu = MPU6050(i2c,
-            ...               mode=MPU6050.Mode.DMP_STABLE,
-            ...               coord='flu', remap='x-zy')
+            ...               mode=MPU6050.Mode.DMP_STABLE)
             >>> t0 = time.ticks_ms()
             >>> while time.ticks_diff(time.ticks_ms(), t0) < 30_000:
             ...     roll, pitch, yaw = imu.euler
@@ -291,8 +289,7 @@ class MPU6050:
 
             >>> i2c = I2CController(sda=12, scl=13)
             >>> imu = MPU6050(i2c,
-            ...               mode=MPU6050.Mode.DMP_STABLE,
-            ...               coord='flu', remap='x-zy')
+            ...               mode=MPU6050.Mode.DMP_STABLE)
             >>> for _ in range(20):
             ...     roll, pitch, yaw = imu.euler
             ...     print(math.degrees(roll), math.degrees(pitch), math.degrees(yaw))
