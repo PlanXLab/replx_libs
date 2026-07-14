@@ -45,27 +45,34 @@ class MPU6050:
     ----------------
     The MPU6050 chip/PCB frame is the fixed physical sensor frame, defined
     only by the sensor's own silicon axes and never by how a board mounts
-    it. ``remap`` is a signed axis permutation that corrects for that
-    mounting only: it maps the PCB frame into a canonical ENU-style
-    reference frame and knows nothing about the application's desired
-    output convention.
+    it. ``remap`` is a signed axis permutation that corrects only for that
+    physical mounting: its three signed axis letters map directly to the
+    final (ax, ay, az) in ROS FLU order (Forward, Left, Up). ``remap`` does
+    not depend on ``coord`` in any way.
 
-    ``coord`` then converts that canonical ENU-style frame into the
-    selected output convention: ``'raw'`` and ``'enu'`` leave it unchanged,
-    ``'flu'`` applies (x, y, z) -> (y, -x, z) for the ROS Forward-Left-Up
-    robot body frame, and ``'ned'`` applies (x, y, z) -> (y, x, -z). The
-    transform applied to accel, gyro, DMP quaternion, tilt, Euler, and
+    ``coord`` independently selects how that FLU-ordered result is labeled
+    for the caller: ``'raw'``, ``'enu'``, and ``'flu'`` all return it
+    unchanged, while ``'ned'`` returns the same physical readings relabeled
+    as (Front, Right, Down) by negating the second and third components.
+    The transform applied to accel, gyro, DMP quaternion, tilt, Euler, and
     linear acceleration is always coord_matrix @ remap_matrix, so a single
-    ``remap`` value (a hardware/mounting fact) stays correct regardless of
-    which ``coord`` convention is requested.
+    ``remap`` value (a hardware/mounting fact) stays correct no matter which
+    ``coord`` convention is requested.
+
+    Because ``coord='flu'`` (the default) applies no further transform,
+    ``remap`` can be determined directly from measurements: tilt the board
+    so the desired forward face points down and note which raw_accel axis
+    reads about -9.8 (write that axis with a '+' sign, or '-' if it instead
+    reads about +9.8); repeat for the desired left face, then for the
+    desired up face tipped downward. The three results, in order, are the
+    remap string.
 
     For TiCLE Lite's Basic-board orientation (MPU6050 mounted on its side),
-    the mounting correction is ``remap='-z-xy'``; switching ``coord`` among
+    the mounting correction is ``remap='-xzy'``; switching ``coord`` among
     'raw', 'enu', 'flu', and 'ned' does not require a different remap.
 
     If ``remap`` is omitted, it defaults to the identity (``'xyz'``),
-    meaning the PCB frame is assumed to already coincide with the
-    canonical ENU-style frame.
+    meaning the PCB frame already matches FLU.
 
     ``remap`` must use x, y, and z exactly once and preserve a right-handed
     coordinate frame. DMP quaternion, tilt, linear acceleration, accel,
@@ -121,7 +128,7 @@ class MPU6050:
         addr: int = 0x68,
         mode: str = Mode.RAW_FAST,
         coord: str = 'flu',
-        remap: str | None = '-z-xy',
+        remap: str | None = '-xzy',
     ) -> None:
         """
         Initialize the MPU6050 IMU.
@@ -130,19 +137,16 @@ class MPU6050:
         :param addr: I2C address (0x68 default, 0x69 if AD0 high).
         :param mode: Operating mode preset.
         :param coord: Output coordinate convention: 'raw', 'enu', 'flu', or 'ned'.
-            'raw' applies only remap. 'enu' uses the same axis order as the
-            remapped base frame as an ENU world-style frame. 'flu' converts
-            the remapped ENU-style base frame to the ROS robot body frame
-            (Forward-Left-Up) using (x, y, z) -> (y, -x, z). 'ned' converts
-            the remapped ENU-style base frame to NED using (x, y, z) ->
-            (y, x, -z).
+            'raw', 'enu', and 'flu' all return the remapped FLU-ordered
+            result unchanged. 'ned' relabels the same physical readings as
+            (Front, Right, Down) by negating the second and third
+            components; it never changes what remap you need.
         :param remap: Signed axis permutation that corrects only for the IMU's
-            physical mounting, mapping the PCB frame into a canonical
-            ENU-style frame (independent of coord). It must use x, y, and z
-            exactly once and must preserve a right-handed frame. Examples:
-            'xyz', 'x-zy', 'yx-z'. If omitted, defaults to the identity
-            ('xyz'), meaning the PCB frame already matches the canonical
-            frame.
+            physical mounting; its three positions map directly to the final
+            (ax, ay, az) in FLU order, independent of coord. It must use x,
+            y, and z exactly once and must preserve a right-handed frame.
+            Examples: 'xyz', 'x-zy', 'yx-z'. If omitted, defaults to the
+            identity ('xyz'), meaning the PCB frame already matches FLU.
         :raises RuntimeError: If I2C scan fails, the MPU6050 address is not
             found, the WHO_AM_I value is not valid, or DMP mode cannot locate
             responsive accelerometer offset registers.

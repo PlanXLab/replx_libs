@@ -279,15 +279,15 @@ class MPU6050:
     _DEFAULT_REMAPS = {
         'raw': 'xyz',
         'enu': 'xyz',
-        'flu': 'y-xz',
-        'ned': 'yx-z',
+        'flu': 'xyz',
+        'ned': 'x-y-z',
     }
 
     def __init__(self, i2c, *, 
         addr = 0x68,
         mode: str = Mode.RAW_FAST,
         coord: str = 'flu',
-        remap: str | None = '-z-xy'
+        remap: str | None = '-xzy'
         ):
         self._i2c  = i2c
         self._i2c.set_retry_policy(retries=3, delay_us=1000)
