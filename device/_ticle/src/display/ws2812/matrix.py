@@ -400,51 +400,43 @@ class Matrix:
         gc.collect()
 
     @micropython.native
-    def draw_line(self, x0:int, y0:int, x1:int, y1:int, color):
+    def draw_line(self, x0:int, y0:int, x1:int, y1:int, color, fast=True):
         r, g, b = self._normalize_color(color)
         packed = self._pack_grb(r, g, b)
         w = self._fb_width
         h = self._fb_height
         fb = self._fb
-        if y0 == y1:
+        
+        if fast and y0 == y1:
             y = y0
             if 0 <= y < h:
-                if x0 > x1:
+                if x0 > x1: 
                     x0, x1 = x1, x0
-            
-                x0 = max(0, x0)
-                x1 = min(w - 1, x1)
+                x0, x1 = max(0, x0), min(w - 1, x1)
                 if x0 <= x1:
-                    span = x1 - x0 + 1
-                    base = y * w + x0
-                    self._fill32(fb, base, packed, span)
+                    self._fill32(fb, y * w + x0, packed, x1 - x0 + 1)
                     self._fb_dirty = True
             return
 
-        if x0 == x1:
+        if fast and x0 == x1:
             x = x0
-            if not (0 <= x < w):
+            if not (0 <= x < w): 
                 return
-
-            if y0 > y1:
+            if y0 > y1: 
                 y0, y1 = y1, y0
-          
-            y0 = max(0, y0)
-            y1 = min(h - 1, y1)
-            if y0 > y1:
+            y0, y1 = max(0, y0), min(h - 1, y1)
+            if y0 > y1: 
                 return
-
-            span   = y1 - y0 + 1
-            offset = y0 * w + x
-            self._fill32(fb, offset, packed, span)
+            self._fill32(fb, y0 * w + x, packed, y1 - y0 + 1)
             self._fb_dirty = True
             return
-
+        
         dx = abs(x1 - x0)
         sx = 1 if x0 < x1 else -1
         dy = -abs(y1 - y0)
         sy = 1 if y0 < y1 else -1
         err = dx + dy
+    
         while True:
             if 0 <= x0 < w and 0 <= y0 < h:
                 fb[y0 * w + x0] = packed
@@ -455,11 +447,11 @@ class Matrix:
             e2 = err << 1
             if e2 >= dy:
                 err += dy
-                x0  += sx
+                x0 += sx
             
             if e2 <= dx:
                 err += dx
-                y0  += sy
+                y0 += sy
 
         self._fb_dirty = True
 
