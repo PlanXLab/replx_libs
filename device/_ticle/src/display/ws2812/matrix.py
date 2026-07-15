@@ -1102,7 +1102,7 @@ class Matrix:
                                                     mask_base, cc_from, cc_to, px0, pix)
                                 rr += 1
                         else:
-                            is_spec = (isinstance(fg_shader, (tuple, list)) and len(fg_shader) >= 1 and isinstance(fg_shader[0], int) and 1 <= fg_shader[0] <= 4)
+                            is_spec = (isinstance(fg_shader, (tuple, list)) and len(fg_shader) >= 1 and isinstance(fg_shader[0], int) and 1 <= fg_shader[0] <= 5)
                             if is_spec:
                                 m = int(fg_shader[0])
                                 pa = int(fg_shader[1]); pb = int(fg_shader[2])
@@ -1115,7 +1115,7 @@ class Matrix:
                                 elif m == int(_SH_CHECKER):
                                     p1 = int(fg_shader[3]); p2 = int(fg_shader[4])
                                 elif m == int(_SH_RAINBOW):
-                                    p1 = 0; p2 = 0
+                                    p1 = ink_l; p2 = ink_r
                                 else: 
                                     p1 = int(fg_shader[3]); p2 = 0
 
@@ -1415,7 +1415,7 @@ class Matrix:
         if gi >= 0:
             if self._sc_mode == 'shader':
                 sh = self._sc_fg_shader
-                is_spec = (isinstance(sh, (tuple, list)) and len(sh) >= 1 and isinstance(sh[0], int) and 1 <= sh[0] <= 4)
+                is_spec = (isinstance(sh, (tuple, list)) and len(sh) >= 1 and isinstance(sh[0], int) and 1 <= sh[0] <= 5)
                 if is_spec:
                     self._scroll_h_blit_glyph_shader_spec(gi, self.font_width, self.font_height, self._sc_rb_w, self._sc_write_x, gw, self._sc_lm, self._sc_dir, self._sc_right_m, sh)
                 else:
@@ -1583,6 +1583,8 @@ class Matrix:
         arm: int = 0
         cx: int = 0
         cy: int = 0
+        rb_lo: int = 0
+        rb_span: int = 1
 
         if mode == 1:
             thr_lr = p1
@@ -1591,6 +1593,11 @@ class Matrix:
         elif mode == 3:
             cw = p1
             ch = p2
+        elif mode == 5:
+            rb_lo = p1
+            rb_span = p2 - p1
+            if rb_span <= 0:
+                rb_span = 1
         else:
             arm = p1
             cx = fw >> 1
@@ -1614,6 +1621,22 @@ class Matrix:
                     v: int = (tx + ty) & 1
                     if v != 0:
                         pix = pix_b
+                elif mode == 5:
+                    t: int = ((cc_from - rb_lo) * 255) // rb_span
+                    if t < 0:
+                        t = 0
+                    elif t > 255:
+                        t = 255
+                    g_a: int = (pix_a >> 24) & 255
+                    r_a: int = (pix_a >> 16) & 255
+                    b_a: int = (pix_a >> 8) & 255
+                    g_b: int = (pix_b >> 24) & 255
+                    r_b: int = (pix_b >> 16) & 255
+                    b_b: int = (pix_b >> 8) & 255
+                    g_i: int = g_a + (((g_b - g_a) * t) // 255)
+                    r_i: int = r_a + (((r_b - r_a) * t) // 255)
+                    b_i: int = b_a + (((b_b - b_a) * t) // 255)
+                    pix = (g_i << 24) | (r_i << 16) | (b_i << 8)
                 else:
                     dx: int = cc_from - cx
                     if dx < 0:
@@ -2311,7 +2334,7 @@ class Matrix:
     def _fg_mode(self, fg, text: str, chars: list):
         if isinstance(fg, (tuple, list)) and fg:
             m = fg[0]
-            if isinstance(m, int) and 1 <= m <= 4:
+            if isinstance(m, int) and 1 <= m <= 5:
                 return 'shader', None, 0, fg
             
         if isinstance(fg, (list, tuple)) and fg and isinstance(fg[0], (list, tuple)):
@@ -2684,6 +2707,8 @@ class Matrix:
             pix_a, pix_b = shspec[1], shspec[2]
             cell_w = int(shspec[3])
             cell_h = int(shspec[4])
+        elif mode == 5:
+            pix_a, pix_b = shspec[1], shspec[2]
         else: 
             pix_a, pix_b = shspec[1], shspec[2]
             arm = int(shspec[3])
@@ -2751,6 +2776,17 @@ class Matrix:
                         rb[base + c] = pix_a if sxx < thr_lr else pix_b
                     elif mode == 3:
                         rb[base + c] = pix_a if (((sxx // cell_w) + (row // cell_h)) & 1) == 0 else pix_b
+                    elif mode == 5:
+                        span = ink_w - 1
+                        if span <= 0:
+                            span = 1
+                        t = (sxx * 255) // span
+                        g_a = (pix_a >> 24) & 0xFF; r_a = (pix_a >> 16) & 0xFF; b_a = (pix_a >> 8) & 0xFF
+                        g_b = (pix_b >> 24) & 0xFF; r_b = (pix_b >> 16) & 0xFF; b_b = (pix_b >> 8) & 0xFF
+                        g_i = g_a + ((g_b - g_a) * t) // 255
+                        r_i = r_a + ((r_b - r_a) * t) // 255
+                        b_i = b_a + ((b_b - b_a) * t) // 255
+                        rb[base + c] = (g_i << 24) | (r_i << 16) | (b_i << 8)
                     else: 
                         dx = sxx - cx; dy = row - cy
                         on_cross = (abs(dx) <= arm) or (abs(dy) <= arm)
@@ -2819,7 +2855,7 @@ class Matrix:
         chars = list(text)
         packed_bg, disp_w, rb_w, head, write_x = self._scroll_h_setup(bg, direction)
 
-        is_spec = (isinstance(fg_shader, (tuple, list)) and len(fg_shader) >= 1 and isinstance(fg_shader[0], int) and 1 <= fg_shader[0] <= 4)
+        is_spec = (isinstance(fg_shader, (tuple, list)) and len(fg_shader) >= 1 and isinstance(fg_shader[0], int) and 1 <= fg_shader[0] <= 5)
         dir_right = 0 if direction == "left" else 1
         for idx, ch in enumerate(chars):
             if ch == " ":
@@ -2989,6 +3025,8 @@ class Matrix:
             pix_a, pix_b = shspec[1], shspec[2]
             cell_w = int(shspec[3])
             cell_h = int(shspec[4])
+        elif mode == 5:
+            pix_a, pix_b = shspec[1], shspec[2]
         else: 
             pix_a, pix_b = shspec[1], shspec[2]
             arm = int(shspec[3])
@@ -3023,6 +3061,17 @@ class Matrix:
                                 pix_fg = pix_row
                             elif mode == 3:
                                 pix_fg = pix_a if (((xx // cell_w) + (rr // cell_h)) & 1) == 0 else pix_b
+                            elif mode == 5:
+                                span = ink_r - ink_l
+                                if span <= 0:
+                                    span = 1
+                                t = ((xx - ink_l) * 255) // span
+                                g_a = (pix_a >> 24) & 0xFF; r_a = (pix_a >> 16) & 0xFF; b_a = (pix_a >> 8) & 0xFF
+                                g_b = (pix_b >> 24) & 0xFF; r_b = (pix_b >> 16) & 0xFF; b_b = (pix_b >> 8) & 0xFF
+                                g_i = g_a + ((g_b - g_a) * t) // 255
+                                r_i = r_a + ((r_b - r_a) * t) // 255
+                                b_i = b_a + ((b_b - b_a) * t) // 255
+                                pix_fg = (g_i << 24) | (r_i << 16) | (b_i << 8)
                             else: 
                                 dx = xx - cx; dy = rr - cy
                                 on_cross = (abs(dx) <= arm) or (abs(dy) <= arm)
@@ -3168,7 +3217,7 @@ class Matrix:
             if x:
                 segs = [(gi, ch_idx, ch, dst_x + x, ink_l, ink_r, fw_local) for (gi, ch_idx, ch, dst_x, ink_l, ink_r, fw_local) in segs]
 
-            if isinstance(fg_shader, (tuple, list)) and fg_shader and isinstance(fg_shader[0], int) and 1 <= fg_shader[0] <= 4:
+            if isinstance(fg_shader, (tuple, list)) and fg_shader and isinstance(fg_shader[0], int) and 1 <= fg_shader[0] <= 5:
                 self._vb_blit_line_shader_spec(write_row, direction, segs, fg_shader, packed_bg, gh, y_off)
             else:
                 self._vb_blit_line_shader(write_row, direction, segs, fg_shader, packed_bg, gh, y_off)
