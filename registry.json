@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-07-10T01:42:02Z",
+  "generated_at": "2026-07-31T03:09:02Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -936,7 +936,7 @@
       "typehint": "device/_std/typehints/motion/bno055_async.pyi"
     },
     "mpu6050": {
-      "version": "2.23",
+      "version": "3.0",
       "type": "device-std",
       "source": "device/_std/src/motion/mpu6050.py",
       "deploy_path": "mpu6050.py",
@@ -1250,7 +1250,7 @@
       "typehint": "device/_ticle/typehints/actuators/relay_async.pyi"
     },
     "audio@_ticle": {
-      "version": "1.9",
+      "version": "1.10",
       "type": "device-specific",
       "source": "device/_ticle/src/audio/audio.py",
       "deploy_path": "audio.py",
