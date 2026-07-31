@@ -1,5 +1,5 @@
 # @package: audio
-# @version: 1.9
+# @version: 1.10
 # @type: device-specific
 # @category: audio
 # @interface: I2S
@@ -65,8 +65,8 @@ class Audio:
         self,
         sck,
         ws,
-        sd_out,
-        sd_in,
+        sd_out=None,
+        sd_in=None,
         *,
         tempo_bpm=120,
         default_fade_ms=6,
@@ -77,12 +77,14 @@ class Audio:
     ):
         sck = int(sck)
         ws = int(ws)
-        sd_out = int(sd_out)
-        sd_in = int(sd_in)
+        sd_out = None if sd_out is None else int(sd_out)
+        sd_in = None if sd_in is None else int(sd_in)
 
         if ws != sck + 1:
             raise ValueError('On RP2 I2S, ws must be sck + 1')
-        if sd_out == sd_in:
+        if sd_out is None and sd_in is None:
+            raise ValueError('At least one of sd_out or sd_in must be provided')
+        if sd_out is not None and sd_in is not None and sd_out == sd_in:
             raise ValueError('sd_out and sd_in must be different pins')
 
         self._pin_sck = sck
@@ -209,10 +211,15 @@ class Audio:
     def _idle_i2s_pins(self):
         Pin(self._pin_sck, Pin.OUT, value=0)
         Pin(self._pin_ws, Pin.OUT, value=0)
-        Pin(self._pin_sd_out, Pin.OUT, value=0)
-        Pin(self._pin_sd_in, Pin.IN)
+        if self._pin_sd_out is not None:
+            Pin(self._pin_sd_out, Pin.OUT, value=0)
+        if self._pin_sd_in is not None:
+            Pin(self._pin_sd_in, Pin.IN)
 
     def _ensure_tx_mode(self, rate=None):
+        if self._pin_sd_out is None:
+            raise RuntimeError('Audio output is unavailable; configure sd_out')
+
         target_rate = self._rate if rate is None else max(4000, int(rate))
         if self._mode == self._MODE_TX and self._i2s is not None and self._rate == target_rate:
             return
@@ -229,6 +236,9 @@ class Audio:
         self._open_i2s(self._MODE_TX, target_rate)
 
     def _ensure_rx_mode(self):
+        if self._pin_sd_in is None:
+            raise RuntimeError('Audio input is unavailable; configure sd_in')
+
         if self._mode == self._MODE_RX and self._i2s is not None:
             return
 
@@ -1000,10 +1010,6 @@ class Audio:
 
     @micropython.viper
     def _block_sum_int16(self, buf, off: int, n: int) -> int:
-        # Pre-adjust pointer to element 'off' so the inner loop uses a plain
-        # counter p[k] (k = 0..n-1).  Viper compiles simple indexed ptr16
-        # accesses to efficient assembly; complex expressions like p[off+k]
-        # fall back to slow Python object arithmetic.
         p = ptr16(int(addressof(buf)) + (off << 1))
         s: int = 0
         v: int = 0
@@ -1016,8 +1022,6 @@ class Audio:
 
     @micropython.viper
     def _block_sum_sq_dev(self, buf, off: int, n: int, mean_i: int, shift: int) -> int:
-        # Same pre-adjustment: shift base pointer by 'off' elements so the
-        # loop only ever uses p[k] with k starting at 0.
         p = ptr16(int(addressof(buf)) + (off << 1))
         s: int = 0
         v: int = 0
@@ -1032,10 +1036,6 @@ class Audio:
 
     @micropython.viper
     def _sum_sq_i2s32_shift(self, buf, frame_off: int, n_frames: int, shift: int) -> int:
-        # Pre-adjust ptr32 to frame 'frame_off' (4 bytes per 32-bit frame).
-        # Loop then uses p[i] with i from 0, enabling efficient assembly.
-        # Arithmetic right-shift propagates the sign bit, eliminating the
-        # manual two's-complement fixup that ptr16 required.
         p = ptr32(int(addressof(buf)) + (frame_off << 2))
         s: int = 0
         v: int = 0
@@ -1075,9 +1075,6 @@ class Audio:
         required_bytes = total_frames * 2
         gc.collect()
         self._ensure_rec_bufs()
-        # _ensure_rec_bufs() has already allocated _rec_buf and _convert_buf;
-        # gc.mem_free() no longer counts those bytes.  Only compare the new
-        # output buffer size against free RAM, with a 16 KB safety margin.
         if required_bytes + 16384 > gc.mem_free():
             raise MemoryError('Requested capture is too large for in-memory recording; use record_to_file() for long recordings')
 
@@ -1093,9 +1090,6 @@ class Audio:
     def _write_wav_header(f, sample_rate, data_size, num_channels=1, bits_per_sample=16):
         byte_rate = sample_rate * num_channels * bits_per_sample // 8
         block_align = num_channels * bits_per_sample // 8
-        # Build the entire 44-byte RIFF/WAVE header in one bytearray and
-        # write it with a single f.write() call to minimise heap churn and
-        # avoid partial-write inconsistency on slow storage.
         hdr = bytearray(44)
         struct.pack_into(
             '<4sI4s4sIHHIIHH4sI',
@@ -1113,8 +1107,6 @@ class Audio:
 
         gc.collect()
         self._ensure_rec_bufs()  
-        # Same reasoning as read_samples: only compare the new RAM buffer
-        # against free memory, with a 16 KB safety margin.
         if data_size + 16384 > gc.mem_free():
             raise MemoryError(
                 'Recording too large for available RAM; reduce duration_ms or rate'
@@ -1128,9 +1120,6 @@ class Audio:
             )
         ram_mv = memoryview(ram_buf)
 
-        # Both capture and file-write are inside the same try/finally so that
-        # the I2S hardware is released regardless of where a failure occurs
-        # (e.g. SD card removal or disk-full during f.write).
         try:
             out_off = self._capture_pcm16_into(ram_mv, total_frames)
             with open(filename, 'wb') as f:
@@ -1232,6 +1221,6 @@ class Audio:
             off += take
             rem -= take
 
-        SHIFT_SQ = SHIFT << 1  # = 6; precomputed once, no need for type annotation
+        SHIFT_SQ = SHIFT << 1 
         mean_sq = (sum_total << SHIFT_SQ) / n
         return int(math.sqrt(mean_sq)) if mean_sq > 0.0 else 0
