@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-08-04T04:28:41Z",
+  "generated_at": "2026-08-04T04:53:54Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -1250,7 +1250,7 @@
       "typehint": "device/_ticle/typehints/actuators/relay_async.pyi"
     },
     "audio@_ticle": {
-      "version": "1.10",
+      "version": "1.11",
       "type": "device-specific",
       "source": "device/_ticle/src/audio/audio.py",
       "deploy_path": "audio.py",

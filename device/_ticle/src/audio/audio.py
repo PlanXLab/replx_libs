@@ -1,5 +1,5 @@
 # @package: audio
-# @version: 1.10
+# @version: 1.11
 # @type: device-specific
 # @category: audio
 # @interface: I2S
@@ -1120,22 +1120,27 @@ class Audio:
             )
         ram_mv = memoryview(ram_buf)
 
+        # Tear down the I2S/DMA session before touching the filesystem: a flash
+        # write disables interrupts for its duration, and leaving I2S RX open
+        # across that (as the old code did, deiniting only after the file was
+        # written) could destabilize the board. Capture fully, close I2S, then write.
         try:
             out_off = self._capture_pcm16_into(ram_mv, total_frames)
-            with open(filename, 'wb') as f:
-                self._write_wav_header(f, self._rate, out_off)
-                written = 0
-                chunk = self._REC_FILE_CHUNK_BYTES
-                while written < out_off:
-                    take = chunk if (out_off - written) > chunk else (out_off - written)
-                    f.write(ram_mv[written:written + take])
-                    written += take
         finally:
             if self._i2s is not None:
                 self._i2s.deinit()
                 self._i2s = None
             self._mode = None
             self._idle_i2s_pins()
+
+        with open(filename, 'wb') as f:
+            self._write_wav_header(f, self._rate, out_off)
+            written = 0
+            chunk = self._REC_FILE_CHUNK_BYTES
+            while written < out_off:
+                take = chunk if (out_off - written) > chunk else (out_off - written)
+                f.write(ram_mv[written:written + take])
+                written += take
 
     def get_level(self):
         self._ensure_rx_mode()
