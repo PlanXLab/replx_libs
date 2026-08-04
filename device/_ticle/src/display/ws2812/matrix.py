@@ -1,5 +1,5 @@
 # @package: ws2812
-# @version: 1.7
+# @version: 1.8
 # @type: device-specific
 # @category: display
 # @interface: GPIO
@@ -24,6 +24,7 @@ _PIO_FREQ           = const(8_000_000)
 _GC_THRESHOLD       = const(20480)
 _INK_CACHE_MAX      = const(128)
 _ROW_CACHE_MAX      = const(32)
+_FONT_CHUNK_BYTES   = const(8192)
 
 _MASK_8             = const(0xFF)
 _MASK_16            = const(0xFFFF)
@@ -100,6 +101,8 @@ class Matrix:
         self._blank_l = None
         self._blank_r = None
         self._font_buf = None
+        self._font_chunks = None
+        self._font_chunk_glyphs = 0
         self._font_name = None
         self._font_modname = None
         self._is_bin_font = 0
@@ -1734,15 +1737,20 @@ class Matrix:
         """Get row bits for glyph by index."""
         bpr: int = int(self._glyph_bpr)
         fw: int = int(self.font_width)
-        p = ptr8(self.font)
         span: int = int(self._glyph_span)
         is_bin: int = int(self._is_bin_font)
 
         if is_bin:
-            base: int = int(idx) * span + int(rr) * bpr
+            # Bitmap is split across self._font_chunks (see _load_font_bin), so
+            # resolve which chunk holds this glyph before taking a raw pointer.
+            chunk_glyphs: int = int(self._font_chunk_glyphs)
+            chunk_idx: int = int(idx) // chunk_glyphs
+            base: int = (int(idx) - chunk_idx * chunk_glyphs) * span + int(rr) * bpr
+            p = ptr8(self._font_chunks[chunk_idx])
         else:
             offsets = self._offsets
             base = int(offsets[idx]) + int(rr) * bpr
+            p = ptr8(self.font)
         
         mask_shift: int = (bpr << 3) - fw
         if bpr == 1:
@@ -2123,7 +2131,7 @@ class Matrix:
 
     def _unload_font(self):
         for attr in ("font", "font_width", "font_height", "_glyph_bpr", "_glyph_span", "_fallback_cp",
-            "_codes", "_offsets", "_blank_l", "_blank_r", "_font_buf"):
+            "_codes", "_offsets", "_blank_l", "_blank_r", "_font_buf", "_font_chunks", "_font_chunk_glyphs"):
             if hasattr(self, attr):
                 setattr(self, attr, None)
 
@@ -2237,49 +2245,61 @@ class Matrix:
         font_path = dir_path + "/" + font_name
         
         with open(font_path, 'rb') as f:
-            self._font_buf = f.read()
+            header = f.read(16)
+            
+            magic = header[0:4]
+            if magic != b'UPYF':
+                raise ValueError("Invalid font file magic")
+            
+            width, height, glyph_count, bpr, fallback, flags = struct.unpack_from('<HHHHHH', header, 4)
+            
+            self.font_width = width
+            self.font_height = height
+            self._glyph_bpr = bpr
+            self._glyph_span = bpr * height
+            self._fallback_cp = fallback
+            self._font_name = font_name
+            self._font_modname = None
+            
+            has_blanks = (flags & 0x0001) != 0
+            codes_size = glyph_count * 2
+            blank_size = glyph_count if has_blanks else 0
+            
+            codes_bytes = f.read(codes_size)
+            self._codes = array.array('H')
+            for i in range(glyph_count):
+                offset = i * 2
+                code = codes_bytes[offset] | (codes_bytes[offset + 1] << 8)
+                self._codes.append(code)
+            del codes_bytes
+            
+            if has_blanks:
+                self._blank_l = f.read(blank_size)
+                self._blank_r = f.read(blank_size)
+            else:
+                self._blank_l = array.array('B', (0 for _ in range(glyph_count)))
+                self._blank_r = array.array('B', (0 for _ in range(glyph_count)))
+            
+            gc.collect()
+            
+            # Read the glyph bitmap area (tens of KB) as several small, glyph-aligned
+            # chunks rather than one giant block: MicroPython's allocator never
+            # compacts the heap, so a single huge contiguous request can fail under
+            # fragmentation even when enough total free memory exists.
+            span = self._glyph_span
+            chunk_glyphs = max(1, _FONT_CHUNK_BYTES // span)
+            self._font_chunk_glyphs = chunk_glyphs
+            self._font_chunks = []
+            remaining = glyph_count
+            while remaining > 0:
+                n = chunk_glyphs if chunk_glyphs < remaining else remaining
+                chunk = bytearray(n * span)
+                f.readinto(chunk)
+                self._font_chunks.append(chunk)
+                remaining -= n
+                gc.collect()
         
-        buf = self._font_buf
-        
-        magic = buf[0:4]
-        if magic != b'UPYF':
-            raise ValueError("Invalid font file magic")
-        
-        width, height, glyph_count, bpr, fallback, flags = struct.unpack_from('<HHHHHH', buf, 4)
-        
-        self.font_width = width
-        self.font_height = height
-        self._glyph_bpr = bpr
-        self._glyph_span = bpr * height
-        self._fallback_cp = fallback
-        self._font_name = font_name
-        self._font_modname = None
-        
-        has_blanks = (flags & 0x0001) != 0
-        
-        header_size = 16
-        codes_size = glyph_count * 2
-        blank_size = glyph_count if has_blanks else 0
-        
-        codes_start = header_size
-        blank_l_start = codes_start + codes_size
-        blank_r_start = blank_l_start + blank_size
-        bitmap_start = blank_r_start + blank_size
-        
-        self._codes = array.array('H')
-        for i in range(glyph_count):
-            offset = codes_start + i * 2
-            code = buf[offset] | (buf[offset + 1] << 8)  
-            self._codes.append(code)
-        
-        if has_blanks:
-            self._blank_l = memoryview(buf)[blank_l_start:blank_l_start + blank_size]
-            self._blank_r = memoryview(buf)[blank_r_start:blank_r_start + blank_size]
-        else:
-            self._blank_l = array.array('B', (0 for _ in range(glyph_count)))
-            self._blank_r = array.array('B', (0 for _ in range(glyph_count)))
-        
-        self.font = memoryview(buf)[bitmap_start:]
+        self.font = None
         self._glyph_count = glyph_count
         self._is_bin_font = 1 
         

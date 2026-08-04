@@ -63,8 +63,9 @@ class Matrix:
         :param brightness: Global brightness level 0.0-1.0 (default: 0.25)
         :param font: Font module path for text rendering (default: DEFAULT_FONT).
             Loaded immediately during construction (not deferred to the first
-            draw_text call) so the large contiguous font allocation happens while
-            the heap is still fresh, before other running tasks fragment it.
+            draw_text call). ".bin" font glyph bitmaps are read as several small,
+            glyph-aligned chunks rather than one large allocation, so loading
+            succeeds even when the heap is already fragmented by other objects.
         :param scroll_speed_ms: Default scroll timer period in milliseconds (default: 50).
             The scroll timer is initialized immediately at construction with this period.
             draw_text_scroll calls using the same speed_ms value reuse the timer
@@ -79,8 +80,6 @@ class Matrix:
         ----
         Uses len(pins) PIO State Machines (1 per data pin). SM IDs are auto-assigned.
         Call deinit() to release.
-        Create memory-hungry peripherals (e.g. Audio) before Matrix so the font load
-        contends with as little prior heap fragmentation as possible.
         
         Example
         -------
