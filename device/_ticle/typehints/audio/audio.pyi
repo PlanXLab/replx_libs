@@ -373,9 +373,13 @@ class Audio:
         """
         Record audio directly to a WAV file.
 
-        Captures and writes audio frame chunks as a stream (not buffered fully
-        in RAM first), so recording duration is limited by flash space rather
-        than available heap.
+        Captures into a small, fixed-size staging buffer and flushes it to flash
+        periodically rather than buffering the whole recording in RAM, so
+        recording duration is limited by flash space rather than available heap.
+        The I2S input is briefly closed and reopened around each flash write
+        (a flash write disables interrupts, which would otherwise corrupt an
+        actively-running I2S/DMA session), causing a small gap in the captured
+        audio at each flush boundary.
 
         :param filename: Output WAV file path.
         :param duration_ms: Recording duration in milliseconds.

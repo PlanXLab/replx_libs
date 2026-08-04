@@ -1,5 +1,5 @@
 # @package: audio
-# @version: 1.12
+# @version: 1.13
 # @type: device-specific
 # @category: audio
 # @interface: I2S
@@ -35,6 +35,7 @@ class Audio:
     _PCM_BUFFER_FRAMES = 1024
     _WAV_BUFFER_FRAMES = 1024
     _REC_BUFFER_FRAMES = 1024
+    _REC_STAGE_BYTES = 32768
     _STREAM_BUFFER_FRAMES = 512
     _SILENCE_BUFFER_SIZE = 2048
 
@@ -1111,6 +1112,11 @@ class Audio:
         convert_mv = self._convert_mv
         rec_chunk = self._REC_BUFFER_FRAMES
 
+        stage_bytes = self._REC_STAGE_BYTES
+        stage_buf = bytearray(stage_bytes)
+        stage_mv = memoryview(stage_buf)
+        stage_off = 0
+
         with open(filename, 'wb') as f:
             self._write_wav_header(f, self._rate, data_size)
             try:
@@ -1124,14 +1130,37 @@ class Audio:
                     if af <= 0:
                         continue
                     bc = self._convert_32to16(self._rec_buf, convert_buf, af)
-                    f.write(convert_mv[:bc])
+
+                    copy_off = 0
+                    while copy_off < bc:
+                        space = stage_bytes - stage_off
+                        take = (bc - copy_off) if (bc - copy_off) < space else space
+                        stage_mv[stage_off:stage_off + take] = convert_mv[copy_off:copy_off + take]
+                        stage_off += take
+                        copy_off += take
+                        if stage_off >= stage_bytes:
+                            self._flush_rec_stage(f, stage_mv, stage_off)
+                            stage_off = 0
+
                     frames_done += af
+
+                if stage_off > 0:
+                    self._flush_rec_stage(f, stage_mv, stage_off)
             finally:
                 if self._i2s is not None:
                     self._i2s.deinit()
                     self._i2s = None
                 self._mode = None
                 self._idle_i2s_pins()
+
+    def _flush_rec_stage(self, f, stage_mv, n):
+        if self._i2s is not None:
+            self._i2s.deinit()
+            self._i2s = None
+        self._mode = None
+        self._idle_i2s_pins()
+
+        f.write(stage_mv[:n])
 
     def get_level(self):
         self._ensure_rx_mode()
