@@ -1,5 +1,5 @@
 # @package: ws2812
-# @version: 1.6
+# @version: 1.7
 # @type: device-specific
 # @category: display
 # @interface: GPIO
@@ -103,6 +103,11 @@ class Matrix:
         self._font_name = None
         self._font_modname = None
         self._is_bin_font = 0
+
+        # Load the font now, while the heap is still fresh: deferring this large
+        # contiguous allocation until the first draw_text() call risks MemoryError
+        # once long-running IRQ/asyncio activity has fragmented the heap.
+        self._ensure_font_loaded()
 
         self._zigzag = zigzag
         self._origin: str = origin

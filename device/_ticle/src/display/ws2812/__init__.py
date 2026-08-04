@@ -1,5 +1,5 @@
 # @package: ws2812
-# @version: 1.6
+# @version: 1.7
 # @type: device-specific
 # @category: display
 # @interface: GPIO

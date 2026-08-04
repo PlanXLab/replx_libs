@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-07-31T03:09:02Z",
+  "generated_at": "2026-08-04T04:17:26Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -1349,7 +1349,7 @@
       "typehint": "device/_ticle/typehints/distance/us_async.pyi"
     },
     "ws2812@_ticle": {
-      "version": "1.6",
+      "version": "1.7",
       "type": "device-specific",
       "source": "device/_ticle/src/display/ws2812/__init__.py",
       "deploy_path": "ws2812/__init__.py",
