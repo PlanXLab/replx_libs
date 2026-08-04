@@ -373,6 +373,10 @@ class Audio:
         """
         Record audio directly to a WAV file.
 
+        Captures and writes audio frame chunks as a stream (not buffered fully
+        in RAM first), so recording duration is limited by flash space rather
+        than available heap.
+
         :param filename: Output WAV file path.
         :param duration_ms: Recording duration in milliseconds.
 

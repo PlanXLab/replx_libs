@@ -1,5 +1,5 @@
 # @package: audio
-# @version: 1.11
+# @version: 1.12
 # @type: device-specific
 # @category: audio
 # @interface: I2S
@@ -26,7 +26,6 @@ class Audio:
 
     _DEFAULT_RATE = 16000
     _DEFAULT_IBUF = 4096
-    _REC_FILE_CHUNK_BYTES = 32768
     _FORMAT = I2S.MONO
 
     _TX_BITS = 16
@@ -1106,41 +1105,33 @@ class Audio:
         data_size = total_frames * 2
 
         gc.collect()
-        self._ensure_rec_bufs()  
-        if data_size + 16384 > gc.mem_free():
-            raise MemoryError(
-                'Recording too large for available RAM; reduce duration_ms or rate'
-            )
-
-        try:
-            ram_buf = bytearray(data_size)
-        except MemoryError:
-            raise MemoryError(
-                'Could not allocate recording buffer; reduce duration_ms or rate'
-            )
-        ram_mv = memoryview(ram_buf)
-
-        # Tear down the I2S/DMA session before touching the filesystem: a flash
-        # write disables interrupts for its duration, and leaving I2S RX open
-        # across that (as the old code did, deiniting only after the file was
-        # written) could destabilize the board. Capture fully, close I2S, then write.
-        try:
-            out_off = self._capture_pcm16_into(ram_mv, total_frames)
-        finally:
-            if self._i2s is not None:
-                self._i2s.deinit()
-                self._i2s = None
-            self._mode = None
-            self._idle_i2s_pins()
+        self._ensure_rec_bufs()
+        rec_mv = self._rec_mv
+        convert_buf = self._convert_buf
+        convert_mv = self._convert_mv
+        rec_chunk = self._REC_BUFFER_FRAMES
 
         with open(filename, 'wb') as f:
-            self._write_wav_header(f, self._rate, out_off)
-            written = 0
-            chunk = self._REC_FILE_CHUNK_BYTES
-            while written < out_off:
-                take = chunk if (out_off - written) > chunk else (out_off - written)
-                f.write(ram_mv[written:written + take])
-                written += take
+            self._write_wav_header(f, self._rate, data_size)
+            try:
+                frames_done = 0
+                while frames_done < total_frames:
+                    sub = total_frames - frames_done
+                    if sub > rec_chunk:
+                        sub = rec_chunk
+                    br = self._read_raw_into(rec_mv, sub)
+                    af = br >> 2
+                    if af <= 0:
+                        continue
+                    bc = self._convert_32to16(self._rec_buf, convert_buf, af)
+                    f.write(convert_mv[:bc])
+                    frames_done += af
+            finally:
+                if self._i2s is not None:
+                    self._i2s.deinit()
+                    self._i2s = None
+                self._mode = None
+                self._idle_i2s_pins()
 
     def get_level(self):
         self._ensure_rx_mode()
