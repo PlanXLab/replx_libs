@@ -51,8 +51,6 @@ class AsyncAudio:
         return self._recording
 
     async def _rest_async(self, swriter, ms):
-        # Write silence in ibuf-sized batches to keep DMA fed;
-        # yield once per full DMA-buffer-worth so other tasks can run.
         a = self._audio
         ms = int(ms)
         if ms <= 0:
@@ -77,9 +75,6 @@ class AsyncAudio:
             await asyncio.sleep_ms(0)
 
     async def _play_sine_async(self, swriter, freq_hz, duration_ms, fade_ms):
-        # Write sine chunks synchronously in ibuf-frame batches.
-        # Yield only once per full DMA buffer to prevent underrun while
-        # still allowing other tasks to run during long notes.
         a = self._audio
         if freq_hz <= 0.0 or duration_ms <= 0:
             await self._rest_async(swriter, duration_ms)
@@ -98,7 +93,7 @@ class AsyncAudio:
         phase = 0
         step = int((freq_hz * (1 << 32)) / a._rate)
         sent = 0
-        ibuf_frames = a._ibuf // 2   # frames that fill the DMA ring buffer
+        ibuf_frames = a._ibuf // 2
         batch = 0
         while sent < total_samples:
             todo = min(a._TONE_CHUNK_FRAMES, total_samples - sent)
@@ -113,10 +108,10 @@ class AsyncAudio:
             sent += todo
             batch += todo
             if batch >= ibuf_frames:
-                await asyncio.sleep_ms(0)   # yield after every full DMA buffer
+                await asyncio.sleep_ms(0)
                 batch = 0
         if batch > 0:
-            await asyncio.sleep_ms(0)       # final yield
+            await asyncio.sleep_ms(0)
 
     async def _drain_tail_async(self, swriter):
         a = self._audio
