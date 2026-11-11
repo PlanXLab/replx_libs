@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-10-29T05:40:16Z",
+  "generated_at": "2026-11-03T01:58:36Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -71,6 +71,10 @@
         "_std/display/hd44780",
         "_std/distance/us*",
         "_std/environmental/bme68x*",
+        "_std/input/gm67",
+        "_std/input/rfid_*",
+        "_std/input/pn532",
+        "_std/input/mfrc522",
         "_std/motion/bno055*",
         "_std/orientation/as5600*",
         "_ticle/ws2812",
@@ -836,6 +840,26 @@
       ],
       "typehint": "device/_std/typehints/input/button_async.pyi"
     },
+    "gm67": {
+      "version": "1.0",
+      "type": "device-std",
+      "source": "device/_std/src/input/gm67.py",
+      "deploy_path": "gm67.py",
+      "category": "input",
+      "sensor_type": "CMOS",
+      "interface": [
+        "UART"
+      ],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "gm67",
+        "input",
+        "uart",
+        "barcode"
+      ],
+      "typehint": "device/_std/typehints/input/gm67.pyi"
+    },
     "ky022": {
       "version": "1.0.0",
       "type": "device-std",
@@ -885,6 +909,103 @@
         "async"
       ],
       "typehint": "device/_std/typehints/input/ky022_async.pyi"
+    },
+    "mfrc522": {
+      "version": "1.0",
+      "type": "device-std",
+      "source": "device/_std/src/input/mfrc522.py",
+      "deploy_path": "mfrc522.py",
+      "category": "input",
+      "sensor_type": "Contactless",
+      "interface": [
+        "SPI"
+      ],
+      "depends": [
+        "rfid_base_driver"
+      ],
+      "platforms": "*",
+      "tags": [
+        "mfrc522",
+        "input",
+        "spi",
+        "rfid"
+      ],
+      "typehint": "device/_std/typehints/input/mfrc522.pyi"
+    },
+    "pn532": {
+      "version": "1.0",
+      "type": "device-std",
+      "source": "device/_std/src/input/pn532.py",
+      "deploy_path": "pn532.py",
+      "category": "input",
+      "sensor_type": "Contactless",
+      "interface": [
+        "I2C"
+      ],
+      "depends": [
+        "rfid_base_driver"
+      ],
+      "platforms": "*",
+      "tags": [
+        "pn532",
+        "input",
+        "i2c",
+        "rfid"
+      ],
+      "typehint": "device/_std/typehints/input/pn532.pyi"
+    },
+    "rfid_base_driver": {
+      "version": "1.0",
+      "type": "device-std",
+      "source": "device/_std/src/input/rfid_base_driver.py",
+      "deploy_path": "rfid_base_driver.py",
+      "category": "input",
+      "sensor_type": "Contactless",
+      "interface": [],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "input",
+        "rfid"
+      ],
+      "typehint": "device/_std/typehints/input/rfid_base_driver.pyi"
+    },
+    "rfid_ndef": {
+      "version": "1.0",
+      "type": "device-std",
+      "source": "device/_std/src/input/rfid_ndef.py",
+      "deploy_path": "rfid_ndef.py",
+      "category": "input",
+      "sensor_type": "Contactless",
+      "interface": [],
+      "depends": [],
+      "platforms": "*",
+      "tags": [
+        "rfid",
+        "ndef",
+        "ntag"
+      ],
+      "typehint": "device/_std/typehints/input/rfid_ndef.pyi"
+    },
+    "rfid_reader": {
+      "version": "1.0",
+      "type": "device-std",
+      "source": "device/_std/src/input/rfid_reader.py",
+      "deploy_path": "rfid_reader.py",
+      "category": "input",
+      "sensor_type": "Contactless",
+      "interface": [],
+      "depends": [
+        "rfid_base_driver",
+        "rfid_ndef"
+      ],
+      "platforms": "*",
+      "tags": [
+        "rfid",
+        "input",
+        "ndef"
+      ],
+      "typehint": "device/_std/typehints/input/rfid_reader.pyi"
     },
     "bno055": {
       "version": "1.0.0",
