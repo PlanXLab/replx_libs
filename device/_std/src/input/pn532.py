@@ -13,7 +13,7 @@ from machine import I2C, Pin
 from micropython import const
 import micropython
 import time
-from rfid_base_driver import BaseRFIDDriver, RFIDCommunicationError
+from .rfid_base_driver import BaseRFIDDriver, RFIDCommunicationError
 
 _PN532_CMD_GET_FIRMWARE_VERSION = const(0x02)
 _PN532_CMD_SETPARAMETERS   = const(0x12)

@@ -12,7 +12,7 @@
 import time
 from machine import Pin, SPI
 from micropython import const
-from rfid_base_driver import BaseRFIDDriver, RFIDCommunicationError
+from .rfid_base_driver import BaseRFIDDriver, RFIDCommunicationError
 
 
 _CMD_IDLE         = const(0x00)

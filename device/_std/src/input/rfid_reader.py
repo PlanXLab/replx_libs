@@ -10,8 +10,8 @@
 # @author: PlanXLab Development Team
 
 import time
-from rfid_base_driver import BaseRFIDDriver, MemoryLayout
-from rfid_ndef import Type2Memory, decode_message, decode_uri, encode_uri, parse_cc
+from .rfid_base_driver import BaseRFIDDriver, MemoryLayout
+from .rfid_ndef import Type2Memory, decode_message, decode_uri, encode_uri, parse_cc
 
 
 class RFIDReader:
