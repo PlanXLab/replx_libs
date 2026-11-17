@@ -17,8 +17,8 @@ XNODE_I2C_ID1_SCL_PIN = 'D1'
 XNODE_I2C_ID1_SDA_PIN = 'D11'
 
 class Din:
-    LOW = const(0)
-    HIGH = const(1)
+    LOW = 0
+    HIGH = 1
     PULL_DOWN = machine.Pin.PULL_DOWN
     PULL_UP = machine.Pin.PULL_UP
 
@@ -41,8 +41,8 @@ class Din:
         return self._pin
 
 class Dout:
-    LOW = const(0)
-    HIGH = const(1)
+    LOW = 0
+    HIGH = 1
     PULL_DOWN = machine.Pin.PULL_DOWN
     PULL_UP = machine.Pin.PULL_UP
 
