@@ -156,7 +156,6 @@ class ReplSerial:
         _stdout.write(data)
 
     def close(self):
-        # No background resources on EFR32MG; kept for API parity with termio@_std.
-        pass
+        del self._buf
 
 gc.collect()
