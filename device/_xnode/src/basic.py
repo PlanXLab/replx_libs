@@ -15,8 +15,6 @@ from micropython import const
 PCA9535_ADDR = const(0x24)
 
 class _I2CtoGPIO:
-    PCA9535_ADDR = PCA9535_ADDR
-
     def __init__(self):
         self._i2c = machine.I2C(1)
         self._buf1 = bytearray(1)
