@@ -30,6 +30,7 @@ Author: PlanXLab Development Team
 """
 
 import machine
+from xnode import Din, Dout
 
 class Dio:
     """
@@ -67,10 +68,10 @@ class Dio:
     P_RELAYS: dict
 
     @staticmethod
-    def Relays(value: int = 0) -> list: ...
+    def Relays(value: int = 0) -> list[Dout]: ...
     
     @staticmethod
-    def P18() -> machine.Pin:
+    def P18(*, active_low: bool = True) -> Din:
         """
         Create a pin object for the P18 input port.
         
@@ -84,13 +85,13 @@ class Dio:
         --------
         ```python
             >>> # Gas detector input
-            >>> gas_input = DIO.P18()
+            >>> gas_input = Dio.P18()
             >>> if gas_input.value():
             ...     print("Gas detected!")
             >>> 
             >>> # Polling loop for gas detection
             >>> while True:
-            ...     if DIO.P18().value():
+            ...     if Dio.P18().value():
             ...         trigger_alarm()
             ...         break
             ...     utime.sleep_ms(100)
@@ -98,7 +99,7 @@ class Dio:
         """
     
     @staticmethod
-    def P17() -> machine.Pin:
+    def P17(*, active_low: bool = True) -> Din:
         """
         Create a pin object for the P17 input port.
         
@@ -112,12 +113,12 @@ class Dio:
         --------
         ```python
             >>> # PIR sensor input
-            >>> pir = DIO.P17()
+            >>> pir = Dio.P17()
             >>> if pir.value() == 0:  # Active-low
             ...     print("Motion detected!")
             >>> 
             >>> # Limit switch monitoring
-            >>> limit = DIO.P17()
+            >>> limit = Dio.P17()
             >>> while limit.value():  # Wait for switch activation
             ...     utime.sleep_ms(10)
             >>> print("Limit reached!")
@@ -132,23 +133,23 @@ class Dio:
         P8 is a 3.3V compatible bidirectional port that can be configured
         as either input or output with optional pull resistor configuration.
         
-        :param mode: Pin mode (DIO.IN for input, DIO.OUT for output)
-        :param pull_value: Pull resistor configuration (DIO.PULL_UP or DIO.PULL_DOWN, optional)
+        :param mode: Pin mode (Dio.IN for input, Dio.OUT for output)
+        :param pull: Pull resistor configuration (Dio.PULL_UP or Dio.PULL_DOWN, optional)
         :return: Configured Pin object for P8
         
         Example
         --------
         ```python
             >>> # Configure as input with pull-up
-            >>> sensor = DIO.P8(DIO.IN, DIO.PULL_UP)
+            >>> sensor = Dio.P8(Dio.IN, pull=Dio.PULL_UP)
             >>> state = sensor.value()
             >>> 
             >>> # Configure as output
-            >>> indicator = DIO.P8(DIO.OUT)
+            >>> indicator = Dio.P8(Dio.OUT)
             >>> indicator.value(1)  # Set high
             >>> 
             >>> # Toggle output
-            >>> led = DIO.P8(DIO.OUT)
+            >>> led = Dio.P8(Dio.OUT)
             >>> for _ in range(10):
             ...     led.toggle()
             ...     utime.sleep_ms(500)
@@ -163,20 +164,20 @@ class Dio:
         P23 is a 3.3V compatible bidirectional port that can be configured
         as either input or output with optional pull resistor configuration.
         
-        :param mode: Pin mode (DIO.IN for input, DIO.OUT for output)
-        :param pull_value: Pull resistor configuration (DIO.PULL_UP or DIO.PULL_DOWN, optional)
+        :param mode: Pin mode (Dio.IN for input, Dio.OUT for output)
+        :param pull: Pull resistor configuration (Dio.PULL_UP or Dio.PULL_DOWN, optional)
         :return: Configured Pin object for P23
         
         Example
         --------
         ```python
             >>> # Configure as input with pull-down
-            >>> button = DIO.P23(DIO.IN, DIO.PULL_DOWN)
+            >>> button = Dio.P23(Dio.IN, pull=Dio.PULL_DOWN)
             >>> if button.value():
             ...     print("Button pressed!")
             >>> 
             >>> # Configure as output for LED
-            >>> led = DIO.P23(DIO.OUT)
+            >>> led = Dio.P23(Dio.OUT)
             >>> led.value(1)  # Turn on
             >>> utime.sleep(1)
             >>> led.value(0)  # Turn off
@@ -199,7 +200,10 @@ class DoorLock:
         - Configurable active-low/active-high feedback
     """
     
-    def __init__(self, relay, *, feedback=None, active_low: bool = True) -> None:
+    @property
+    def has_feedback(self) -> bool: ...
+
+    def __init__(self, relay: Dout, *, feedback: Din | machine.Pin | None = None, active_low: bool = True, pulse_ms: int = 800) -> None:
         """
         Initialize the door lock controller.
         
@@ -207,21 +211,21 @@ class DoorLock:
         optionally monitors position feedback for intelligent operation.
         
         :param relay: Relay object for controlling the lock mechanism
-        :param dio: Feedback pin object for reading lock state (optional, enables open/close/is_opened methods)
+        :param feedback: Feedback pin object for reading lock state (optional, enables open/close/is_opened methods)
         :param active_low: If True, feedback pin reads LOW when lock is open (default: True)
         
         Example
         --------
         ```python
             >>> # Simple lock without feedback
-            >>> relay = Relay(DIO.P_RELAY[0])
+            >>> relay = Dio.Relays()[0]
             >>> lock = DoorLock(relay)
             >>> lock.work()  # Toggle lock state
             >>> 
             >>> # Lock with position feedback
-            >>> relay = Relay(DIO.P_RELAY[0])
-            >>> feedback = DIO.P17()
-            >>> lock = DoorLock(relay, dio=feedback, active_low=True)
+            >>> relay = Dio.Relays()[0]
+            >>> feedback = Dio.P17()
+            >>> lock = DoorLock(relay, feedback=feedback, active_low=True)
             >>> 
             >>> # Now can use smart operations
             >>> lock.open()   # Only opens if currently closed
@@ -242,7 +246,7 @@ class DoorLock:
         Example
         --------
         ```python
-            >>> lock = DoorLock(relay, dio=feedback)
+            >>> lock = DoorLock(relay, feedback=feedback)
             >>> 
             >>> # Open the lock
             >>> if lock.open():
@@ -269,7 +273,7 @@ class DoorLock:
         Example
         --------
         ```python
-            >>> lock = DoorLock(relay, dio=feedback)
+            >>> lock = DoorLock(relay, feedback=feedback)
             >>> 
             >>> # Close the lock
             >>> if lock.close():
@@ -295,7 +299,7 @@ class DoorLock:
         Example
         --------
         ```python
-            >>> lock = DoorLock(relay, dio=feedback)
+            >>> lock = DoorLock(relay, feedback=feedback)
             >>> 
             >>> # Check lock state
             >>> if lock.is_opened():
@@ -311,7 +315,9 @@ class DoorLock:
         ```
         """
     
-    def work(self) -> None:
+    def trigger(self, pulse_ms: int | None = None) -> None: ...
+
+    def work(self, pulse_ms: int | None = None) -> None:
         """
         Toggle the door lock state.
         
@@ -336,6 +342,7 @@ class DoorLock:
         """
 
 class PCA9685:
+    ADDR: int
     """
     PWM controller for PCA9685-based signal generation.
     
@@ -351,7 +358,7 @@ class PCA9685:
         - 12-bit resolution (0-4095)
     """
     
-    def __init__(self, freq: int = 100) -> None:
+    def __init__(self, freq: int = 100, addr: int = 0x40) -> None:
         """
         Initialize the PWM controller.
         
@@ -364,17 +371,22 @@ class PCA9685:
         --------
         ```python
             >>> # Initialize with default 100Hz
-            >>> pwm = Pwm()
+            >>> pwm = PCA9685()
             >>> 
             >>> # Initialize with 500Hz for motor control
-            >>> pwm = Pwm(freq=500)
+            >>> pwm = PCA9685(freq=500)
             >>> 
             >>> # Set duty cycle on channel 0
             >>> pwm.duty(0, 50)  # 50% duty cycle
         ```
         """
      
-    def freq(self, freq: int) -> None:
+    def reset(self) -> None: ...
+    def sleep(self) -> None: ...
+    def wake(self) -> None: ...
+    def off_all(self) -> None: ...
+
+    def freq(self, freq: int | None = None) -> int | None:
         """
         Set the PWM frequency.
         
@@ -386,7 +398,7 @@ class PCA9685:
         Example
         --------
         ```python
-            >>> pwm = Pwm()
+            >>> pwm = PCA9685()
             >>> 
             >>> # Change to 200Hz for LED dimming
             >>> pwm.freq(200)
@@ -396,7 +408,7 @@ class PCA9685:
         ```
         """
 
-    def pwm(self, ch: int, on: int, off: int) -> None:
+    def pwm(self, ch: int, on: int | None = None, off: int | None = None) -> tuple[int, int] | None:
         """
         Set raw PWM timing values.
         
@@ -410,7 +422,7 @@ class PCA9685:
         Example
         --------
         ```python
-            >>> pwm = Pwm()
+            >>> pwm = PCA9685()
             >>> 
             >>> # 0% duty cycle (always off)
             >>> pwm.pwm(0, 0, 4096)
@@ -438,7 +450,7 @@ class PCA9685:
         Example
         --------
         ```python
-            >>> pwm = Pwm()
+            >>> pwm = PCA9685()
             >>> 
             >>> # Set 50% brightness on LED
             >>> pwm.duty(0, 50)
@@ -458,6 +470,8 @@ class PCA9685:
         ```
         """
 
+Pwm = PCA9685
+
 class GasDetector:
     """
     Gas detector sensor interface.
@@ -472,7 +486,7 @@ class GasDetector:
         - White wire: P18 signal output
     """
     
-    def __init__(self):
+    def __init__(self, *, active_low: bool = False) -> None:
         """
         Initialize the gas detector interface.
         
@@ -487,6 +501,8 @@ class GasDetector:
         ```
         """
     
+    def is_detected(self) -> bool: ...
+
     def read(self) -> int:
         """
         Read the current gas detection state.
@@ -517,7 +533,14 @@ class GasDetector:
         ```
         """
 
-class GasBreaker: 
+class GasBreaker:
+    STATE_UNKNOWN: int
+    STATE_CLOSED: int
+    STATE_OPENED: int
+    STATE_STOPPED: int
+
+    @property
+    def state(self) -> int: ... 
     """
     Gas breaker (valve) controller.
     
@@ -531,7 +554,7 @@ class GasBreaker:
         - Black wire: PWM channel B
     """    
     
-    def __init__(self, red: int, black: int) -> None:
+    def __init__(self, red: int, black: int, *, pwm: PCA9685 | None = None) -> None:
         """
         Initialize the gas breaker controller.
         
@@ -560,7 +583,7 @@ class GasBreaker:
         Initialize the gas breaker to the closed position.
         """
         
-    def open(self) -> None:
+    def open(self, duration_ms: int | None = None) -> None:
         """
         Open the gas breaker (valve).
         
@@ -582,7 +605,7 @@ class GasBreaker:
         ```
         """
             
-    def close(self, init: bool = False) -> None:
+    def close(self, init: bool = False, duration_ms: int | None = None) -> None:
         """
         Close the gas breaker (valve).
         
@@ -636,14 +659,29 @@ class GasBreaker:
         ```
         """
     
-def Fan(type: int, ch: int, value: int = 0) -> object:
+class _PwmActuator(PCA9685):
+    def __init__(self, act_id: int, ch: int, value: int = 0) -> None: ...
+    def on(self) -> None: ...
+    def off(self) -> None: ...
+    def toggle(self) -> None: ...
+    def change(self, level: int) -> None: ...
+    def set_level(self, level: int) -> None: ...
+    @property
+    def level(self) -> int: ...
+    @level.setter
+    def level(self, val: int) -> None: ...
+    def duty(self, value: int | None = None, ch: int | None = None) -> int | None: ...
+    def value(self, n: int | None = None) -> int | None: ...
+    def state(self) -> int: ...
+
+def Fan(device_type: int, ch: int, value: int = 0) -> Dout | _PwmActuator:
     """
     Create a fan control object.
     
     Factory function to create either a relay-controlled or PWM-controlled
     fan interface, depending on the type parameter.
     
-    :param type: Device type (DIO.Device.RELAY for on/off, DIO.Device.PWM for variable speed)
+    :param type: Device type (Dio.Device.RELAY for on/off, Dio.Device.PWM for variable speed)
     :param ch: Channel number (relay index or PWM channel)
     :param value: Initial value (0 for off)
     :return: Configured Relay or PWM channel object
@@ -652,32 +690,32 @@ def Fan(type: int, ch: int, value: int = 0) -> object:
     --------
     ```python
         >>> # Relay-controlled fan (on/off)
-        >>> fan = Fan(DIO.Device.RELAY, 0)
+        >>> fan = Fan(Dio.Device.RELAY, 0)
         >>> fan.value(1)  # Turn on
         >>> fan.value(0)  # Turn off
         >>> 
         >>> # PWM-controlled fan (variable speed)
-        >>> fan = Fan(DIO.Device.PWM, 2)
+        >>> fan = Fan(Dio.Device.PWM, 2)
         >>> fan.duty(50)  # 50% speed
         >>> fan.duty(100) # Full speed
         >>> fan.duty(0)   # Off
         >>> 
         >>> # Speed ramping
-        >>> fan = Fan(DIO.Device.PWM, 2)
+        >>> fan = Fan(Dio.Device.PWM, 2)
         >>> for speed in range(0, 101, 10):
         ...     fan.duty(speed)
         ...     utime.sleep(1)
     ```
     """
      
-def Light(type: int, ch: int, value: int = 0) -> object:
+def Light(device_type: int, ch: int, value: int = 0) -> Dout | _PwmActuator:
     """
     Create a light control object.
     
     Factory function to create either a relay-controlled or PWM-controlled
     light interface, depending on the type parameter.
     
-    :param type: Device type (DIO.Device.RELAY for on/off, DIO.Device.PWM for dimming)
+    :param type: Device type (Dio.Device.RELAY for on/off, Dio.Device.PWM for dimming)
     :param ch: Channel number (relay index or PWM channel)
     :param value: Initial value (0 for off)
     :return: Configured Relay or PWM channel object
@@ -686,24 +724,24 @@ def Light(type: int, ch: int, value: int = 0) -> object:
     --------
     ```python
         >>> # Relay-controlled light (on/off)
-        >>> light = Light(DIO.Device.RELAY, 1)
+        >>> light = Light(Dio.Device.RELAY, 1)
         >>> light.value(1)  # Turn on
         >>> light.value(0)  # Turn off
         >>> 
         >>> # PWM-controlled light (dimmable)
-        >>> light = Light(DIO.Device.PWM, 0)
+        >>> light = Light(Dio.Device.PWM, 0)
         >>> light.duty(100)  # Full brightness
         >>> light.duty(50)   # Half brightness
         >>> light.duty(10)   # Night light level
         >>> 
         >>> # Smooth dimming
-        >>> light = Light(DIO.Device.PWM, 0)
+        >>> light = Light(Dio.Device.PWM, 0)
         >>> for brightness in range(0, 101, 2):
         ...     light.duty(brightness)
         ...     utime.sleep_ms(20)
         >>> 
         >>> # Sunset simulation
-        >>> light = Light(DIO.Device.PWM, 0, value=100)
+        >>> light = Light(Dio.Device.PWM, 0, value=100)
         >>> for brightness in range(100, -1, -1):
         ...     light.duty(brightness)
         ...     utime.sleep_ms(100)

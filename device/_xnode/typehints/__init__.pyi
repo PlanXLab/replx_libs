@@ -31,6 +31,7 @@ Hardware Interfaces:
 Author: PlanXLab Development Team
 """
 
+from typing import Iterator
 import machine
 
 
@@ -157,7 +158,7 @@ class Din:
     PULL_DOWN: int
     PULL_UP: int
     
-    def __init__(self, pin: str, *, pull: int | None = None):
+    def __init__(self, pin: str, *, pull: int | None = None, active_low: bool = True):
         """
         Initialize the digital input pin.
         
@@ -226,6 +227,16 @@ class Din:
         ```
         """
 
+    def raw_value(self) -> int:
+        """Read the raw uninverted hardware pin value (0 or 1)."""
+
+    def is_active(self) -> bool:
+        """Return True if the input pin is in its active logical state."""
+
+    @property
+    def pin(self) -> machine.Pin:
+        """Return the underlying machine.Pin instance."""
+
 class Dout:
     """
     Digital output pin controller for driving external devices.
@@ -246,7 +257,7 @@ class Dout:
     PULL_DOWN: int
     PULL_UP: int
     
-    def __init__(self, pin: str, *, pull: int | None = None, value: int | None = None):
+    def __init__(self, pin: str, *, pull: int | None = None, value: int | None = 0, active_low: bool = False):
         """
         Initialize the digital output pin.
         
@@ -293,6 +304,12 @@ class Dout:
         ```
         """
 
+    def on(self) -> None:
+        """Set output pin to active HIGH state."""
+
+    def off(self) -> None:
+        """Set output pin to inactive LOW state."""
+
     def toggle(self) -> None:
         """
         Toggle the current value of the digital output pin.
@@ -317,6 +334,13 @@ class Dout:
             ...         utime.sleep_ms(200)  # Debounce
         ```
         """
+
+    def raw_value(self, n: int | None = None) -> int | None:
+        """Read or set the raw uninverted hardware output pin level."""
+
+    @property
+    def pin(self) -> machine.Pin:
+        """Return the underlying machine.Pin instance."""
 
 def Wdt(timeout: int) -> machine.WDT:
     """
@@ -426,6 +450,16 @@ class I2c:
             >>> print(f"Device ID: 0x{device_id:02X}")
         ```
         """
+
+    @property
+    def address(self) -> int:
+        """Return the 7-bit I2C slave address."""
+
+    def read_s8(self, reg: int) -> int:
+        """Read a signed 8-bit integer (-128 to 127) from a register."""
+
+    def read_s16(self, reg: int, *, little_endian: bool = True) -> int:
+        """Read a signed 16-bit integer (-32768 to 32767) from a register."""
 
     def read_u8(self, reg: int) -> int:
         """
@@ -740,7 +774,10 @@ class ReplSerial:
         ```
         """
                     
-    def write(self, data: bytes) -> int:
+    def readline(self, size: int | None = None) -> bytes:
+        """Read a line ending with newline b'\\n' from the REPL serial stream."""
+
+    def write(self, data: bytes | str) -> int:
         """
         Write bytes to the serial interface.
         
@@ -869,6 +906,9 @@ class SupplyVoltage(machine.ADC):
         ```
         """
         
+    def read_raw(self) -> int:
+        """Read raw 12-bit ADC value (0-4095)."""
+
     def read(self) -> float:
         """
         Read the current supply voltage.
@@ -905,6 +945,17 @@ class Illuminance:
     modes and scaling factors.
     """
     
+    BH1750_ADDR: int
+    POWER_OFF: int
+    POWER_ON: int
+    POWER_RESET: int
+    CONT_HIGH_RES: int
+    CONT_HIGH_RES_2: int
+    CONT_LOW_RES: int
+    ONE_TIME_HIGH_RES: int
+    ONE_TIME_HIGH_RES_2: int
+    ONE_TIME_LOW_RES: int
+
     def __init__(self, *, mode: int = 0x10) -> None:
         """
         Initialize the illuminance sensor.
@@ -920,7 +971,7 @@ class Illuminance:
         ```
         """
 
-    def init(self, mode: int) -> None:
+    def init(self, mode: int = 0x10) -> None:
         """
         Re-initialize the sensor with a new mode.
         
@@ -932,7 +983,13 @@ class Illuminance:
         Power off the sensor.
         """
 
-    def read(self) -> int:
+    def read_raw(self) -> int:
+        """Read raw 16-bit sensor count from BH1750."""
+
+    def read_lux(self, continuous: bool = True) -> float:
+        """Read calibrated illuminance in lux (raw / 1.2 or raw / 2.4)."""
+
+    def read(self, continuous: bool = True) -> int:
         """
         Read the current illuminance raw count value.
         
@@ -950,8 +1007,6 @@ class Illuminance:
             ...     utime.sleep(1)
             >>> 
             >>> # One-time low-power reading
-            >>> lux = sensor.read(continuous=False)
-            >>> 
             >>> # Light level classification
             >>> lux = sensor.read()
             >>> if lux < 50:
@@ -983,6 +1038,10 @@ class Tphg:
         - Sensor burn-in monitoring for gas baseline
     """
         
+    BME680_ADDR: int
+    FORCED_MODE: int
+    SLEEP_MODE: int
+
     def __init__(self, temp_weighting: float = 0.10, pressure_weighting: float = 0.05,
                  humi_weighting: float = 0.20, gas_weighting: float = 0.65,
                  gas_ema_alpha: float = 0.1, temp_baseline: float = 23.0,
@@ -1011,12 +1070,36 @@ class Tphg:
             >>> sensor = Tphg(gas_weighting=0.70, humi_weighting=0.15)
             >>> 
             >>> # Read basic environmental data
-            >>> temp, pressure, humidity = sensor.read()
+            >>> temp, pressure, humidity, _ = sensor.read()
             >>> print(f"T={temp}°C, P={pressure}hPa, H={humidity}%")
         ```
         """
             
-    def set_temperature_correction(self, value: float) -> None:
+    @property
+    def temperature_offset(self) -> float:
+        """Get temperature calibration offset in Celsius."""
+
+    @temperature_offset.setter
+    def temperature_offset(self, value: float) -> None:
+        """Set absolute temperature calibration offset in Celsius."""
+
+    @property
+    def temperature(self) -> float:
+        """Perform a reading and return compensated temperature in Celsius."""
+
+    @property
+    def pressure(self) -> float:
+        """Perform a reading and return barometric pressure in hPa."""
+
+    @property
+    def humidity(self) -> float:
+        """Perform a reading and return relative humidity in %."""
+
+    @property
+    def gas(self) -> float:
+        """Perform a reading and return gas resistance in Ohms."""
+
+    def set_temperature_correction(self, value: float, relative: bool = True) -> None:
         """
         Set temperature correction offset.
         
@@ -1034,7 +1117,7 @@ class Tphg:
             >>> sensor.set_temperature_correction(-2.0)
             >>> 
             >>> # Now readings will be corrected
-            >>> temp, _, _ = sensor.read()
+            >>> temp, _, _, _ = sensor.read()
         ```
         """
 
@@ -1043,7 +1126,7 @@ class Tphg:
         Read environmental sensor data.
         
         :param gas: If True, also read gas resistance (slower measurement)
-        :return: Tuple of (temperature, pressure, humidity) or (temperature, pressure, humidity, gas)
+        :return: Tuple of (temperature, pressure, humidity, gas_or_none)
         
         Example
         --------
@@ -1051,7 +1134,7 @@ class Tphg:
             >>> sensor = Tphg()
             >>> 
             >>> # Basic reading (fast)
-            >>> temp, pressure, humidity = sensor.read()
+            >>> temp, pressure, humidity, _ = sensor.read()
             >>> print(f"Temperature: {temp}°C")
             >>> print(f"Pressure: {pressure} hPa")
             >>> print(f"Humidity: {humidity}%")
@@ -1062,7 +1145,7 @@ class Tphg:
             >>> 
             >>> # Weather station logging
             >>> while True:
-            ...     t, p, h = sensor.read()
+            ...     t, p, h, _ = sensor.read()
             ...     print(f"{t:.1f}°C, {p:.1f}hPa, {h:.1f}%")
             ...     utime.sleep(60)
         ```
@@ -1087,7 +1170,7 @@ class Tphg:
         ```
         """
         
-    def altitude(self, sealevel: float) -> tuple:
+    def altitude(self, sealevel: float = 1013.25) -> tuple:
         """
         Calculate altitude from sea level pressure reference.
         
@@ -1149,8 +1232,11 @@ class Tphg:
         ```
         """
         
+    def burn_in(self, threshold: float = 0.01, count: int = 10,
+                timeout_sec: int = 180) -> Iterator[tuple[bool, float, float]]: ...
+
     def burnIn(self, threshold: float = 0.01, count: int = 10,
-               timeout_sec: int = 180) -> iter:
+               timeout_sec: int = 180) -> Iterator[tuple[bool, float, float]]:
         """
         Monitor gas sensor stabilization during burn-in period.
         
