@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-11-17T01:47:56Z",
+  "generated_at": "2026-11-17T04:44:50Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
