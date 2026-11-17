@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-11-17T23:28:32Z",
+  "generated_at": "2026-11-17T23:53:00Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -441,8 +441,8 @@
     "termio_xbee@EFR32MG": {
       "version": "1.0.0",
       "type": "core",
-      "source": "core/_EFR32MG/src/termio_xbee.py",
-      "deploy_path": "termio_xbee.py",
+      "source": "core/_EFR32MG/src/termio.py",
+      "deploy_path": "termio.py",
       "category": "utility",
       "interface": [
         "std_io"
@@ -456,7 +456,7 @@
         "stdin",
         "xbee"
       ],
-      "typehint": "core/_EFR32MG/typehints/termio_xbee.pyi"
+      "typehint": "core/_EFR32MG/typehints/termio.pyi"
     },
     "termviz@EFR32MG": {
       "version": "1.0.0",
@@ -1689,7 +1689,7 @@
       ],
       "depends": [
         "termviz",
-        "termio_xbee"
+        "termio"
       ],
       "platforms": "xbee",
       "tags": [
