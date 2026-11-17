@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-11-17T01:45:10Z",
+  "generated_at": "2026-11-17T01:47:56Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -1680,125 +1680,6 @@
         "digi"
       ],
       "typehint": "device/_xnode/typehints/__init__.pyi"
-    },
-    "autoctrl@_xnode_old": {
-      "version": "1.0.0",
-      "type": "device-specific",
-      "source": "device/_xnode_old/src/autoctrl.py",
-      "deploy_path": "autoctrl.py",
-      "category": "board",
-      "interface": [
-        "GPIO",
-        "I2C"
-      ],
-      "depends": [
-        "xnode"
-      ],
-      "platforms": "xbee",
-      "tags": [
-        "relay",
-        "pwm",
-        "fan",
-        "gas",
-        "door"
-      ],
-      "typehint": "device/_xnode_old/typehints/autoctrl.pyi"
-    },
-    "basic@_xnode_old": {
-      "version": "1.1.0",
-      "type": "device-specific",
-      "source": "device/_xnode_old/src/basic.py",
-      "deploy_path": "basic.py",
-      "category": "board",
-      "interface": [
-        "GPIO",
-        "I2C"
-      ],
-      "depends": [],
-      "platforms": "xbee",
-      "tags": [
-        "buzzer",
-        "led",
-        "button",
-        "actuator"
-      ],
-      "typehint": "device/_xnode_old/typehints/basic.pyi"
-    },
-    "gps@_xnode_old": {
-      "version": "1.1.0",
-      "type": "device-specific",
-      "source": "device/_xnode_old/src/gps.py",
-      "deploy_path": "gps.py",
-      "category": "board",
-      "interface": [
-        "UART",
-        "I2C"
-      ],
-      "depends": [],
-      "platforms": "xbee",
-      "tags": [
-        "uart",
-        "gps",
-        "sensor"
-      ],
-      "typehint": "device/_xnode_old/typehints/gps.pyi"
-    },
-    "imu@_xnode_old": {
-      "version": "1.1.0",
-      "type": "device-specific",
-      "source": "device/_xnode_old/src/thermometer.py",
-      "deploy_path": "thermometer.py",
-      "category": "board",
-      "interface": [
-        "I2C"
-      ],
-      "depends": [],
-      "platforms": "xbee",
-      "tags": [
-        "thermometer",
-        "ir",
-        "sensor"
-      ],
-      "typehint": "device/_xnode_old/typehints/thermometer.pyi"
-    },
-    "pir@_xnode_old": {
-      "version": "1.1.0",
-      "type": "device-specific",
-      "source": "device/_xnode_old/src/pir.py",
-      "deploy_path": "pir.py",
-      "category": "board",
-      "interface": [
-        "GPIO"
-      ],
-      "depends": [],
-      "platforms": "xbee",
-      "tags": [
-        "pir",
-        "sensor"
-      ],
-      "typehint": "device/_xnode_old/typehints/pir.pyi"
-    },
-    "xnode@_xnode_old": {
-      "version": "1.0.0",
-      "type": "device-specific",
-      "source": "device/_xnode_old/src/__init__.py",
-      "deploy_path": "__init__.py",
-      "category": "board",
-      "interface": [
-        "GPIO",
-        "I2C"
-      ],
-      "depends": [
-        "termviz"
-      ],
-      "platforms": "xbee",
-      "tags": [
-        "xbee",
-        "zigbee",
-        "xnode",
-        "digi"
-      ],
-      "typehint": "device/_xnode_old/typehints/__init__.pyi"
     }
   }
 }
