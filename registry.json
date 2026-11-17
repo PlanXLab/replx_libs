@@ -2,7 +2,7 @@
   "schema_version": 5,
   "repo": "PlanXLab/replx_libs",
   "ref": "main",
-  "generated_at": "2026-11-17T07:23:38Z",
+  "generated_at": "2026-11-17T23:28:32Z",
   "platform_cores": {
     "EFR32MG": {
       "includes": [
@@ -437,6 +437,26 @@
         "core/_std_comm/typehints/upaho/packets.pyi",
         "core/_std_comm/typehints/upaho/properties.pyi"
       ]
+    },
+    "termio_xbee@EFR32MG": {
+      "version": "1.0.0",
+      "type": "core",
+      "source": "core/_EFR32MG/src/termio_xbee.py",
+      "deploy_path": "termio_xbee.py",
+      "category": "utility",
+      "interface": [
+        "std_io"
+      ],
+      "depends": [],
+      "platforms": "EFR32MG",
+      "tags": [
+        "terminal",
+        "serial",
+        "repl",
+        "stdin",
+        "xbee"
+      ],
+      "typehint": "core/_EFR32MG/typehints/termio_xbee.pyi"
     },
     "termviz@EFR32MG": {
       "version": "1.0.0",
@@ -1545,13 +1565,12 @@
       "typehint": "device/_xnode/typehints/basic.pyi"
     },
     "xnode.diag@_xnode": {
-      "version": "1.3.0",
+      "version": "1.4.0",
       "type": "device-specific",
       "source": "device/_xnode/src/diag.py",
       "deploy_path": "diag.py",
       "category": "board",
       "interface": [
-        "UART",
         "I2C"
       ],
       "depends": [
@@ -1560,7 +1579,6 @@
       "platforms": "xbee",
       "tags": [
         "diagnostics",
-        "repl",
         "i2cdetect",
         "xbee"
       ],
@@ -1660,7 +1678,7 @@
       "typehint": "device/_xnode/typehints/thermometer.pyi"
     },
     "xnode@_xnode": {
-      "version": "1.3.0",
+      "version": "1.4.1",
       "type": "device-specific",
       "source": "device/_xnode/src/__init__.py",
       "deploy_path": "__init__.py",
@@ -1670,7 +1688,8 @@
         "I2C"
       ],
       "depends": [
-        "termviz"
+        "termviz",
+        "termio_xbee"
       ],
       "platforms": "xbee",
       "tags": [

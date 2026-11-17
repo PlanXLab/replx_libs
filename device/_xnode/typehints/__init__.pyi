@@ -685,33 +685,37 @@ class I2c:
 
 class ReplSerial:
     """
-    Serial communication interface for REPL interaction.
-    
-    This class provides methods for reading and writing data through the
-    REPL UART interface with configurable timeout support. Useful for
-    implementing custom serial protocols and interactive applications.
-    
+    Buffered serial I/O over REPL stdin/stdout with timeout support.
+
+    Factory wrapper that lazily creates a `termio_xbee.ReplSerial` instance
+    (EFR32MG platform module). Received bytes are kept in an
+    internal ring buffer, so data in excess of a read request is preserved
+    for subsequent calls instead of being discarded.
+
     Key Features:
-    
-        - Configurable read timeout
-        - Byte-level and pattern-based reading
-        - Direct write access to serial output
+
+        - Configurable read timeout (None=blocking, 0=non-blocking)
+        - Pattern-based reading (read_until)
+        - Internal ring buffering with configurable size
+        - Unread data preserved across calls
     """
-    
-    def __init__(self, timeout: int | float | None = None):
+
+    def __init__(self, timeout: int | float | None = None, *, bufsize: int = 128):
         """
-        Initialize the REPL serial interface.
-        
-        :param timeout: Read timeout in seconds (None for blocking)
-        
+        Create the REPL serial interface.
+
+        :param timeout: Read timeout in seconds. None means blocking read,
+                        0 means non-blocking (return immediately).
+        :param bufsize: Internal ring buffer size in bytes (default: 128).
+
         Example
         --------
         ```python
-            >>> # Non-blocking serial
+            >>> # 1 second timeout
             >>> serial = ReplSerial(timeout=1.0)
             >>> 
-            >>> # Blocking serial
-            >>> serial = ReplSerial()
+            >>> # Blocking serial with a larger buffer
+            >>> serial = ReplSerial(bufsize=256)
         ```
         """
 
@@ -719,25 +723,59 @@ class ReplSerial:
     def timeout(self) -> int | float | None:
         """
         Get the current timeout value.
-        
-        :return: Timeout in seconds, or None if blocking
+
+        :return: Timeout in seconds, or None if blocking.
+
+        Example
+        --------
+        ```python
+            >>> serial = ReplSerial(timeout=1.0)
+            >>> print(serial.timeout)  # 1.0
+        ```
         """
-    
+
     @timeout.setter
-    def timeout(self, n: int | float | None):
+    def timeout(self, value: int | float | None):
         """
         Set the read timeout.
-        
-        :param n: Timeout in seconds, or None for blocking
+
+        :param value: Timeout in seconds, None for blocking, 0 for non-blocking.
+
+        Example
+        --------
+        ```python
+            >>> serial = ReplSerial()
+            >>> serial.timeout = 2.0   # 2 second timeout
+            >>> serial.timeout = 0     # Non-blocking mode
+        ```
+        """
+
+    @property
+    def in_waiting(self) -> int:
+        """
+        Get the number of buffered bytes available to read.
+
+        :return: Number of bytes currently buffered.
+
+        Example
+        --------
+        ```python
+            >>> serial = ReplSerial(timeout=0)
+            >>> if serial.in_waiting:
+            ...     data = serial.read(serial.in_waiting)
+        ```
         """
 
     def read(self, size: int = 1) -> bytes: 
         """
-        Read bytes from the serial interface.
-        
-        :param size: Number of bytes to read (default: 1)
-        :return: Bytes read from the interface
-        
+        Read up to size bytes from the serial interface.
+
+        May return fewer bytes than requested if a timeout occurs. Excess
+        received bytes remain buffered for the next call.
+
+        :param size: Maximum number of bytes to read (default: 1).
+        :return: Bytes read (may be empty if timeout with no data).
+
         Example
         --------
         ```python
@@ -748,18 +786,21 @@ class ReplSerial:
             >>> 
             >>> # Read multiple bytes
             >>> data = serial.read(10)
-            >>> print(f"Received: {data}")
+            >>> print("Received:", data)
         ```
         """
-        
-    def read_until(self, expected: bytes = b'\n', size: int | None = None) -> bytes:
+
+    def read_until(self, expected: bytes = b'\r', max_size: int | None = None) -> bytes:
         """
-        Read until a pattern is found or size limit reached.
-        
-        :param expected: Byte pattern to stop at (default: newline)
-        :param size: Maximum bytes to read (None for no limit)
-        :return: Bytes read including the pattern
-        
+        Read until a pattern is found or the size limit is reached.
+
+        On timeout, empty bytes are returned and partially received data
+        stays in the internal buffer so a later call can complete the frame.
+
+        :param expected: Byte pattern to stop at (default: carriage return).
+        :param max_size: Maximum bytes to read (None for no limit).
+        :return: Bytes read including the pattern, or empty bytes if timeout.
+
         Example
         --------
         ```python
@@ -767,34 +808,49 @@ class ReplSerial:
             >>> 
             >>> # Read line
             >>> line = serial.read_until(b'\\n')
-            >>> print(f"Line: {line.decode()}")
+            >>> print("Line:", line.decode())
             >>> 
-            >>> # Read until custom delimiter
-            >>> data = serial.read_until(b'\\r\\n', size=100)
+            >>> # Read until custom delimiter with a limit
+            >>> data = serial.read_until(b'\\r\\n', max_size=100)
         ```
         """
-                    
-    def readline(self, size: int | None = None) -> bytes:
-        """Read a line ending with newline b'\\n' from the REPL serial stream."""
 
-    def write(self, data: bytes | str) -> int:
+    def write(self, data: bytes) -> None:
         """
         Write bytes to the serial interface.
-        
-        :param data: Bytes to write
-        :return: Number of bytes written
-        
+
+        :param data: Bytes or bytearray to write.
+
+        :raises TypeError: If data is not bytes or bytearray.
+
         Example
         --------
         ```python
             >>> serial = ReplSerial()
             >>> 
-            >>> # Write string
+            >>> # Write bytes
             >>> serial.write(b"Hello, World!\\n")
             >>> 
             >>> # Write formatted data
             >>> temp = 25.5
-            >>> serial.write(f"Temperature: {temp}°C\\n".encode())
+            >>> serial.write(("Temperature: %.1f C\\n" % temp).encode())
+        ```
+        """
+
+    def close(self) -> None:
+        """
+        Close the serial interface.
+
+        Provided for API parity with the standard termio module.
+
+        Example
+        --------
+        ```python
+            >>> serial = ReplSerial(timeout=1.0)
+            >>> try:
+            ...     data = serial.read_until(b'\\n')
+            ... finally:
+            ...     serial.close()
         ```
         """
 

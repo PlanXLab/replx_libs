@@ -1,14 +1,14 @@
 # @package: xnode
-# @version: 1.3.0
+# @version: 1.4.1
 # @type: device-specific
 # @category: board
 # @interface: GPIO, I2C
-# @depends: termviz
+# @depends: termviz, termio
 # @platforms: xbee
 # @tags: xbee, zigbee, xnode, digi
 
 import gc
-import machine
+import umachine as machine
 from micropython import const
 
 XNODE_LED_PIN = 'D9'
@@ -184,9 +184,9 @@ def i2cdetect(show=False):
     from .diag import i2cdetect as _fn
     return _fn(show)
 
-def ReplSerial(timeout=None):
-    from .diag import ReplSerial as _cls
-    return _cls(timeout=timeout)
+def ReplSerial(timeout=None, *, bufsize=128):
+    from termio import ReplSerial as _cls
+    return _cls(timeout=timeout, bufsize=bufsize)
 
 class _IlluminanceProxy:
     BH1750_ADDR = const(0x23)
