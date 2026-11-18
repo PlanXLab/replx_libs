@@ -11,6 +11,7 @@
 import gc
 import usys
 import utime
+import machine 
 
 _stdin = usys.stdin.buffer
 _stdout = usys.stdout.buffer
@@ -156,6 +157,6 @@ class ReplSerial:
         _stdout.write(data)
 
     def close(self):
-        del self._buf
+        machine.soft_reset()
 
 gc.collect()
