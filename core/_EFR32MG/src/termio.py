@@ -11,18 +11,41 @@
 import gc
 import usys
 import utime
-import machine 
+import micropython
+
+try:
+    import xbee
+except ImportError:
+    xbee = None
 
 _stdin = usys.stdin.buffer
 _stdout = usys.stdout.buffer
 
+
 class ReplSerial:
-    def __init__(self, timeout=None, *, bufsize=128):
+    def __init__(self, timeout=None, *, bufsize=128, ignore_intr=True):
         self._timeout = timeout
         self._buf = bytearray(bufsize)
         self._bufsize = bufsize
         self._buf_head = 0
         self._buf_tail = 0
+        self._closed = False
+        self._ignore_intr = ignore_intr
+
+        if xbee is not None:
+            try:
+                if xbee.atcmd("D7") == 1:
+                    xbee.atcmd("D7", 0)
+            except Exception:
+                pass
+
+        # 2. 포트 전환 시 유입되는 노이즈(0x03)로 인한 강제 종료 방지
+        if self._ignore_intr:
+            micropython.kbd_intr(-1)
+
+        # 3. 시작 전 기존 REPL 수신 버퍼에 남은 찌꺼기 비우기 (논블로킹)
+        while _stdin.read(-1):
+            pass
 
     def __enter__(self):
         return self
@@ -31,7 +54,9 @@ class ReplSerial:
         self.close()
 
     def _pump(self):
-        # Drain the firmware stdin buffer into the ring buffer (non-blocking).
+        if self._closed:
+            return
+        # XBee 공식 논블로킹 읽기: 데이터가 없으면 즉시 None 반환
         while True:
             data = _stdin.read(-1)
             if not data:
@@ -60,12 +85,12 @@ class ReplSerial:
         avail = (self._buf_head - self._buf_tail) % size
         n = min(n, avail)
         if n == 0:
-            return b''
+            return b""
         tail = self._buf_tail
         if tail + n <= size:
-            out = self._buf[tail:tail + n]
+            out = self._buf[tail : tail + n]
         else:
-            out = self._buf[tail:] + self._buf[:(tail + n) % size]
+            out = self._buf[tail:] + self._buf[: (tail + n) % size]
         self._buf_tail = (tail + n) % size
         return bytes(out)
 
@@ -100,7 +125,6 @@ class ReplSerial:
         return None
 
     def _wait(self, t0, budget_ms):
-        # Pump until data is buffered or the deadline passes.
         while True:
             self._pump()
             if self._buf_avail():
@@ -123,19 +147,21 @@ class ReplSerial:
         return self._buf_avail()
 
     def read(self, size=1):
-        if size <= 0:
-            return b''
+        if self._closed or size <= 0:
+            return b""
         budget = None if self._timeout is None else int(self._timeout * 1000)
         self._wait(utime.ticks_ms(), budget)
         return self._buf_get(size)
 
-    def read_until(self, expected=b'\r', max_size=None):
+    def read_until(self, expected=b"\r", max_size=None):
+        if self._closed:
+            return b""
         if self._timeout == 0:
             self._pump()
             if max_size and self._buf_avail() >= max_size:
                 return self._buf_get(max_size)
             data = self._buf_get_until(expected, max_size)
-            return data or b''
+            return data or b""
 
         t0 = utime.ticks_ms()
         budget = None if self._timeout is None else int(self._timeout * 1000)
@@ -148,15 +174,23 @@ class ReplSerial:
             if data is not None:
                 return data
             if budget is not None and utime.ticks_diff(utime.ticks_ms(), t0) >= budget:
-                return b''
+                return b""
             utime.sleep_ms(1)
 
     def write(self, data):
-        if not isinstance(data, (bytes, bytearray)):
-            raise TypeError("data must be bytes or bytearray")
-        _stdout.write(data)
+        if self._closed:
+            return 0
+        if not isinstance(data, (bytes, bytearray, memoryview)):
+            raise TypeError("data must be bytes-like")
+        return _stdout.write(data)
 
     def close(self):
-        del self._buf
+        if not self._closed:
+            self._closed = True
+            if self._ignore_intr:
+                micropython.kbd_intr(3)
+            self._buf = bytearray(0)
+            self._bufsize = 0
+
 
 gc.collect()
