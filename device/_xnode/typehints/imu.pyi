@@ -30,23 +30,6 @@ Key Features:
 Author: PlanXLab Development Team
 """
 
-BNO055_ADDR: int
-ACCELERATION: int
-MAGNETIC: int
-GYROSCOPE: int
-EULER: int
-QUATERNION: int
-ACCEL_LINEAR: int
-ACCEL_GRAVITY: int
-TEMPERATURE: int
-MODE_CONFIG: int
-MODE_IMU: int
-MODE_COMPASS: int
-MODE_M4G: int
-MODE_NDOF_FMC_OFF: int
-MODE_NDOF: int
-
-
 class IMU:
     """
     Inertial Measurement Unit controller for BNO055 sensor.
@@ -85,14 +68,7 @@ class IMU:
     ACCEL_GRAVITY: int
     TEMPERATURE: int
     
-    MODE_CONFIG: int
-    MODE_IMU: int
-    MODE_COMPASS: int
-    MODE_M4G: int
-    MODE_NDOF_FMC_OFF: int
-    MODE_NDOF: int
-
-    def __init__(self, mode: int = 0x0C) -> None:
+    def __init__(self, addr: int = 0x28) -> None:
         """
         Initialize the IMU sensor.
         
@@ -151,10 +127,7 @@ class IMU:
             ...     print("Warning: Low calibration quality")
         ```
         """
-
-    def set_mode(self, mode: int) -> None: ...
-    def reset(self) -> None: ...
-    def is_calibrated(self) -> bool: ...
+    
     @property
     def euler(self) -> tuple[float, float, float]: ...
     @property
