@@ -254,9 +254,6 @@ class ReplSerial:
         """
         Close the instance.
 
-        No background resources exist on EFR32MG; provided for API parity
-        with the standard termio module so code stays portable.
-
         Example
         -------
         ```python
