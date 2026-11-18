@@ -39,11 +39,9 @@ class ReplSerial:
             except Exception:
                 pass
 
-        # 2. 포트 전환 시 유입되는 노이즈(0x03)로 인한 강제 종료 방지
         if self._ignore_intr:
             micropython.kbd_intr(-1)
 
-        # 3. 시작 전 기존 REPL 수신 버퍼에 남은 찌꺼기 비우기 (논블로킹)
         while _stdin.read(-1):
             pass
 
@@ -56,7 +54,7 @@ class ReplSerial:
     def _pump(self):
         if self._closed:
             return
-        # XBee 공식 논블로킹 읽기: 데이터가 없으면 즉시 None 반환
+
         while True:
             data = _stdin.read(-1)
             if not data:
