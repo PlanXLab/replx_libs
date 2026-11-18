@@ -13,17 +13,12 @@ import usys
 import utime
 import micropython
 
-try:
-    import xbee
-except ImportError:
-    xbee = None
-
 _stdin = usys.stdin.buffer
 _stdout = usys.stdout.buffer
 
 
 class ReplSerial:
-    def __init__(self, timeout=None, *, bufsize=128, ignore_intr=True):
+    def __init__(self, timeout=None, *, bufsize=128, ignore_intr=False):
         self._timeout = timeout
         self._buf = bytearray(bufsize)
         self._bufsize = bufsize
@@ -31,13 +26,6 @@ class ReplSerial:
         self._buf_tail = 0
         self._closed = False
         self._ignore_intr = ignore_intr
-
-        if xbee is not None:
-            try:
-                if xbee.atcmd("D7") == 1:
-                    xbee.atcmd("D7", 0)
-            except Exception:
-                pass
 
         if self._ignore_intr:
             micropython.kbd_intr(-1)
@@ -54,7 +42,6 @@ class ReplSerial:
     def _pump(self):
         if self._closed:
             return
-
         while True:
             data = _stdin.read(-1)
             if not data:
