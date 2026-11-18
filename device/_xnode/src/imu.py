@@ -39,54 +39,69 @@ class IMU:
     ACCEL_GRAVITY = const(0x2E)
     TEMPERATURE = const(0x34)
 
-    # UNIT_SEL = 0x06 (m/s^2, uT, rad/s, deg, celsius)
+    # UNIT_SEL = 0x06 기준 (모든 각도/각속도 단위를 라디안으로 통일):
+    # Accel = m/s^2 (100 LSB), Mag = uT (16 LSB),
+    # Gyro = rad/s (900 LSB), Euler = rad (900 LSB), Temp = Celsius
+    _RAD_SCALE = 1.0 / 900.0
+
     _SCALE = {
         ACCELERATION: 0.01,
         MAGNETIC: 0.0625,
-        GYROSCOPE: 0.001090830782496456,  # 1 / 900 (rad/s)
-        EULER: 0.0625,                    # 1 / 16 (deg)
+        GYROSCOPE: _RAD_SCALE,
+        EULER: _RAD_SCALE,
         QUATERNION: 1.0 / (1 << 14),
         ACCEL_LINEAR: 0.01,
         ACCEL_GRAVITY: 0.01,
     }
 
-    def __init__(self, addr=0x28):
-        self._i2c = machine.I2C(1, freq=100000)
+    def __init__(self, i2c=None, addr=0x28, reset=False):
+        self._i2c = i2c if i2c is not None else machine.I2C(1, freq=100000)
         self._addr = addr
-        
-        self._buf1 = bytearray(1)
-        self._buf6 = bytearray(6)
+
+        # 단일 8바이트 버퍼와 memoryview 슬라이스로 XBee RAM 절약
         self._buf8 = bytearray(8)
-        self._init_sensor(_NDOF_MODE)
+        mv = memoryview(self._buf8)
+        self._buf1 = mv[:1]
+        self._buf6 = mv[:6]
 
-    def _init_sensor(self, mode):
-        for _ in range(10):
+        self._init_sensor(_NDOF_MODE, reset)
+
+    def _wait_ready(self, retries=40, delay_ms=25):
+        for _ in range(retries):
             try:
                 if self._read_byte(_CHIP_ID_ADDR) == _BNO055_ID:
-                    break
+                    return
             except OSError:
                 pass
-            utime.sleep_ms(50)
-        else:
-            raise RuntimeError("Failed to find BNO055 sensor")
+            utime.sleep_ms(delay_ms)
+        raise RuntimeError("Failed to find BNO055 sensor")
 
+    def _init_sensor(self, mode, reset):
+        try:
+            self._write_reg(_PAGE_ID_ADDR, 0x00)
+        except OSError:
+            pass
+
+        self._wait_ready(retries=15, delay_ms=40)
         self.set_mode(_CONFIG_MODE)
-        self._write_reg(_SYS_TRIGGER_ADDR, 0x20)
-        utime.sleep_ms(700)
-        while True:
+
+        if reset:
             try:
-                if self._read_byte(_CHIP_ID_ADDR) == _BNO055_ID:
-                    break
+                self._write_reg(_SYS_TRIGGER_ADDR, 0x20)
             except OSError:
                 pass
-            utime.sleep_ms(20)
+            utime.sleep_ms(650)
+            self._wait_ready(retries=25, delay_ms=20)
 
+        self._write_reg(_PAGE_ID_ADDR, 0x00)
         self._write_reg(_PWR_MODE_ADDR, _POWER_NORMAL)
         utime.sleep_ms(10)
-        self._write_reg(_PAGE_ID_ADDR, 0x00)
-        self._write_reg(_UNIT_SEL_ADDR, 0x06) # UNIT_SEL = 0x06
+
+        # 0x06: Accel=m/s^2, Gyro=rad/s, Euler=rad, Temp=Celsius
+        self._write_reg(_UNIT_SEL_ADDR, 0x06)
         self._write_reg(_SYS_TRIGGER_ADDR, 0x00)
         utime.sleep_ms(10)
+
         self.set_mode(mode)
 
     def set_mode(self, mode):
@@ -114,7 +129,7 @@ class IMU:
     def _read_vector(self, target):
         s = self._SCALE.get(target)
         if s is None:
-            raise ValueError("Invalid sensor target: {}".format(target))
+            raise ValueError("Invalid target")
         self._i2c.readfrom_mem_into(self._addr, target, self._buf6)
         x, y, z = ustruct.unpack("<hhh", self._buf6)
         return x * s, y * s, z * s

@@ -157,6 +157,6 @@ class ReplSerial:
         _stdout.write(data)
 
     def close(self):
-        machine.soft_reset()
+        del self._buf
 
 gc.collect()
